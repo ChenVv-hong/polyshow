@@ -256,6 +256,8 @@ bool finalizeShape(
     if (vertices.size() == 1)
     {
         data.points.append(PointShape2D {vertices.first(), primitiveStyle});
+        data.primitive_order.append(
+            PrimitiveReference {PrimitiveKind::Point, static_cast<int>(data.points.size() - 1)});
         return true;
     }
 
@@ -288,6 +290,8 @@ bool finalizeShape(
         polygon.style = primitiveStyle;
         polygon.vertices = vertices.mid(0, vertices.size() - 1);
         data.polygons.append(polygon);
+        data.primitive_order.append(
+            PrimitiveReference {PrimitiveKind::Polygon, static_cast<int>(data.polygons.size() - 1)});
         return true;
     }
 
@@ -295,6 +299,8 @@ bool finalizeShape(
     polyline.style = primitiveStyle;
     polyline.vertices = vertices;
     data.polylines.append(polyline);
+    data.primitive_order.append(
+        PrimitiveReference {PrimitiveKind::Polyline, static_cast<int>(data.polylines.size() - 1)});
     return true;
 }
 

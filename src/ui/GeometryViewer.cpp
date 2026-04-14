@@ -44,7 +44,8 @@ void GeometryViewer::fitScene()
         return;
     }
 
-    fitInView(scene()->itemsBoundingRect(), Qt::KeepAspectRatio);
+    const QRectF itemsRect = scene()->itemsBoundingRect();
+    fitInView(itemsRect.isEmpty() ? scene()->sceneRect() : itemsRect, Qt::KeepAspectRatio);
 }
 
 /// Resets the transform and recenters the origin.

@@ -16,6 +16,49 @@ namespace
 constexpr int kGridHalfSize = 2000;
 constexpr int kGridStep = 50;
 
+struct LayerVisibilityMask
+{
+    QVector<bool> points;
+    QVector<bool> polylines;
+    QVector<bool> polygons;
+};
+
+/// Builds per-primitive visibility lookup tables for one layer.
+LayerVisibilityMask buildLayerVisibilityMask(const PolyShow::LayerData &layer)
+{
+    LayerVisibilityMask mask;
+    mask.points = QVector<bool>(layer.geometry.points.size(), true);
+    mask.polylines = QVector<bool>(layer.geometry.polylines.size(), true);
+    mask.polygons = QVector<bool>(layer.geometry.polygons.size(), true);
+
+    for (const PolyShow::LayerPrimitiveData &primitive : std::as_const(layer.primitives))
+    {
+        switch (primitive.reference.kind)
+        {
+        case PolyShow::PrimitiveKind::Point:
+            if (primitive.reference.index >= 0 && primitive.reference.index < mask.points.size())
+            {
+                mask.points[primitive.reference.index] = primitive.visible;
+            }
+            break;
+        case PolyShow::PrimitiveKind::Polyline:
+            if (primitive.reference.index >= 0 && primitive.reference.index < mask.polylines.size())
+            {
+                mask.polylines[primitive.reference.index] = primitive.visible;
+            }
+            break;
+        case PolyShow::PrimitiveKind::Polygon:
+            if (primitive.reference.index >= 0 && primitive.reference.index < mask.polygons.size())
+            {
+                mask.polygons[primitive.reference.index] = primitive.visible;
+            }
+            break;
+        }
+    }
+
+    return mask;
+}
+
 } // namespace
 
 namespace PolyShow
@@ -30,20 +73,22 @@ GeometryScene::GeometryScene(QObject *parent)
     rebuildScene();
 }
 
-/// Replaces the stored geometry data and refreshes the scene.
-void GeometryScene::setGeometryData(const GeometryData &geometryData)
+/// Replaces the stored document data and refreshes the scene.
+void GeometryScene::setDocumentData(const DocumentData &documentData)
 {
-    m_geometry_data = geometryData;
+    m_document_data = documentData;
+    updateVisibleCounts();
     rebuildScene();
-    emit geometryChanged(pointCount(), polylineCount(), polygonCount());
+    emit geometryChanged(m_point_count, m_polyline_count, m_polygon_count);
 }
 
-/// Clears all stored geometry data and refreshes the scene.
-void GeometryScene::clearGeometry()
+/// Clears all stored document data and refreshes the scene.
+void GeometryScene::clearDocument()
 {
-    m_geometry_data = GeometryData {};
+    m_document_data = DocumentData {};
+    updateVisibleCounts();
     rebuildScene();
-    emit geometryChanged(0, 0, 0);
+    emit geometryChanged(m_point_count, m_polyline_count, m_polygon_count);
 }
 
 /// Switches the render mode when the requested mode changes.
@@ -85,19 +130,60 @@ bool GeometryScene::isGridVisible() const
 /// Returns the standalone point count.
 int GeometryScene::pointCount() const
 {
-    return m_geometry_data.points.size();
+    return m_point_count;
 }
 
 /// Returns the polyline count.
 int GeometryScene::polylineCount() const
 {
-    return m_geometry_data.polylines.size();
+    return m_polyline_count;
 }
 
 /// Returns the polygon count.
 int GeometryScene::polygonCount() const
 {
-    return m_geometry_data.polygons.size();
+    return m_polygon_count;
+}
+
+/// Recomputes visible counts from all currently enabled layers and primitives.
+void GeometryScene::updateVisibleCounts()
+{
+    m_point_count = 0;
+    m_polyline_count = 0;
+    m_polygon_count = 0;
+
+    for (const LayerData &layer : std::as_const(m_document_data.layers))
+    {
+        if (!layer.visible)
+        {
+            continue;
+        }
+
+        const LayerVisibilityMask mask = buildLayerVisibilityMask(layer);
+        for (const bool isVisible : std::as_const(mask.points))
+        {
+            if (isVisible)
+            {
+                ++m_point_count;
+            }
+        }
+
+        for (const bool isVisible : std::as_const(mask.polylines))
+        {
+            if (isVisible)
+            {
+                ++m_polyline_count;
+            }
+        }
+
+        for (const bool isVisible : std::as_const(mask.polygons))
+        {
+            if (isVisible)
+            {
+                ++m_polygon_count;
+            }
+        }
+    }
 }
 
 /// Rebuilds every scene item from the current stored state.
@@ -116,74 +202,114 @@ void GeometryScene::rebuildScene()
         addEllipse(markerRect, pointPen, QBrush(style.color));
     };
 
-    if (m_render_mode != RenderMode::Points)
+    for (const LayerData &layer : std::as_const(m_document_data.layers))
     {
-        // Draw polygons first so subsequent lines and points naturally appear above them.
-        for (const Polygon2D &polygon : std::as_const(m_geometry_data.polygons))
+        if (!layer.visible)
         {
-            if (polygon.vertices.size() < 3)
+            continue;
+        }
+
+        const LayerVisibilityMask mask = buildLayerVisibilityMask(layer);
+
+        if (m_render_mode != RenderMode::Points)
+        {
+            // Draw polygons first so subsequent lines and points naturally appear above them.
+            for (int i = 0; i < layer.geometry.polygons.size(); ++i)
+            {
+                if (!mask.polygons.value(i))
+                {
+                    continue;
+                }
+
+                const Polygon2D &polygon = layer.geometry.polygons.at(i);
+                if (polygon.vertices.size() < 3)
+                {
+                    continue;
+                }
+
+                // Convert the project vertex format to the Qt polygon type expected by the scene.
+                QPolygonF qtPolygon;
+                qtPolygon.reserve(polygon.vertices.size());
+                for (const Point2D &vertex : polygon.vertices)
+                {
+                    qtPolygon << vertex.toPointF();
+                }
+
+                QPen polygonPen(polygon.style.color);
+                polygonPen.setWidthF(polygon.style.width);
+                const bool shouldUseFill = m_render_mode == RenderMode::Solid && polygon.style.fill_enabled;
+                const QBrush polygonBrush = shouldUseFill ? QBrush(polygon.style.fill_color) : QBrush(Qt::NoBrush);
+                addPolygon(qtPolygon, polygonPen, polygonBrush);
+            }
+
+            // Draw polylines after polygons so wireframe details stay crisp.
+            for (int i = 0; i < layer.geometry.polylines.size(); ++i)
+            {
+                if (!mask.polylines.value(i))
+                {
+                    continue;
+                }
+
+                const Polyline2D &polyline = layer.geometry.polylines.at(i);
+                if (polyline.vertices.size() < 2)
+                {
+                    continue;
+                }
+
+                // Build one painter path so the entire polyline can be submitted in a single scene item.
+                QPainterPath path(polyline.vertices.first().toPointF());
+                for (int vertexIndex = 1; vertexIndex < polyline.vertices.size(); ++vertexIndex)
+                {
+                    path.lineTo(polyline.vertices.at(vertexIndex).toPointF());
+                }
+
+                QPen polylinePen(polyline.style.color);
+                polylinePen.setWidthF(polyline.style.width);
+                addPath(path, polylinePen);
+            }
+        }
+
+        // Standalone points are visible in every render mode.
+        for (int i = 0; i < layer.geometry.points.size(); ++i)
+        {
+            if (!mask.points.value(i))
             {
                 continue;
             }
 
-            // Convert the project vertex format to the Qt polygon type expected by the scene.
-            QPolygonF qtPolygon;
-            qtPolygon.reserve(polygon.vertices.size());
-            for (const Point2D &vertex : polygon.vertices)
-            {
-                qtPolygon << vertex.toPointF();
-            }
-
-            QPen polygonPen(polygon.style.color);
-            polygonPen.setWidthF(polygon.style.width);
-            const bool shouldUseFill = m_render_mode == RenderMode::Solid && polygon.style.fill_enabled;
-            const QBrush polygonBrush = shouldUseFill ? QBrush(polygon.style.fill_color) : QBrush(Qt::NoBrush);
-            addPolygon(qtPolygon, polygonPen, polygonBrush);
+            const PointShape2D &point = layer.geometry.points.at(i);
+            addPointMarker(point.point, point.style);
         }
 
-        // Draw polylines after polygons so wireframe details stay crisp.
-        for (const Polyline2D &polyline : std::as_const(m_geometry_data.polylines))
+        if (m_render_mode == RenderMode::Points)
         {
-            if (polyline.vertices.size() < 2)
+            // In point mode, expose polyline and polygon vertices as standalone point markers.
+            for (int i = 0; i < layer.geometry.polylines.size(); ++i)
             {
-                continue;
+                if (!mask.polylines.value(i))
+                {
+                    continue;
+                }
+
+                const Polyline2D &polyline = layer.geometry.polylines.at(i);
+                for (const Point2D &vertex : polyline.vertices)
+                {
+                    addPointMarker(vertex, polyline.style);
+                }
             }
 
-            // Build one painter path so the entire polyline can be submitted in a single scene item.
-            QPainterPath path(polyline.vertices.first().toPointF());
-            for (int i = 1; i < polyline.vertices.size(); ++i)
+            for (int i = 0; i < layer.geometry.polygons.size(); ++i)
             {
-                path.lineTo(polyline.vertices[i].toPointF());
-            }
+                if (!mask.polygons.value(i))
+                {
+                    continue;
+                }
 
-            QPen polylinePen(polyline.style.color);
-            polylinePen.setWidthF(polyline.style.width);
-            addPath(path, polylinePen);
-        }
-    }
-
-    // Standalone points are visible in every render mode.
-    for (const PointShape2D &point : std::as_const(m_geometry_data.points))
-    {
-        addPointMarker(point.point, point.style);
-    }
-
-    if (m_render_mode == RenderMode::Points)
-    {
-        // In point mode, expose polyline and polygon vertices as standalone point markers.
-        for (const Polyline2D &polyline : std::as_const(m_geometry_data.polylines))
-        {
-            for (const Point2D &vertex : polyline.vertices)
-            {
-                addPointMarker(vertex, polyline.style);
-            }
-        }
-
-        for (const Polygon2D &polygon : std::as_const(m_geometry_data.polygons))
-        {
-            for (const Point2D &vertex : polygon.vertices)
-            {
-                addPointMarker(vertex, polygon.style);
+                const Polygon2D &polygon = layer.geometry.polygons.at(i);
+                for (const Point2D &vertex : polygon.vertices)
+                {
+                    addPointMarker(vertex, polygon.style);
+                }
             }
         }
     }

@@ -7,7 +7,7 @@
 namespace PolyShow
 {
 
-/// Builds drawable scene items from parsed geometry data.
+/// Builds drawable scene items from imported document data.
 class GeometryScene final : public QGraphicsScene
 {
     Q_OBJECT
@@ -25,11 +25,11 @@ public:
     /// Creates the scene and initializes the default grid.
     explicit GeometryScene(QObject *parent = nullptr);
 
-    /// Replaces the current geometry payload.
-    void setGeometryData(const GeometryData &geometryData);
+    /// Replaces the current document payload.
+    void setDocumentData(const DocumentData &documentData);
 
-    /// Clears the current geometry payload.
-    void clearGeometry();
+    /// Clears the current document payload.
+    void clearDocument();
 
     /// Changes the active render mode.
     void setRenderMode(RenderMode renderMode);
@@ -62,15 +62,21 @@ signals:
     void geometryChanged(int pointCount, int polylineCount, int polygonCount);
 
 private:
+    /// Recomputes the cached visible primitive counts.
+    void updateVisibleCounts();
+
     /// Rebuilds all scene items from the stored state.
     void rebuildScene();
 
     /// Rebuilds the background grid.
     void rebuildGrid();
 
-    GeometryData m_geometry_data;
+    DocumentData m_document_data;
     RenderMode m_render_mode {RenderMode::Solid};
     bool m_is_grid_visible {true};
+    int m_point_count {0};
+    int m_polyline_count {0};
+    int m_polygon_count {0};
 };
 
 } // namespace PolyShow

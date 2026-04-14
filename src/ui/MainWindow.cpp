@@ -8,6 +8,7 @@
 #include <QActionGroup>
 #include <QComboBox>
 #include <QFileDialog>
+#include <QFileInfo>
 #include <QKeySequence>
 #include <QLabel>
 #include <QMenu>
@@ -23,6 +24,93 @@
 namespace PolyShow
 {
 
+namespace
+{
+
+/// Returns the shared file dialog filter for PolyShow files.
+QString plyFileDialogFilter()
+{
+    return QStringLiteral("PolyShow Files (*.ply);;All Files (*.*)");
+}
+
+/// Returns the visible label for one primitive entry.
+QString primitiveDisplayName(PrimitiveKind kind, int ordinal)
+{
+    switch (kind)
+    {
+    case PrimitiveKind::Point:
+        return QStringLiteral("Point %1").arg(ordinal);
+    case PrimitiveKind::Polyline:
+        return QStringLiteral("Polyline %1").arg(ordinal);
+    case PrimitiveKind::Polygon:
+        return QStringLiteral("Polygon %1").arg(ordinal);
+    default:
+        return QStringLiteral("Primitive %1").arg(ordinal);
+    }
+}
+
+/// Appends one primitive entry to a layer list.
+void appendPrimitiveEntry(
+    QVector<LayerPrimitiveData> &primitives, PrimitiveKind kind, int index, int &ordinalCounter)
+{
+    ++ordinalCounter;
+    primitives.append(LayerPrimitiveData {PrimitiveReference {kind, index}, primitiveDisplayName(kind, ordinalCounter), true});
+}
+
+/// Builds the runtime layer state for one successfully parsed file.
+LayerData buildLayerData(const QString &filePath, const GeometryData &geometryData)
+{
+    LayerData layer;
+    layer.file_path = filePath;
+    layer.display_name = QFileInfo(filePath).fileName();
+    layer.geometry = geometryData;
+
+    int pointOrdinal = 0;
+    int polylineOrdinal = 0;
+    int polygonOrdinal = 0;
+
+    if (!geometryData.primitive_order.isEmpty())
+    {
+        for (const PrimitiveReference &reference : geometryData.primitive_order)
+        {
+            switch (reference.kind)
+            {
+            case PrimitiveKind::Point:
+                appendPrimitiveEntry(layer.primitives, reference.kind, reference.index, pointOrdinal);
+                break;
+            case PrimitiveKind::Polyline:
+                appendPrimitiveEntry(layer.primitives, reference.kind, reference.index, polylineOrdinal);
+                break;
+            case PrimitiveKind::Polygon:
+                appendPrimitiveEntry(layer.primitives, reference.kind, reference.index, polygonOrdinal);
+                break;
+            }
+        }
+
+        return layer;
+    }
+
+    // Fall back to bucket order when primitive-order metadata is unavailable.
+    for (int index = 0; index < geometryData.points.size(); ++index)
+    {
+        appendPrimitiveEntry(layer.primitives, PrimitiveKind::Point, index, pointOrdinal);
+    }
+
+    for (int index = 0; index < geometryData.polylines.size(); ++index)
+    {
+        appendPrimitiveEntry(layer.primitives, PrimitiveKind::Polyline, index, polylineOrdinal);
+    }
+
+    for (int index = 0; index < geometryData.polygons.size(); ++index)
+    {
+        appendPrimitiveEntry(layer.primitives, PrimitiveKind::Polygon, index, polygonOrdinal);
+    }
+
+    return layer;
+}
+
+} // namespace
+
 /// Creates the main window and initializes the full UI tree.
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -34,34 +122,38 @@ MainWindow::MainWindow(QWidget *parent)
     updateUiFromScene();
 }
 
-/// Opens a file, parses it, and syncs the result to the scene widgets.
+/// Opens a file, replaces the current document, and syncs the result to the scene widgets.
 void MainWindow::openPlyFile()
 {
     const QString filePath = QFileDialog::getOpenFileName(
         this,
         QStringLiteral("Open PolyShow .ply File"),
         QString(),
-        QStringLiteral("PolyShow Files (*.ply);;All Files (*.*)"));
+        plyFileDialogFilter());
 
     if (filePath.isEmpty())
     {
         return;
     }
 
-    GeometryData data;
-    QString errorMessage;
-    if (!PlyParser::parseFile(filePath, data, &errorMessage))
+    importFiles(QStringList {filePath}, true);
+}
+
+/// Imports one or more files as additional layers.
+void MainWindow::importPlyFiles()
+{
+    const QStringList filePaths = QFileDialog::getOpenFileNames(
+        this,
+        QStringLiteral("Import PolyShow .ply Files"),
+        QString(),
+        plyFileDialogFilter());
+
+    if (filePaths.isEmpty())
     {
-        QMessageBox::critical(this, QStringLiteral("Load Failed"), errorMessage);
-        statusBar()->showMessage(QStringLiteral("Load failed"), 3000);
         return;
     }
 
-    // Keep the scene, panel, and viewport in sync after a successful parse.
-    m_scene->setGeometryData(data);
-    m_property_panel->setCurrentFile(filePath);
-    m_geometry_viewer->fitScene();
-    statusBar()->showMessage(QStringLiteral("File loaded"), 2000);
+    importFiles(filePaths, false);
 }
 
 /// Switches the UI to solid render mode.
@@ -97,6 +189,36 @@ void MainWindow::onGeometryChanged(int pointCount, int polylineCount, int polygo
         QStringLiteral("Points: %1  Polylines: %2  Polygons: %3").arg(pointCount).arg(polylineCount).arg(polygonCount));
 }
 
+/// Applies a layer visibility toggle from the property panel.
+void MainWindow::onLayerVisibilityChanged(int layerIndex, bool visible)
+{
+    if (layerIndex < 0 || layerIndex >= m_document_data.layers.size())
+    {
+        return;
+    }
+
+    m_document_data.layers[layerIndex].visible = visible;
+    m_scene->setDocumentData(m_document_data);
+}
+
+/// Applies a primitive visibility toggle from the property panel.
+void MainWindow::onPrimitiveVisibilityChanged(int layerIndex, int primitiveIndex, bool visible)
+{
+    if (layerIndex < 0 || layerIndex >= m_document_data.layers.size())
+    {
+        return;
+    }
+
+    LayerData &layer = m_document_data.layers[layerIndex];
+    if (primitiveIndex < 0 || primitiveIndex >= layer.primitives.size())
+    {
+        return;
+    }
+
+    layer.primitives[primitiveIndex].visible = visible;
+    m_scene->setDocumentData(m_document_data);
+}
+
 /// Maps the combo-box index to an internal render mode.
 void MainWindow::onRenderModeChanged(int index)
 {
@@ -123,11 +245,11 @@ void MainWindow::showAboutDialog()
         this,
         QStringLiteral("About PolyShow"),
         QStringLiteral("PolyShow MVP\n\n") + QStringLiteral("Features:\n")
-            + QStringLiteral("1. Open and render PolyShow .ply files\n")
+            + QStringLiteral("1. Open or import PolyShow .ply files\n")
             + QStringLiteral("2. Display points, polylines, and polygons\n")
-            + QStringLiteral("3. Zoom, pan, fit, and reset view\n")
-            + QStringLiteral("4. Switch render mode (Solid/Wireframe/Points)\n")
-            + QStringLiteral("5. Show stats and live mouse coordinates"));
+            + QStringLiteral("3. Toggle layer and primitive visibility\n")
+            + QStringLiteral("4. Zoom, pan, fit, and reset view\n")
+            + QStringLiteral("5. Switch render mode (Solid/Wireframe/Points)"));
 }
 
 /// Builds the core widgets, layout, and signal connections.
@@ -162,16 +284,27 @@ void MainWindow::setupUi()
     connect(m_scene, &GeometryScene::geometryChanged, this, &MainWindow::onGeometryChanged);
     connect(m_geometry_viewer, &GeometryViewer::mousePositionChanged, this, &MainWindow::updateMousePosition);
     connect(m_property_panel, &PropertyPanel::gridVisibilityChanged, m_scene, &GeometryScene::setGridVisible);
+    connect(m_property_panel, &PropertyPanel::layerVisibilityChanged, this, &MainWindow::onLayerVisibilityChanged);
+    connect(
+        m_property_panel,
+        &PropertyPanel::primitiveVisibilityChanged,
+        this,
+        &MainWindow::onPrimitiveVisibilityChanged);
 }
 
 /// Creates all menu actions and attaches them to the menu bar.
 void MainWindow::setupMenuBar()
 {
     auto *fileMenu = menuBar()->addMenu(QStringLiteral("File"));
+
     m_open_action = new QAction(QStringLiteral("Open .ply..."), this);
     m_open_action->setShortcut(QKeySequence::Open);
     connect(m_open_action, &QAction::triggered, this, &MainWindow::openPlyFile);
     fileMenu->addAction(m_open_action);
+
+    m_import_action = new QAction(QStringLiteral("Import .ply..."), this);
+    connect(m_import_action, &QAction::triggered, this, &MainWindow::importPlyFiles);
+    fileMenu->addAction(m_import_action);
 
     fileMenu->addSeparator();
 
@@ -235,6 +368,7 @@ void MainWindow::setupToolBar()
     m_tool_bar->setMovable(false);
 
     m_tool_bar->addAction(m_open_action);
+    m_tool_bar->addAction(m_import_action);
     m_tool_bar->addSeparator();
     m_tool_bar->addAction(m_fit_action);
     m_tool_bar->addAction(m_zoom_in_action);
@@ -303,9 +437,77 @@ void MainWindow::setRenderMode(GeometryScene::RenderMode renderMode)
     m_render_mode_combo_box->setCurrentIndex(comboIndex);
 }
 
+/// Imports files into the current document and reports any failures.
+void MainWindow::importFiles(const QStringList &filePaths, bool replaceExisting)
+{
+    DocumentData nextDocument = replaceExisting ? DocumentData {} : m_document_data;
+    QStringList failureMessages;
+    int importedCount = 0;
+
+    for (const QString &filePath : filePaths)
+    {
+        GeometryData geometryData;
+        QString errorMessage;
+        if (!PlyParser::parseFile(filePath, geometryData, &errorMessage))
+        {
+            failureMessages.append(QStringLiteral("%1\n%2").arg(filePath, errorMessage));
+            continue;
+        }
+
+        nextDocument.layers.append(buildLayerData(filePath, geometryData));
+        ++importedCount;
+    }
+
+    if (importedCount == 0)
+    {
+        const QString message = failureMessages.isEmpty()
+            ? QStringLiteral("No files were imported.")
+            : failureMessages.join(QStringLiteral("\n\n"));
+        QMessageBox::critical(this, QStringLiteral("Import Failed"), message);
+        statusBar()->showMessage(QStringLiteral("Import failed"), 3000);
+        return;
+    }
+
+    m_document_data = nextDocument;
+    syncDocumentToViews(true);
+
+    if (failureMessages.isEmpty())
+    {
+        const QString successMessage = replaceExisting
+            ? QStringLiteral("File loaded")
+            : QStringLiteral("Imported %1 layer(s)").arg(importedCount);
+        statusBar()->showMessage(successMessage, 3000);
+        return;
+    }
+
+    QMessageBox::warning(
+        this,
+        QStringLiteral("Import Completed with Errors"),
+        QStringLiteral("Imported %1 file(s). %2 file(s) failed.\n\n%3")
+            .arg(importedCount)
+            .arg(failureMessages.size())
+            .arg(failureMessages.join(QStringLiteral("\n\n"))));
+    statusBar()->showMessage(
+        QStringLiteral("Imported %1 file(s), %2 failed").arg(importedCount).arg(failureMessages.size()),
+        4000);
+}
+
+/// Pushes the current document state into the scene and side panel.
+void MainWindow::syncDocumentToViews(bool fitScene)
+{
+    m_property_panel->setDocumentData(m_document_data);
+    m_scene->setDocumentData(m_document_data);
+
+    if (fitScene)
+    {
+        m_geometry_viewer->fitScene();
+    }
+}
+
 /// Rehydrates the window state from the current scene object.
 void MainWindow::updateUiFromScene()
 {
+    m_property_panel->setDocumentData(m_document_data);
     setRenderMode(m_scene->renderMode());
     onGeometryChanged(m_scene->pointCount(), m_scene->polylineCount(), m_scene->polygonCount());
 }

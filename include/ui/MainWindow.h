@@ -4,6 +4,7 @@
 
 #include <QMainWindow>
 #include <QPointF>
+#include <QStringList>
 
 class QAction;
 class QActionGroup;
@@ -31,6 +32,9 @@ private slots:
     /// Opens and parses a `.ply` file chosen by the user.
     void openPlyFile();
 
+    /// Imports one or more `.ply` files as additional layers.
+    void importPlyFiles();
+
     /// Switches to solid render mode.
     void setRenderModeSolid();
 
@@ -45,6 +49,12 @@ private slots:
 
     /// Refreshes the displayed geometry statistics.
     void onGeometryChanged(int pointCount, int polylineCount, int polygonCount);
+
+    /// Applies a layer visibility toggle from the property panel.
+    void onLayerVisibilityChanged(int layerIndex, bool visible);
+
+    /// Applies a primitive visibility toggle from the property panel.
+    void onPrimitiveVisibilityChanged(int layerIndex, int primitiveIndex, bool visible);
 
     /// Maps combo-box selection changes to render modes.
     void onRenderModeChanged(int index);
@@ -68,6 +78,12 @@ private:
     /// Synchronizes a render mode to the full UI state.
     void setRenderMode(GeometryScene::RenderMode renderMode);
 
+    /// Imports files into the current document, optionally replacing it first.
+    void importFiles(const QStringList &filePaths, bool replaceExisting);
+
+    /// Pushes the current document state into the scene and side panel.
+    void syncDocumentToViews(bool fitScene);
+
     /// Refreshes UI state from the current scene data.
     void updateUiFromScene();
 
@@ -80,6 +96,7 @@ private:
     QComboBox *m_render_mode_combo_box {nullptr};
 
     QAction *m_open_action {nullptr};
+    QAction *m_import_action {nullptr};
     QAction *m_exit_action {nullptr};
     QAction *m_fit_action {nullptr};
     QAction *m_zoom_in_action {nullptr};
@@ -94,6 +111,8 @@ private:
 
     QLabel *m_status_info_label {nullptr};
     QLabel *m_status_mouse_label {nullptr};
+
+    DocumentData m_document_data;
 };
 
 } // namespace PolyShow

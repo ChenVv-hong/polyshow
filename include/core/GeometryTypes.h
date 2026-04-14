@@ -2,6 +2,7 @@
 
 #include <QColor>
 #include <QPointF>
+#include <QString>
 #include <QVector>
 
 namespace PolyShow
@@ -42,6 +43,21 @@ struct PrimitiveStyle
 
     /// Point marker radius.
     double point_size {2.5};
+};
+
+/// Identifies one primitive bucket in a parsed file.
+enum class PrimitiveKind
+{
+    Point,
+    Polyline,
+    Polygon
+};
+
+/// References one primitive inside a `GeometryData` payload.
+struct PrimitiveReference
+{
+    PrimitiveKind kind {PrimitiveKind::Point};
+    int index {0};
 };
 
 /// Standalone point primitive.
@@ -86,12 +102,61 @@ struct GeometryData
     /// Polygons.
     QVector<Polygon2D> polygons;
 
+    /// Primitive order as encountered while parsing the file.
+    QVector<PrimitiveReference> primitive_order;
+
     /// Returns whether all primitive collections are empty.
     [[nodiscard]]
     bool isEmpty() const
     {
         // The geometry is empty only when every primitive bucket is empty.
         return points.isEmpty() && polylines.isEmpty() && polygons.isEmpty();
+    }
+};
+
+/// One layer-level primitive entry with independent visibility.
+struct LayerPrimitiveData
+{
+    /// Reference back into the layer geometry payload.
+    PrimitiveReference reference;
+
+    /// User-facing primitive label.
+    QString display_name;
+
+    /// Whether the primitive is currently visible.
+    bool visible {true};
+};
+
+/// One imported file and its visibility state.
+struct LayerData
+{
+    /// Source file path used to build the layer.
+    QString file_path;
+
+    /// User-facing layer label.
+    QString display_name;
+
+    /// Parsed file geometry.
+    GeometryData geometry;
+
+    /// Flat primitive list in file order.
+    QVector<LayerPrimitiveData> primitives;
+
+    /// Whether the full layer is currently visible.
+    bool visible {true};
+};
+
+/// Complete imported document containing multiple layers.
+struct DocumentData
+{
+    /// Imported layers in load order.
+    QVector<LayerData> layers;
+
+    /// Returns whether the document has no layers.
+    [[nodiscard]]
+    bool isEmpty() const
+    {
+        return layers.isEmpty();
     }
 };
 

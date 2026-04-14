@@ -1,0 +1,29 @@
+# Point
+COLOR #2259B4
+POINT_SIZE 4
+-180 120
+NEXT
+
+# Polyline
+COLOR #E66A2C
+WIDTH 3
+-220 -60
+-160 -10
+-110 -40
+-40 20
+NEXT
+
+# Polygon
+COLOR #278A5B
+FILL #278A5B66
+60 -70
+160 -70
+190 20
+110 80
+40 20
+60 -70
+NEXT
+
+# Same color, different point size for the next point
+POINT_SIZE 6
+220 120

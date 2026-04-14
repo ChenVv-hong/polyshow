@@ -1,0 +1,27 @@
+# This file exercises comments, empty lines, and repeated NEXT.
+
+COLOR #2563EB
+
+0 0
+NEXT
+
+NEXT
+
+# Open polyline
+COLOR #EA580C
+WIDTH 2.5
+-120 -40
+-60 10
+0 -20
+40 40
+NEXT
+
+
+# Closed polygon
+COLOR #15803D
+FILL #15803D55
+80 -60
+160 -60
+160 20
+80 20
+80 -60

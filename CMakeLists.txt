@@ -1,51 +1,90 @@
 cmake_minimum_required(VERSION 3.31)
-project(polyshow)
+project(polyshow LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
 set(CMAKE_PREFIX_PATH "D:/Qt/6.9.1/msvc2022_64")
+set(POLYSHOW_TARGET_NAME polyshow)
 
-find_package(Qt6 COMPONENTS
-        Core
-        Gui
-        Widgets
-        REQUIRED)
+find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets)
 
-add_executable(polyshow main.cpp)
-target_link_libraries(polyshow
+set(POLYSHOW_HEADERS
+    include/core/GeometryTypes.h
+    include/core/GeometryScene.h
+    include/parsers/PlyParser.h
+    include/ui/GeometryViewer.h
+    include/ui/PropertyPanel.h
+    include/ui/MainWindow.h
+)
+
+set(POLYSHOW_SOURCES
+    Main.cpp
+    src/core/GeometryScene.cpp
+    src/parsers/PlyParser.cpp
+    src/ui/GeometryViewer.cpp
+    src/ui/PropertyPanel.cpp
+    src/ui/MainWindow.cpp
+)
+
+add_executable(
+    ${POLYSHOW_TARGET_NAME}
+    ${POLYSHOW_HEADERS}
+    ${POLYSHOW_SOURCES}
+)
+
+target_include_directories(${POLYSHOW_TARGET_NAME} PRIVATE include)
+
+target_link_libraries(
+    ${POLYSHOW_TARGET_NAME}
+    PRIVATE
         Qt::Core
         Qt::Gui
         Qt::Widgets
 )
 
-if (WIN32 AND NOT DEFINED CMAKE_TOOLCHAIN_FILE)
+if(WIN32 AND NOT DEFINED CMAKE_TOOLCHAIN_FILE)
     set(DEBUG_SUFFIX)
-    if (MSVC AND CMAKE_BUILD_TYPE MATCHES "Debug")
+
+    if(MSVC AND CMAKE_BUILD_TYPE MATCHES "Debug")
         set(DEBUG_SUFFIX "d")
-    endif ()
+    endif()
+
     set(QT_INSTALL_PATH "${CMAKE_PREFIX_PATH}")
-    if (NOT EXISTS "${QT_INSTALL_PATH}/bin")
+    if(NOT EXISTS "${QT_INSTALL_PATH}/bin")
         set(QT_INSTALL_PATH "${QT_INSTALL_PATH}/..")
-        if (NOT EXISTS "${QT_INSTALL_PATH}/bin")
+        if(NOT EXISTS "${QT_INSTALL_PATH}/bin")
             set(QT_INSTALL_PATH "${QT_INSTALL_PATH}/..")
-        endif ()
-    endif ()
-    if (EXISTS "${QT_INSTALL_PATH}/plugins/platforms/qwindows${DEBUG_SUFFIX}.dll")
-        add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-                COMMAND ${CMAKE_COMMAND} -E make_directory
-                "$<TARGET_FILE_DIR:${PROJECT_NAME}>/plugins/platforms/")
-        add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-                COMMAND ${CMAKE_COMMAND} -E copy
-                "${QT_INSTALL_PATH}/plugins/platforms/qwindows${DEBUG_SUFFIX}.dll"
-                "$<TARGET_FILE_DIR:${PROJECT_NAME}>/plugins/platforms/")
-    endif ()
-    foreach (QT_LIB Core Gui Widgets)
-        add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-                COMMAND ${CMAKE_COMMAND} -E copy
-                "${QT_INSTALL_PATH}/bin/Qt6${QT_LIB}${DEBUG_SUFFIX}.dll"
-                "$<TARGET_FILE_DIR:${PROJECT_NAME}>")
-    endforeach (QT_LIB)
-endif ()
+        endif()
+    endif()
+
+    if(EXISTS "${QT_INSTALL_PATH}/plugins/platforms/qwindows${DEBUG_SUFFIX}.dll")
+        add_custom_command(
+            TARGET ${POLYSHOW_TARGET_NAME}
+            POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E make_directory
+                    "$<TARGET_FILE_DIR:${POLYSHOW_TARGET_NAME}>/plugins/platforms/"
+        )
+        add_custom_command(
+            TARGET ${POLYSHOW_TARGET_NAME}
+            POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy
+                    "${QT_INSTALL_PATH}/plugins/platforms/qwindows${DEBUG_SUFFIX}.dll"
+                    "$<TARGET_FILE_DIR:${POLYSHOW_TARGET_NAME}>/plugins/platforms/"
+        )
+    endif()
+
+    foreach(QT_LIB Core Gui Widgets)
+        add_custom_command(
+            TARGET ${POLYSHOW_TARGET_NAME}
+            POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy
+                    "${QT_INSTALL_PATH}/bin/Qt6${QT_LIB}${DEBUG_SUFFIX}.dll"
+                    "$<TARGET_FILE_DIR:${POLYSHOW_TARGET_NAME}>"
+        )
+    endforeach()
+endif()

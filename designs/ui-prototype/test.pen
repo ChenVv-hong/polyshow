@@ -1,0 +1,522 @@
+{
+  "version": "2.6",
+  "children": [
+    {
+      "type": "frame",
+      "id": "bi8Au",
+      "x": -1182,
+      "y": -311,
+      "name": "Frame",
+      "clip": true,
+      "width": 873,
+      "height": 962,
+      "fill": "#FFFFFF",
+      "layout": "vertical",
+      "gap": 24,
+      "padding": 24,
+      "children": [
+        {
+          "type": "text",
+          "id": "mU6os",
+          "name": "title",
+          "fill": "#1A1A1A",
+          "content": "Dashboard",
+          "fontFamily": "Inter",
+          "fontSize": 32,
+          "fontWeight": "700"
+        },
+        {
+          "type": "frame",
+          "id": "1ibJ9",
+          "name": "Search Bar",
+          "width": 800,
+          "height": 52,
+          "fill": "#F6F7F8",
+          "children": [
+            {
+              "type": "text",
+              "id": "ZWLV0",
+              "fill": "#9CA3AF",
+              "content": "What are you looking for?",
+              "fontFamily": "Inter",
+              "fontSize": 15,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "id": "aGkc3",
+          "name": "statsTitle",
+          "fill": "#1A1A1A",
+          "content": "Today's Stats",
+          "fontFamily": "Inter",
+          "fontSize": 18,
+          "fontWeight": "700"
+        },
+        {
+          "type": "frame",
+          "id": "JL2eo",
+          "name": "Stats Grid",
+          "width": 800,
+          "gap": 12,
+          "children": [
+            {
+              "type": "frame",
+              "id": "vXv4z",
+              "name": "Stat Card 1",
+              "width": 394,
+              "height": 108,
+              "fill": "#F6F7F8",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "zzVUT",
+                  "fill": "#1A1A1A",
+                  "content": "2,847",
+                  "fontFamily": "Inter",
+                  "fontSize": 32,
+                  "fontWeight": "800"
+                },
+                {
+                  "type": "text",
+                  "id": "6kCJO",
+                  "fill": "#9CA3AF",
+                  "content": "Steps",
+                  "fontFamily": "Inter",
+                  "fontSize": 13,
+                  "fontWeight": "500"
+                },
+                {
+                  "type": "frame",
+                  "id": "5zqie",
+                  "name": "Stat Badge 1",
+                  "width": 70,
+                  "height": 24,
+                  "fill": "#F0FDF4",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "32iZy",
+                      "fill": "#22C55E",
+                      "content": "+18%",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "600"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "uoRIX",
+              "name": "Stat Card 2",
+              "width": 394,
+              "height": 108,
+              "fill": "#F6F7F8",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "OqeMT",
+                  "fill": "#1A1A1A",
+                  "content": "7.2h",
+                  "fontFamily": "Inter",
+                  "fontSize": 32,
+                  "fontWeight": "800"
+                },
+                {
+                  "type": "text",
+                  "id": "GQg7H",
+                  "fill": "#9CA3AF",
+                  "content": "Sleep",
+                  "fontFamily": "Inter",
+                  "fontSize": 13,
+                  "fontWeight": "500"
+                },
+                {
+                  "type": "frame",
+                  "id": "Wuguj",
+                  "name": "Stat Badge 2",
+                  "width": 70,
+                  "height": 24,
+                  "fill": "#F0F5FF",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "rO5ci",
+                      "fill": "#6366F1",
+                      "content": "-0.5h",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "600"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "id": "72Zfm",
+          "name": "habitsTitle",
+          "fill": "#1A1A1A",
+          "content": "Habits",
+          "fontFamily": "Inter",
+          "fontSize": 18,
+          "fontWeight": "700"
+        },
+        {
+          "type": "frame",
+          "id": "7ii2G",
+          "name": "Habit Card 1",
+          "width": 800,
+          "height": 70,
+          "fill": "#F6F7F8",
+          "children": [
+            {
+              "type": "frame",
+              "id": "pxGgH",
+              "name": "Checkbox 1",
+              "width": 28,
+              "height": 28,
+              "fill": "#22C55E",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "y8lyR",
+                  "fill": "#FFFFFF",
+                  "content": "✓",
+                  "fontFamily": "Arial",
+                  "fontSize": 16,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "54OH9",
+              "fill": "#1A1A1A",
+              "content": "Morning Meditation",
+              "fontFamily": "Inter",
+              "fontSize": 15,
+              "fontWeight": "600"
+            },
+            {
+              "type": "text",
+              "id": "el5IA",
+              "fill": "#9CA3AF",
+              "content": "10 minutes mindfulness",
+              "fontFamily": "Inter",
+              "fontSize": 13,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "jLnjz",
+          "name": "Habit Card 2",
+          "width": 800,
+          "height": 70,
+          "fill": "#F6F7F8",
+          "children": [
+            {
+              "type": "frame",
+              "id": "f6s2p",
+              "name": "Checkbox 2",
+              "width": 28,
+              "height": 28,
+              "fill": "#22C55E",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "XAqhj",
+                  "fill": "#FFFFFF",
+                  "content": "✓",
+                  "fontFamily": "Arial",
+                  "fontSize": 16,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "kOjmn",
+              "fill": "#1A1A1A",
+              "content": "Drink Water",
+              "fontFamily": "Inter",
+              "fontSize": 15,
+              "fontWeight": "600"
+            },
+            {
+              "type": "text",
+              "id": "dAXvD",
+              "fill": "#9CA3AF",
+              "content": "8 glasses daily",
+              "fontFamily": "Inter",
+              "fontSize": 13,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "5qNld",
+          "name": "Habit Card 3",
+          "width": 800,
+          "height": 70,
+          "fill": "#FFFBEB",
+          "children": [
+            {
+              "type": "frame",
+              "id": "7ntC6",
+              "name": "Checkbox 3",
+              "width": 28,
+              "height": 28,
+              "fill": "#FCD34D",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "HSZyK",
+                  "fill": "#FFFFFF",
+                  "content": "~",
+                  "fontFamily": "Arial",
+                  "fontSize": 16,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "DESi5",
+              "fill": "#1A1A1A",
+              "content": "Exercise",
+              "fontFamily": "Inter",
+              "fontSize": 15,
+              "fontWeight": "600"
+            },
+            {
+              "type": "text",
+              "id": "OomG0",
+              "fill": "#9CA3AF",
+              "content": "30 min workout",
+              "fontFamily": "Inter",
+              "fontSize": 13,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "id": "KZdzK",
+          "name": "weekTitle",
+          "fill": "#1A1A1A",
+          "content": "This Week",
+          "fontFamily": "Inter",
+          "fontSize": 18,
+          "fontWeight": "700"
+        },
+        {
+          "type": "frame",
+          "id": "jsyX4",
+          "name": "Week Card",
+          "width": 800,
+          "height": 100,
+          "fill": "#F6F7F8",
+          "children": [
+            {
+              "type": "frame",
+              "id": "E6YAH",
+              "name": "Day 1",
+              "width": 36,
+              "height": 36,
+              "fill": "#22C55E",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "E7Uqz",
+                  "fill": "#6B7280",
+                  "content": "M",
+                  "fontFamily": "Inter",
+                  "fontSize": 12,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "6cSsb",
+              "name": "Day 2",
+              "width": 36,
+              "height": 36,
+              "fill": "#22C55E",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "Aeaqx",
+                  "fill": "#6B7280",
+                  "content": "T",
+                  "fontFamily": "Inter",
+                  "fontSize": 12,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "nW6Dr",
+              "name": "Day 3",
+              "width": 36,
+              "height": 36,
+              "fill": "#22C55E",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "fBaBY",
+                  "fill": "#6B7280",
+                  "content": "W",
+                  "fontFamily": "Inter",
+                  "fontSize": 12,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "uXctD",
+              "name": "Day 4",
+              "width": 36,
+              "height": 36,
+              "fill": "#FCD34D",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "tN0p2",
+                  "fill": "#6B7280",
+                  "content": "T",
+                  "fontFamily": "Inter",
+                  "fontSize": 12,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "xNape",
+              "name": "Day 5",
+              "width": 36,
+              "height": 36,
+              "fill": "#FF6B6B",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "0LHh6",
+                  "fill": "#FFFFFF",
+                  "content": "F",
+                  "fontFamily": "Inter",
+                  "fontSize": 12,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "0Isf7",
+              "name": "Day 6",
+              "width": 36,
+              "height": 36,
+              "fill": "#E5E7EB",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "1tSrC",
+                  "fill": "#9CA3AF",
+                  "content": "S",
+                  "fontFamily": "Inter",
+                  "fontSize": 12,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "H7ZkD",
+              "name": "Day 7",
+              "width": 36,
+              "height": 36,
+              "fill": "#E5E7EB",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "HZE8P",
+                  "fill": "#9CA3AF",
+                  "content": "S",
+                  "fontFamily": "Inter",
+                  "fontSize": 12,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "qtGeW",
+              "fill": "#9CA3AF",
+              "content": "Mon Tue Wed Thu Fri Sat Sun",
+              "fontFamily": "Inter",
+              "fontSize": 12,
+              "fontWeight": "500"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "0SbsI",
+          "name": "Tab Bar",
+          "width": 800,
+          "height": 80,
+          "fill": "#FFFFFF",
+          "children": [
+            {
+              "type": "text",
+              "id": "V5X0v",
+              "fill": "#FF6B6B",
+              "content": "🏠",
+              "fontFamily": "Apple Color Emoji",
+              "fontSize": 20,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "V8E1w",
+              "fill": "#D1D5DB",
+              "content": "🔍",
+              "fontFamily": "Apple Color Emoji",
+              "fontSize": 20,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "zPgjO",
+              "fill": "#D1D5DB",
+              "content": "📅",
+              "fontFamily": "Apple Color Emoji",
+              "fontSize": 20,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "wYMxj",
+              "fill": "#D1D5DB",
+              "content": "👤",
+              "fontFamily": "Apple Color Emoji",
+              "fontSize": 20,
+              "fontWeight": "normal"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

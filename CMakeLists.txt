@@ -23,7 +23,7 @@ set(POLYSHOW_HEADERS
 )
 
 set(POLYSHOW_SOURCES
-    Main.cpp
+    main.cpp
     src/core/GeometryScene.cpp
     src/parsers/PlyParser.cpp
     src/ui/GeometryViewer.cpp

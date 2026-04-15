@@ -57,9 +57,19 @@ public:
     [[nodiscard]]
     int polygonCount() const;
 
+    /// Returns the current selection state.
+    [[nodiscard]]
+    SelectionState selectionState() const;
+
+    /// Updates the selected layer or primitive.
+    void setSelectionState(const SelectionState &selectionState);
+
 signals:
     /// Emitted after the geometry statistics change.
     void geometryChanged(int pointCount, int polylineCount, int polygonCount);
+
+    /// Emitted after the selected object changes.
+    void selectionStateChanged(const SelectionState &selectionState);
 
 private:
     /// Recomputes the cached visible primitive counts.
@@ -77,6 +87,7 @@ private:
     int m_point_count {0};
     int m_polyline_count {0};
     int m_polygon_count {0};
+    SelectionState m_selection_state;
 };
 
 } // namespace PolyShow

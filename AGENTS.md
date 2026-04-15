@@ -107,3 +107,5 @@ cmake --build build -j$(nproc)
 - The current target links `Qt::Core`, `Qt::Gui`, and `Qt::Widgets`.
 - Windows packaging logic copies Qt runtime DLLs and the `qwindows` platform plugin after build. Be careful when editing deployment logic.
 - `README.md` may display with encoding issues in some terminals. Verify behavior from source files instead of relying on mojibake text.
+- For Qt UI work, colors must be centrally managed through shared theme tokens so replacements stay cheap and light/dark themes can coexist cleanly.
+- For Qt UI work, any custom widget or container that is clearly reusable should be implemented as a general-purpose project UI component rather than being embedded as one-off window code.

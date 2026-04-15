@@ -1,5 +1,7 @@
 #include "ui/GeometryViewer.h"
+#include "ui/UiTheme.h"
 
+#include <QGraphicsItem>
 #include <QMouseEvent>
 #include <QPainter>
 #include <QScrollBar>
@@ -8,10 +10,20 @@
 namespace PolyShow
 {
 
+namespace
+{
+
+constexpr int kLayerIndexRole = 1;
+constexpr int kPrimitiveIndexRole = 2;
+
+} // namespace
+
 /// Creates the viewer and configures the default interaction behavior.
 GeometryViewer::GeometryViewer(QWidget *parent)
     : QGraphicsView(parent)
 {
+    const ThemeColors &themeColors = UiTheme::colors(ThemeMode::Light);
+
     // Enable smoothing so points and lines remain readable while zooming.
     setRenderHint(QPainter::Antialiasing, true);
 
@@ -19,9 +31,9 @@ GeometryViewer::GeometryViewer(QWidget *parent)
     setRenderHint(QPainter::SmoothPixmapTransform, true);
     setTransformationAnchor(QGraphicsView::AnchorUnderMouse);
     setResizeAnchor(QGraphicsView::AnchorViewCenter);
-    setDragMode(QGraphicsView::RubberBandDrag);
+    setDragMode(QGraphicsView::NoDrag);
     setViewportUpdateMode(QGraphicsView::SmartViewportUpdate);
-    setBackgroundBrush(QColor(248, 250, 252));
+    setBackgroundBrush(themeColors.canvas_background);
 }
 
 /// Applies the standard zoom-in ratio.
@@ -80,6 +92,27 @@ void GeometryViewer::mousePressEvent(QMouseEvent *event)
         updateDragCursor(true);
         event->accept();
         return;
+    }
+
+    if (event->button() == Qt::LeftButton)
+    {
+        if (QGraphicsItem *item = itemAt(event->pos()))
+        {
+            const QVariant layerIndex = item->data(kLayerIndexRole);
+            const QVariant primitiveIndex = item->data(kPrimitiveIndexRole);
+            if (layerIndex.isValid() && primitiveIndex.isValid())
+            {
+                emit primitiveActivated(layerIndex.toInt(), primitiveIndex.toInt());
+            }
+            else
+            {
+                emit emptyAreaActivated();
+            }
+        }
+        else
+        {
+            emit emptyAreaActivated();
+        }
     }
 
     QGraphicsView::mousePressEvent(event);

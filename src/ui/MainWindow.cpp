@@ -2,13 +2,18 @@
 
 #include "parsers/PlyParser.h"
 #include "ui/GeometryViewer.h"
-#include "ui/PropertyPanel.h"
+#include "ui/InspectorPanel.h"
+#include "ui/LayerSidebar.h"
+#include "ui/LogPanel.h"
+#include "ui/PanelFrame.h"
+#include "ui/PillButton.h"
 
 #include <QAction>
 #include <QActionGroup>
 #include <QComboBox>
 #include <QFileDialog>
 #include <QFileInfo>
+#include <QHBoxLayout>
 #include <QKeySequence>
 #include <QLabel>
 #include <QMenu>
@@ -17,7 +22,6 @@
 #include <QSignalBlocker>
 #include <QSplitter>
 #include <QStatusBar>
-#include <QToolBar>
 #include <QVBoxLayout>
 #include <QWidget>
 
@@ -54,7 +58,8 @@ void appendPrimitiveEntry(
     QVector<LayerPrimitiveData> &primitives, PrimitiveKind kind, int index, int &ordinalCounter)
 {
     ++ordinalCounter;
-    primitives.append(LayerPrimitiveData {PrimitiveReference {kind, index}, primitiveDisplayName(kind, ordinalCounter), true});
+    primitives.append(
+        LayerPrimitiveData {PrimitiveReference {kind, index}, primitiveDisplayName(kind, ordinalCounter), true});
 }
 
 /// Builds the runtime layer state for one successfully parsed file.
@@ -90,7 +95,6 @@ LayerData buildLayerData(const QString &filePath, const GeometryData &geometryDa
         return layer;
     }
 
-    // Fall back to bucket order when primitive-order metadata is unavailable.
     for (int index = 0; index < geometryData.points.size(); ++index)
     {
         appendPrimitiveEntry(layer.primitives, PrimitiveKind::Point, index, pointOrdinal);
@@ -109,20 +113,45 @@ LayerData buildLayerData(const QString &filePath, const GeometryData &geometryDa
     return layer;
 }
 
+/// Returns one selection state normalized against the current document.
+SelectionState normalizedSelection(const DocumentData &documentData, const SelectionState &selectionState)
+{
+    if (selectionState.kind == SelectionKind::None)
+    {
+        return {};
+    }
+
+    if (selectionState.layer_index < 0 || selectionState.layer_index >= documentData.layers.size())
+    {
+        return {};
+    }
+
+    if (selectionState.kind == SelectionKind::Layer)
+    {
+        return selectionState;
+    }
+
+    const LayerData &layer = documentData.layers.at(selectionState.layer_index);
+    if (selectionState.primitive_index < 0 || selectionState.primitive_index >= layer.primitives.size())
+    {
+        return {};
+    }
+
+    return selectionState;
+}
+
 } // namespace
 
-/// Creates the main window and initializes the full UI tree.
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
 {
     setupUi();
     setupMenuBar();
-    setupToolBar();
+    setupViewportControls();
     setupStatusBar();
     updateUiFromScene();
 }
 
-/// Opens a file, replaces the current document, and syncs the result to the scene widgets.
 void MainWindow::openPlyFile()
 {
     const QString filePath = QFileDialog::getOpenFileName(
@@ -139,7 +168,6 @@ void MainWindow::openPlyFile()
     importFiles(QStringList {filePath}, true);
 }
 
-/// Imports one or more files as additional layers.
 void MainWindow::importPlyFiles()
 {
     const QStringList filePaths = QFileDialog::getOpenFileNames(
@@ -156,40 +184,33 @@ void MainWindow::importPlyFiles()
     importFiles(filePaths, false);
 }
 
-/// Switches the UI to solid render mode.
 void MainWindow::setRenderModeSolid()
 {
     setRenderMode(GeometryScene::RenderMode::Solid);
 }
 
-/// Switches the UI to wireframe render mode.
 void MainWindow::setRenderModeWireframe()
 {
     setRenderMode(GeometryScene::RenderMode::Wireframe);
 }
 
-/// Switches the UI to point render mode.
 void MainWindow::setRenderModePoints()
 {
     setRenderMode(GeometryScene::RenderMode::Points);
 }
 
-/// Writes the latest mouse position into the status bar.
 void MainWindow::updateMousePosition(const QPointF &scenePosition)
 {
     m_status_mouse_label->setText(
         QStringLiteral("X: %1  Y: %2").arg(scenePosition.x(), 0, 'f', 2).arg(scenePosition.y(), 0, 'f', 2));
 }
 
-/// Refreshes geometry counters in the panel and status bar.
 void MainWindow::onGeometryChanged(int pointCount, int polylineCount, int polygonCount)
 {
-    m_property_panel->setGeometryStats(pointCount, polylineCount, polygonCount);
     m_status_info_label->setText(
         QStringLiteral("Points: %1  Polylines: %2  Polygons: %3").arg(pointCount).arg(polylineCount).arg(polygonCount));
 }
 
-/// Applies a layer visibility toggle from the property panel.
 void MainWindow::onLayerVisibilityChanged(int layerIndex, bool visible)
 {
     if (layerIndex < 0 || layerIndex >= m_document_data.layers.size())
@@ -198,10 +219,9 @@ void MainWindow::onLayerVisibilityChanged(int layerIndex, bool visible)
     }
 
     m_document_data.layers[layerIndex].visible = visible;
-    m_scene->setDocumentData(m_document_data);
+    syncDocumentToViews(false);
 }
 
-/// Applies a primitive visibility toggle from the property panel.
 void MainWindow::onPrimitiveVisibilityChanged(int layerIndex, int primitiveIndex, bool visible)
 {
     if (layerIndex < 0 || layerIndex >= m_document_data.layers.size())
@@ -216,10 +236,9 @@ void MainWindow::onPrimitiveVisibilityChanged(int layerIndex, int primitiveIndex
     }
 
     layer.primitives[primitiveIndex].visible = visible;
-    m_scene->setDocumentData(m_document_data);
+    syncDocumentToViews(false);
 }
 
-/// Maps the combo-box index to an internal render mode.
 void MainWindow::onRenderModeChanged(int index)
 {
     switch (index)
@@ -238,7 +257,39 @@ void MainWindow::onRenderModeChanged(int index)
     }
 }
 
-/// Shows the application overview dialog.
+void MainWindow::onSelectionStateChanged(const SelectionState &selectionState)
+{
+    m_selection_state = normalizedSelectionState(selectionState);
+    m_scene->setSelectionState(m_selection_state);
+    m_layer_sidebar->setSelectionState(m_selection_state);
+    m_inspector_panel->setSelectionState(m_selection_state);
+    const bool showInspector = m_selection_state.kind != SelectionKind::None;
+    m_inspector_container->setVisible(showInspector);
+    if (showInspector)
+    {
+        QList<int> sizes = m_splitter->sizes();
+        if (sizes.size() == 3 && sizes.at(2) == 0)
+        {
+            m_splitter->setSizes({300, 700, 332});
+        }
+    }
+    m_status_info_label->setText(
+        QStringLiteral("Points: %1  Polylines: %2  Polygons: %3")
+            .arg(m_scene->pointCount())
+            .arg(m_scene->polylineCount())
+            .arg(m_scene->polygonCount()));
+}
+
+void MainWindow::onScenePrimitiveActivated(int layerIndex, int primitiveIndex)
+{
+    onSelectionStateChanged(SelectionState {SelectionKind::Primitive, layerIndex, primitiveIndex});
+}
+
+void MainWindow::onEmptySceneActivated()
+{
+    onSelectionStateChanged(SelectionState {});
+}
+
 void MainWindow::showAboutDialog()
 {
     QMessageBox::about(
@@ -248,51 +299,74 @@ void MainWindow::showAboutDialog()
             + QStringLiteral("1. Open or import PolyShow .ply files\n")
             + QStringLiteral("2. Display points, polylines, and polygons\n")
             + QStringLiteral("3. Toggle layer and primitive visibility\n")
-            + QStringLiteral("4. Zoom, pan, fit, and reset view\n")
+            + QStringLiteral("4. Search and inspect imported geometry\n")
             + QStringLiteral("5. Switch render mode (Solid/Wireframe/Points)"));
 }
 
-/// Builds the core widgets, layout, and signal connections.
 void MainWindow::setupUi()
 {
     setWindowTitle(QStringLiteral("PolyShow"));
     resize(1280, 800);
 
-    // The scene and viewer form the main geometry display area.
     m_scene = new GeometryScene(this);
     m_geometry_viewer = new GeometryViewer(this);
     m_geometry_viewer->setScene(m_scene);
 
-    // Keep the property panel docked on the right so metadata stays visible.
-    m_property_panel = new PropertyPanel(this);
-    m_property_panel->setMinimumWidth(280);
-    m_property_panel->setMaximumWidth(380);
+    m_layer_sidebar = new LayerSidebar(this);
+    m_inspector_panel = new InspectorPanel(this);
+    m_log_panel = new LogPanel(this);
+
+    auto *leftContainer = new PanelFrame(PanelFrame::Variant::Panel, this);
+    auto *leftLayout = new QVBoxLayout(leftContainer);
+    leftLayout->setContentsMargins(12, 12, 12, 12);
+    leftLayout->addWidget(m_layer_sidebar);
+
+    m_viewport_frame = new PanelFrame(PanelFrame::Variant::Canvas, this);
+    auto *viewportLayout = new QVBoxLayout(m_viewport_frame);
+    viewportLayout->setContentsMargins(12, 12, 12, 12);
+    viewportLayout->setSpacing(10);
+    m_viewport_controls_widget = new QWidget(m_viewport_frame);
+    viewportLayout->addWidget(m_viewport_controls_widget);
+    viewportLayout->addWidget(m_geometry_viewer, 1);
+
+    m_inspector_container = new PanelFrame(PanelFrame::Variant::Panel, this);
+    auto *inspectorLayout = new QVBoxLayout(m_inspector_container);
+    inspectorLayout->setContentsMargins(12, 12, 12, 12);
+    inspectorLayout->addWidget(m_inspector_panel);
+    m_inspector_container->setVisible(false);
 
     m_splitter = new QSplitter(Qt::Horizontal, this);
-    m_splitter->addWidget(m_geometry_viewer);
-    m_splitter->addWidget(m_property_panel);
-    m_splitter->setStretchFactor(0, 1);
-    m_splitter->setStretchFactor(1, 0);
+    m_splitter->setChildrenCollapsible(false);
+    m_splitter->addWidget(leftContainer);
+    m_splitter->addWidget(m_viewport_frame);
+    m_splitter->addWidget(m_inspector_container);
+    m_splitter->setStretchFactor(0, 0);
+    m_splitter->setStretchFactor(1, 1);
+    m_splitter->setStretchFactor(2, 0);
+    m_splitter->setSizes({300, 700, 0});
+
+    m_log_panel_container = new PanelFrame(PanelFrame::Variant::Panel, this);
+    auto *logLayout = new QVBoxLayout(m_log_panel_container);
+    logLayout->setContentsMargins(0, 0, 0, 0);
+    logLayout->addWidget(m_log_panel);
 
     auto *centralWidget = new QWidget(this);
     auto *layout = new QVBoxLayout(centralWidget);
-    layout->setContentsMargins(0, 0, 0, 0);
-    layout->addWidget(m_splitter);
+    layout->setContentsMargins(12, 12, 12, 12);
+    layout->setSpacing(12);
+    layout->addWidget(m_splitter, 1);
+    layout->addWidget(m_log_panel_container);
     setCentralWidget(centralWidget);
 
-    // Bridge scene and viewer updates into top-level window state.
     connect(m_scene, &GeometryScene::geometryChanged, this, &MainWindow::onGeometryChanged);
     connect(m_geometry_viewer, &GeometryViewer::mousePositionChanged, this, &MainWindow::updateMousePosition);
-    connect(m_property_panel, &PropertyPanel::gridVisibilityChanged, m_scene, &GeometryScene::setGridVisible);
-    connect(m_property_panel, &PropertyPanel::layerVisibilityChanged, this, &MainWindow::onLayerVisibilityChanged);
-    connect(
-        m_property_panel,
-        &PropertyPanel::primitiveVisibilityChanged,
-        this,
-        &MainWindow::onPrimitiveVisibilityChanged);
+    connect(m_geometry_viewer, &GeometryViewer::primitiveActivated, this, &MainWindow::onScenePrimitiveActivated);
+    connect(m_geometry_viewer, &GeometryViewer::emptyAreaActivated, this, &MainWindow::onEmptySceneActivated);
+    connect(m_layer_sidebar, &LayerSidebar::selectionChanged, this, &MainWindow::onSelectionStateChanged);
+    connect(m_layer_sidebar, &LayerSidebar::layerVisibilityChanged, this, &MainWindow::onLayerVisibilityChanged);
+    connect(m_layer_sidebar, &LayerSidebar::primitiveVisibilityChanged, this, &MainWindow::onPrimitiveVisibilityChanged);
 }
 
-/// Creates all menu actions and attaches them to the menu bar.
 void MainWindow::setupMenuBar()
 {
     auto *fileMenu = menuBar()->addMenu(QStringLiteral("File"));
@@ -361,38 +435,6 @@ void MainWindow::setupMenuBar()
     helpMenu->addAction(m_about_action);
 }
 
-/// Creates the toolbar and the render mode combo box.
-void MainWindow::setupToolBar()
-{
-    m_tool_bar = addToolBar(QStringLiteral("Main Toolbar"));
-    m_tool_bar->setMovable(false);
-
-    m_tool_bar->addAction(m_open_action);
-    m_tool_bar->addAction(m_import_action);
-    m_tool_bar->addSeparator();
-    m_tool_bar->addAction(m_fit_action);
-    m_tool_bar->addAction(m_zoom_in_action);
-    m_tool_bar->addAction(m_zoom_out_action);
-    m_tool_bar->addAction(m_reset_view_action);
-    m_tool_bar->addSeparator();
-
-    // Keep the render mode selector visible for quick mode switching.
-    auto *renderModeLabel = new QLabel(QStringLiteral("Render mode: "), this);
-    m_tool_bar->addWidget(renderModeLabel);
-
-    m_render_mode_combo_box = new QComboBox(this);
-    m_render_mode_combo_box->addItem(QStringLiteral("Solid"));
-    m_render_mode_combo_box->addItem(QStringLiteral("Wireframe"));
-    m_render_mode_combo_box->addItem(QStringLiteral("Points"));
-    connect(
-        m_render_mode_combo_box,
-        qOverload<int>(&QComboBox::currentIndexChanged),
-        this,
-        &MainWindow::onRenderModeChanged);
-    m_tool_bar->addWidget(m_render_mode_combo_box);
-}
-
-/// Creates the permanent status bar widgets.
 void MainWindow::setupStatusBar()
 {
     m_status_info_label = new QLabel(QStringLiteral("Points: 0  Polylines: 0  Polygons: 0"), this);
@@ -403,27 +445,106 @@ void MainWindow::setupStatusBar()
     statusBar()->showMessage(QStringLiteral("Ready"), 1500);
 }
 
-/// Synchronizes the chosen render mode to the scene and all UI controls.
+void MainWindow::setupViewportControls()
+{
+    auto *layout = new QHBoxLayout(m_viewport_controls_widget);
+    layout->setContentsMargins(0, 0, 0, 0);
+    layout->setSpacing(8);
+
+    auto *panButton = new PillButton(QStringLiteral("Pan"), m_viewport_controls_widget);
+    panButton->setVariant(PillButton::Variant::Primary);
+    panButton->setCheckable(true);
+    panButton->setChecked(true);
+    layout->addWidget(panButton);
+
+    auto *fitButton = new PillButton(QStringLiteral("Fit View"), m_viewport_controls_widget);
+    layout->addWidget(fitButton);
+    connect(fitButton, &QPushButton::clicked, m_fit_action, &QAction::trigger);
+
+    auto *zoomOutButton = new PillButton(QStringLiteral("Zoom -"), m_viewport_controls_widget);
+    layout->addWidget(zoomOutButton);
+    connect(zoomOutButton, &QPushButton::clicked, m_zoom_out_action, &QAction::trigger);
+
+    auto *zoomInButton = new PillButton(QStringLiteral("Zoom +"), m_viewport_controls_widget);
+    layout->addWidget(zoomInButton);
+    connect(zoomInButton, &QPushButton::clicked, m_zoom_in_action, &QAction::trigger);
+
+    auto *resetButton = new PillButton(QStringLiteral("Reset"), m_viewport_controls_widget);
+    layout->addWidget(resetButton);
+    connect(resetButton, &QPushButton::clicked, m_reset_view_action, &QAction::trigger);
+
+    layout->addStretch();
+
+    m_grid_toggle_button = new PillButton(QStringLiteral("Grid On"), m_viewport_controls_widget);
+    m_grid_toggle_button->setCheckable(true);
+    layout->addWidget(m_grid_toggle_button);
+    connect(m_grid_toggle_button, &QPushButton::clicked, this, [this](bool checked) {
+        m_scene->setGridVisible(checked);
+        updateViewportControlState();
+    });
+
+    m_render_mode_combo_box = new QComboBox(m_viewport_controls_widget);
+    m_render_mode_combo_box->addItem(QStringLiteral("Solid"));
+    m_render_mode_combo_box->addItem(QStringLiteral("Wireframe"));
+    m_render_mode_combo_box->addItem(QStringLiteral("Points"));
+    connect(
+        m_render_mode_combo_box,
+        qOverload<int>(&QComboBox::currentIndexChanged),
+        this,
+        &MainWindow::onRenderModeChanged);
+    layout->addWidget(m_render_mode_combo_box);
+
+    updateViewportControlState();
+}
+
+void MainWindow::updateViewportControlState()
+{
+    if (m_grid_toggle_button != nullptr)
+    {
+        const QSignalBlocker blocker(m_grid_toggle_button);
+        m_grid_toggle_button->setChecked(m_scene->isGridVisible());
+        m_grid_toggle_button->setText(m_scene->isGridVisible() ? QStringLiteral("Grid On") : QStringLiteral("Grid Off"));
+        m_grid_toggle_button->setVariant(
+            m_scene->isGridVisible() ? PillButton::Variant::Success : PillButton::Variant::Neutral);
+    }
+
+    if (m_render_mode_combo_box != nullptr)
+    {
+        int comboIndex = 0;
+        switch (m_scene->renderMode())
+        {
+        case GeometryScene::RenderMode::Solid:
+            comboIndex = 0;
+            break;
+        case GeometryScene::RenderMode::Wireframe:
+            comboIndex = 1;
+            break;
+        case GeometryScene::RenderMode::Points:
+            comboIndex = 2;
+            break;
+        default:
+            break;
+        }
+
+        const QSignalBlocker blocker(m_render_mode_combo_box);
+        m_render_mode_combo_box->setCurrentIndex(comboIndex);
+    }
+}
+
 void MainWindow::setRenderMode(GeometryScene::RenderMode renderMode)
 {
     m_scene->setRenderMode(renderMode);
-    m_property_panel->setRenderMode(renderMode);
 
-    int comboIndex = 0;
     QAction *checkedAction = m_solid_mode_action;
-
     switch (renderMode)
     {
     case GeometryScene::RenderMode::Solid:
-        comboIndex = 0;
         checkedAction = m_solid_mode_action;
         break;
     case GeometryScene::RenderMode::Wireframe:
-        comboIndex = 1;
         checkedAction = m_wireframe_mode_action;
         break;
     case GeometryScene::RenderMode::Points:
-        comboIndex = 2;
         checkedAction = m_points_mode_action;
         break;
     default:
@@ -431,13 +552,9 @@ void MainWindow::setRenderMode(GeometryScene::RenderMode renderMode)
     }
 
     checkedAction->setChecked(true);
-
-    // Block the combo-box signal so programmatic sync does not trigger another mode switch.
-    const QSignalBlocker blocker(m_render_mode_combo_box);
-    m_render_mode_combo_box->setCurrentIndex(comboIndex);
+    updateViewportControlState();
 }
 
-/// Imports files into the current document and reports any failures.
 void MainWindow::importFiles(const QStringList &filePaths, bool replaceExisting)
 {
     DocumentData nextDocument = replaceExisting ? DocumentData {} : m_document_data;
@@ -451,11 +568,17 @@ void MainWindow::importFiles(const QStringList &filePaths, bool replaceExisting)
         if (!PlyParser::parseFile(filePath, geometryData, &errorMessage))
         {
             failureMessages.append(QStringLiteral("%1\n%2").arg(filePath, errorMessage));
+            m_log_panel->appendMessage(
+                LogSeverity::Error,
+                QStringLiteral("[error] %1").arg(QStringLiteral("%1: %2").arg(filePath, errorMessage)));
             continue;
         }
 
         nextDocument.layers.append(buildLayerData(filePath, geometryData));
         ++importedCount;
+        m_log_panel->appendMessage(
+            LogSeverity::Info,
+            QStringLiteral("[info] %1 imported successfully").arg(QFileInfo(filePath).fileName()));
     }
 
     if (importedCount == 0)
@@ -469,6 +592,7 @@ void MainWindow::importFiles(const QStringList &filePaths, bool replaceExisting)
     }
 
     m_document_data = nextDocument;
+    m_selection_state = {};
     syncDocumentToViews(true);
 
     if (failureMessages.isEmpty())
@@ -480,6 +604,9 @@ void MainWindow::importFiles(const QStringList &filePaths, bool replaceExisting)
         return;
     }
 
+    m_log_panel->appendMessage(
+        LogSeverity::Warning,
+        QStringLiteral("[warning] Imported %1 file(s), %2 failed").arg(importedCount).arg(failureMessages.size()));
     QMessageBox::warning(
         this,
         QStringLiteral("Import Completed with Errors"),
@@ -492,11 +619,13 @@ void MainWindow::importFiles(const QStringList &filePaths, bool replaceExisting)
         4000);
 }
 
-/// Pushes the current document state into the scene and side panel.
 void MainWindow::syncDocumentToViews(bool fitScene)
 {
-    m_property_panel->setDocumentData(m_document_data);
+    m_selection_state = normalizedSelectionState(m_selection_state);
+    m_layer_sidebar->setDocumentData(m_document_data);
     m_scene->setDocumentData(m_document_data);
+    m_inspector_panel->setDocumentData(m_document_data);
+    onSelectionStateChanged(m_selection_state);
 
     if (fitScene)
     {
@@ -504,12 +633,17 @@ void MainWindow::syncDocumentToViews(bool fitScene)
     }
 }
 
-/// Rehydrates the window state from the current scene object.
+SelectionState MainWindow::normalizedSelectionState(const SelectionState &selectionState) const
+{
+    return normalizedSelection(m_document_data, selectionState);
+}
+
 void MainWindow::updateUiFromScene()
 {
-    m_property_panel->setDocumentData(m_document_data);
     setRenderMode(m_scene->renderMode());
     onGeometryChanged(m_scene->pointCount(), m_scene->polylineCount(), m_scene->polygonCount());
+    updateViewportControlState();
+    onSelectionStateChanged(m_selection_state);
 }
 
 } // namespace PolyShow

@@ -53,11 +53,39 @@ enum class PrimitiveKind
     Polygon
 };
 
+/// Identifies what kind of UI selection is active.
+enum class SelectionKind
+{
+    None,
+    Layer,
+    Primitive
+};
+
 /// References one primitive inside a `GeometryData` payload.
 struct PrimitiveReference
 {
     PrimitiveKind kind {PrimitiveKind::Point};
     int index {0};
+};
+
+/// Describes the currently selected layer or primitive.
+struct SelectionState
+{
+    SelectionKind kind {SelectionKind::None};
+    int layer_index {-1};
+    int primitive_index {-1};
+
+    [[nodiscard]]
+    bool operator==(const SelectionState &other) const
+    {
+        return kind == other.kind && layer_index == other.layer_index && primitive_index == other.primitive_index;
+    }
+
+    [[nodiscard]]
+    bool operator!=(const SelectionState &other) const
+    {
+        return !(*this == other);
+    }
 };
 
 /// Standalone point primitive.

@@ -1,0 +1,43 @@
+#pragma once
+
+#include <QWidget>
+
+class QListWidget;
+class QPushButton;
+
+namespace PolyShow
+{
+
+/// Supported log message severities.
+enum class LogSeverity
+{
+    Info,
+    Warning,
+    Error
+};
+
+/// Displays a compact single-tab log panel.
+class LogPanel final : public QWidget
+{
+    Q_OBJECT
+
+public:
+    /// Creates the log panel widget.
+    explicit LogPanel(QWidget *parent = nullptr);
+
+    /// Appends one log row to the panel.
+    void appendMessage(LogSeverity severity, const QString &message);
+
+    /// Clears all stored log rows.
+    void clearMessages();
+
+private:
+    /// Toggles the log body visibility.
+    void setCollapsed(bool collapsed);
+
+    QListWidget *m_list_widget {nullptr};
+    QPushButton *m_collapse_button {nullptr};
+    bool m_is_collapsed {false};
+};
+
+} // namespace PolyShow

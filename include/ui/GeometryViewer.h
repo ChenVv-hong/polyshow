@@ -33,6 +33,12 @@ signals:
     /// Emitted when the mouse moves and a scene position is available.
     void mousePositionChanged(const QPointF &scenePosition);
 
+    /// Emitted when the user clicks one primitive in the scene.
+    void primitiveActivated(int layerIndex, int primitiveIndex);
+
+    /// Emitted when the user clicks empty scene space.
+    void emptyAreaActivated();
+
 protected:
     /// Handles wheel-based zoom.
     void wheelEvent(QWheelEvent *event) override;

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/GeometryScene.h"
+#include "ui/UiTheme.h"
 
 #include <QMainWindow>
 #include <QPointF>
@@ -11,13 +12,17 @@ class QActionGroup;
 class QComboBox;
 class QLabel;
 class QSplitter;
-class QToolBar;
+class QWidget;
 
 namespace PolyShow
 {
 
 class GeometryViewer;
-class PropertyPanel;
+class InspectorPanel;
+class LayerSidebar;
+class LogPanel;
+class PanelFrame;
+class PillButton;
 
 /// Main application window for the PolyShow viewer.
 class MainWindow final : public QMainWindow
@@ -59,6 +64,15 @@ private slots:
     /// Maps combo-box selection changes to render modes.
     void onRenderModeChanged(int index);
 
+    /// Applies the latest selection state to the full UI.
+    void onSelectionStateChanged(const SelectionState &selectionState);
+
+    /// Handles a primitive click coming from the scene view.
+    void onScenePrimitiveActivated(int layerIndex, int primitiveIndex);
+
+    /// Handles a click on empty scene space.
+    void onEmptySceneActivated();
+
     /// Shows the About dialog.
     void showAboutDialog();
 
@@ -69,11 +83,14 @@ private:
     /// Creates the menu bar and menu actions.
     void setupMenuBar();
 
-    /// Creates the toolbar and render mode selector.
-    void setupToolBar();
-
     /// Initializes the status bar widgets.
     void setupStatusBar();
+
+    /// Creates the in-viewport tool controls.
+    void setupViewportControls();
+
+    /// Synchronizes viewport buttons and selectors to scene state.
+    void updateViewportControlState();
 
     /// Synchronizes a render mode to the full UI state.
     void setRenderMode(GeometryScene::RenderMode renderMode);
@@ -84,16 +101,25 @@ private:
     /// Pushes the current document state into the scene and side panel.
     void syncDocumentToViews(bool fitScene);
 
+    /// Normalizes one selection state against the current document.
+    [[nodiscard]]
+    SelectionState normalizedSelectionState(const SelectionState &selectionState) const;
+
     /// Refreshes UI state from the current scene data.
     void updateUiFromScene();
 
     GeometryScene *m_scene {nullptr};
     GeometryViewer *m_geometry_viewer {nullptr};
-    PropertyPanel *m_property_panel {nullptr};
+    LayerSidebar *m_layer_sidebar {nullptr};
+    InspectorPanel *m_inspector_panel {nullptr};
+    LogPanel *m_log_panel {nullptr};
     QSplitter *m_splitter {nullptr};
-
-    QToolBar *m_tool_bar {nullptr};
+    PanelFrame *m_viewport_frame {nullptr};
+    PanelFrame *m_inspector_container {nullptr};
+    PanelFrame *m_log_panel_container {nullptr};
+    QWidget *m_viewport_controls_widget {nullptr};
     QComboBox *m_render_mode_combo_box {nullptr};
+    PillButton *m_grid_toggle_button {nullptr};
 
     QAction *m_open_action {nullptr};
     QAction *m_import_action {nullptr};
@@ -113,6 +139,8 @@ private:
     QLabel *m_status_mouse_label {nullptr};
 
     DocumentData m_document_data;
+    SelectionState m_selection_state;
+    ThemeMode m_theme_mode {ThemeMode::Light};
 };
 
 } // namespace PolyShow

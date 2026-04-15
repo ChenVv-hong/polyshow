@@ -1,12 +1,18 @@
 #include "core/GeometryScene.h"
 
+#include "ui/UiTheme.h"
+
 #include <QBrush>
 #include <QColor>
+#include <QGraphicsEllipseItem>
+#include <QGraphicsPathItem>
+#include <QGraphicsPolygonItem>
 #include <QPainterPath>
 #include <QPen>
 #include <QPolygonF>
 #include <QRectF>
 
+#include <algorithm>
 #include <utility>
 
 namespace
@@ -15,6 +21,8 @@ namespace
 // Keep a large default grid so small and medium scenes still have context.
 constexpr int kGridHalfSize = 2000;
 constexpr int kGridStep = 50;
+constexpr int kLayerIndexRole = 1;
+constexpr int kPrimitiveIndexRole = 2;
 
 struct LayerVisibilityMask
 {
@@ -59,6 +67,48 @@ LayerVisibilityMask buildLayerVisibilityMask(const PolyShow::LayerData &layer)
     return mask;
 }
 
+PolyShow::SelectionState normalizeSelectionState(
+    const PolyShow::DocumentData &documentData, const PolyShow::SelectionState &selectionState)
+{
+    if (selectionState.kind == PolyShow::SelectionKind::None)
+    {
+        return {};
+    }
+
+    if (selectionState.layer_index < 0 || selectionState.layer_index >= documentData.layers.size())
+    {
+        return {};
+    }
+
+    if (selectionState.kind == PolyShow::SelectionKind::Layer)
+    {
+        return selectionState;
+    }
+
+    const PolyShow::LayerData &layer = documentData.layers.at(selectionState.layer_index);
+    if (selectionState.primitive_index < 0 || selectionState.primitive_index >= layer.primitives.size())
+    {
+        return {};
+    }
+
+    return selectionState;
+}
+
+int primitiveListIndexForReference(
+    const PolyShow::LayerData &layer, PolyShow::PrimitiveKind primitiveKind, int geometryIndex)
+{
+    for (int primitiveIndex = 0; primitiveIndex < layer.primitives.size(); ++primitiveIndex)
+    {
+        const PolyShow::LayerPrimitiveData &primitive = layer.primitives.at(primitiveIndex);
+        if (primitive.reference.kind == primitiveKind && primitive.reference.index == geometryIndex)
+        {
+            return primitiveIndex;
+        }
+    }
+
+    return -1;
+}
+
 } // namespace
 
 namespace PolyShow
@@ -77,6 +127,7 @@ GeometryScene::GeometryScene(QObject *parent)
 void GeometryScene::setDocumentData(const DocumentData &documentData)
 {
     m_document_data = documentData;
+    m_selection_state = normalizeSelectionState(m_document_data, m_selection_state);
     updateVisibleCounts();
     rebuildScene();
     emit geometryChanged(m_point_count, m_polyline_count, m_polygon_count);
@@ -145,6 +196,24 @@ int GeometryScene::polygonCount() const
     return m_polygon_count;
 }
 
+SelectionState GeometryScene::selectionState() const
+{
+    return m_selection_state;
+}
+
+void GeometryScene::setSelectionState(const SelectionState &selectionState)
+{
+    const SelectionState normalizedSelection = normalizeSelectionState(m_document_data, selectionState);
+    if (normalizedSelection == m_selection_state)
+    {
+        return;
+    }
+
+    m_selection_state = normalizedSelection;
+    rebuildScene();
+    emit selectionStateChanged(m_selection_state);
+}
+
 /// Recomputes visible counts from all currently enabled layers and primitives.
 void GeometryScene::updateVisibleCounts()
 {
@@ -192,18 +261,30 @@ void GeometryScene::rebuildScene()
     // Rebuild everything from scratch so render mode switches do not leave stale items behind.
     clear();
     rebuildGrid();
+    const ThemeColors &themeColors = UiTheme::colors(ThemeMode::Light);
 
-    const auto addPointMarker = [this](const Point2D &point, const PrimitiveStyle &style) {
+    const auto addPointMarker = [this, &themeColors](
+                                    const Point2D &point,
+                                    const PrimitiveStyle &style,
+                                    int layerIndex,
+                                    int primitiveIndex,
+                                    bool selected) {
         // Draw every point as a filled circle so point mode and vertex previews look identical.
-        const double radius = style.point_size;
+        const double radius = selected ? std::max(style.point_size + 1.0, 4.0) : style.point_size;
         const QRectF markerRect(point.x - radius, point.y - radius, radius * 2.0, radius * 2.0);
-        QPen pointPen(style.color);
+        QPen pointPen(selected ? themeColors.selection_stroke : style.color);
         pointPen.setWidthF(1.0);
-        addEllipse(markerRect, pointPen, QBrush(style.color));
+        auto *item = addEllipse(
+            markerRect,
+            pointPen,
+            QBrush(selected ? themeColors.selection_stroke : style.color));
+        item->setData(kLayerIndexRole, layerIndex);
+        item->setData(kPrimitiveIndexRole, primitiveIndex);
     };
 
-    for (const LayerData &layer : std::as_const(m_document_data.layers))
+    for (int layerIndex = 0; layerIndex < m_document_data.layers.size(); ++layerIndex)
     {
+        const LayerData &layer = m_document_data.layers.at(layerIndex);
         if (!layer.visible)
         {
             continue;
@@ -237,9 +318,23 @@ void GeometryScene::rebuildScene()
 
                 QPen polygonPen(polygon.style.color);
                 polygonPen.setWidthF(polygon.style.width);
+                const int primitiveIndex = primitiveListIndexForReference(layer, PrimitiveKind::Polygon, i);
+                const bool selected = m_selection_state.kind == SelectionKind::Primitive
+                    && m_selection_state.layer_index == layerIndex
+                    && m_selection_state.primitive_index == primitiveIndex;
+                if (selected)
+                {
+                    polygonPen.setColor(themeColors.selection_stroke);
+                    polygonPen.setWidthF(std::max(polygon.style.width + 0.5, 2.0));
+                }
+
                 const bool shouldUseFill = m_render_mode == RenderMode::Solid && polygon.style.fill_enabled;
-                const QBrush polygonBrush = shouldUseFill ? QBrush(polygon.style.fill_color) : QBrush(Qt::NoBrush);
-                addPolygon(qtPolygon, polygonPen, polygonBrush);
+                const QBrush polygonBrush = shouldUseFill
+                    ? QBrush(selected ? themeColors.selection_fill : polygon.style.fill_color)
+                    : QBrush(Qt::NoBrush);
+                auto *item = addPolygon(qtPolygon, polygonPen, polygonBrush);
+                item->setData(kLayerIndexRole, layerIndex);
+                item->setData(kPrimitiveIndexRole, primitiveIndex);
             }
 
             // Draw polylines after polygons so wireframe details stay crisp.
@@ -265,7 +360,19 @@ void GeometryScene::rebuildScene()
 
                 QPen polylinePen(polyline.style.color);
                 polylinePen.setWidthF(polyline.style.width);
-                addPath(path, polylinePen);
+                const int primitiveIndex = primitiveListIndexForReference(layer, PrimitiveKind::Polyline, i);
+                const bool selected = m_selection_state.kind == SelectionKind::Primitive
+                    && m_selection_state.layer_index == layerIndex
+                    && m_selection_state.primitive_index == primitiveIndex;
+                if (selected)
+                {
+                    polylinePen.setColor(themeColors.selection_stroke);
+                    polylinePen.setWidthF(std::max(polyline.style.width + 0.5, 2.0));
+                }
+
+                auto *item = addPath(path, polylinePen);
+                item->setData(kLayerIndexRole, layerIndex);
+                item->setData(kPrimitiveIndexRole, primitiveIndex);
             }
         }
 
@@ -278,7 +385,11 @@ void GeometryScene::rebuildScene()
             }
 
             const PointShape2D &point = layer.geometry.points.at(i);
-            addPointMarker(point.point, point.style);
+            const int primitiveIndex = primitiveListIndexForReference(layer, PrimitiveKind::Point, i);
+            const bool selected = m_selection_state.kind == SelectionKind::Primitive
+                && m_selection_state.layer_index == layerIndex
+                && m_selection_state.primitive_index == primitiveIndex;
+            addPointMarker(point.point, point.style, layerIndex, primitiveIndex, selected);
         }
 
         if (m_render_mode == RenderMode::Points)
@@ -292,9 +403,13 @@ void GeometryScene::rebuildScene()
                 }
 
                 const Polyline2D &polyline = layer.geometry.polylines.at(i);
+                const int primitiveIndex = primitiveListIndexForReference(layer, PrimitiveKind::Polyline, i);
                 for (const Point2D &vertex : polyline.vertices)
                 {
-                    addPointMarker(vertex, polyline.style);
+                    const bool selected = m_selection_state.kind == SelectionKind::Primitive
+                        && m_selection_state.layer_index == layerIndex
+                        && m_selection_state.primitive_index == primitiveIndex;
+                    addPointMarker(vertex, polyline.style, layerIndex, primitiveIndex, selected);
                 }
             }
 
@@ -306,9 +421,13 @@ void GeometryScene::rebuildScene()
                 }
 
                 const Polygon2D &polygon = layer.geometry.polygons.at(i);
+                const int primitiveIndex = primitiveListIndexForReference(layer, PrimitiveKind::Polygon, i);
                 for (const Point2D &vertex : polygon.vertices)
                 {
-                    addPointMarker(vertex, polygon.style);
+                    const bool selected = m_selection_state.kind == SelectionKind::Primitive
+                        && m_selection_state.layer_index == layerIndex
+                        && m_selection_state.primitive_index == primitiveIndex;
+                    addPointMarker(vertex, polygon.style, layerIndex, primitiveIndex, selected);
                 }
             }
         }
@@ -324,11 +443,12 @@ void GeometryScene::rebuildGrid()
     }
 
     // Use a light grid so the geometry remains the visual focus.
-    QPen gridPen(QColor(224, 228, 235));
+    const ThemeColors &themeColors = UiTheme::colors(ThemeMode::Light);
+    QPen gridPen(themeColors.grid_line);
     gridPen.setWidthF(0.0);
 
     // Use a slightly darker pen for the origin axes.
-    QPen axisPen(QColor(180, 180, 180));
+    QPen axisPen(themeColors.axis_line);
     axisPen.setWidthF(0.0);
 
     for (int x = -kGridHalfSize; x <= kGridHalfSize; x += kGridStep)

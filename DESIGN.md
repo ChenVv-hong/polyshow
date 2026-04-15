@@ -1,497 +1,268 @@
-# PolyShow 技术设计文档
-
-## 1. 系统架构设计
-
-### 1.1 整体架构
-
-PolyShow 采用经典的 **Model-View-Controller (MVC)** 架构模式：
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                      UI Layer (Qt Widgets)                 │
-│  ┌─────────────┐ ┌─────────────┐ ┌──────────────────────┐  │
-│  │ MainWindow  │ │  Toolbar    │ │   PropertyPanel     │  │
-│  └─────────────┘ └─────────────┘ └──────────────────────┘  │
-└─────────────────────────────────────────────────────────────┘
-                            ↓
-┌─────────────────────────────────────────────────────────────┐
-│                   Presentation Layer                        │
-│  ┌──────────────────────────────────────────────────────┐  │
-│  │           GeometryViewer (QGraphicsView)             │  │
-│  │  - View Management                                   │  │
-│  │  - User Interaction (Zoom/Pan/Rotate)                │  │
-│  │  - Rendering Options                                │  │
-│  └──────────────────────────────────────────────────────┘  │
-└─────────────────────────────────────────────────────────────┘
-                            ↓
-┌─────────────────────────────────────────────────────────────┐
-│                    Business Logic Layer                     │
-│  ┌──────────────────────────────────────────────────────┐  │
-│  │        GeometryScene (QGraphicsScene)                │  │
-│  │  - Scene Management                                   │  │
-│  │  - Item Selection                                    │  │
-│  │  - Layer Management                                  │  │
-│  └──────────────────────────────────────────────────────┘  │
-│  ┌─────────────┐ ┌─────────────┐ ┌──────────────────────┐  │
-│  │ Measurement │ │   LayerMgr  │ │    SelectionMgr      │  │
-│  └─────────────┘ └─────────────┘ └──────────────────────┘  │
-└─────────────────────────────────────────────────────────────┘
-                            ↓
-┌─────────────────────────────────────────────────────────────┐
-│                       Data Layer                            │
-│  ┌─────────────┐ ┌─────────────┐ ┌──────────────────────┐  │
-│  │ GeometryData│ │  FileLoader │ │    GeometryItem      │  │
-│  └─────────────┘ └─────────────┘ └──────────────────────┘  │
-│  ┌──────────────────────────────────────────────────────┐  │
-│  │              Parsers (PLY/STL/OBJ)                   │  │
-│  └──────────────────────────────────────────────────────┘  │
-└─────────────────────────────────────────────────────────────┘
-                            ↓
-┌─────────────────────────────────────────────────────────────┐
-│                      IPC Layer                              │
-│  ┌─────────────┐ ┌──────────────────────────────────────┐  │
-│  │ IPCServer   │ │         IPCClient (Header-only)      │  │
-│  │(In App)     │ │         (User's Project)             │  │
-│  └─────────────┘ └──────────────────────────────────────┘  │
-└─────────────────────────────────────────────────────────────┘
-```
-
-### 1.2 模块职责
-
-| 模块 | 职责 | 关键类 |
-|------|------|--------|
-| **Core** | 几何数据结构和场景管理 | GeometryScene, GeometryData |
-| **UI** | 用户界面和交互 | MainWindow, GeometryViewer, Toolbar |
-| **Parsers** | 文件格式解析 | PlyParser, STLParser, OBJParser |
-| **IPC** | 进程间通信 | IPCServer, DebugClient |
-| **Utils** | 工具函数和辅助类 | Measurement, SelectionManager |
-
-## 2. 核心类设计
-
-### 2.1 几何数据模型
-
-```cpp
-// include/core/geometry.h
-namespace PolyShow {
-
-struct Point {
-    double x{0.0};
-    double y{0.0};
-
-    Point() = default;
-    Point(double x, double y) : x(x), y(y) {}
-
-    bool operator==(const Point& other) const {
-        return qFuzzyCompare(x, other.x) && qFuzzyCompare(y, other.y);
-    }
-
-    QPointF toQPointF() const { return QPointF(x, y); }
-};
-
-struct Line {
-    Point start;
-    Point end;
-
-    Line() = default;
-    Line(const Point& s, const Point& e) : start(s), end(e) {}
-};
-
-struct Polygon {
-    QVector<Point> vertices;
-
-    Polygon() = default;
-    explicit Polygon(const QVector<Point>& verts) : vertices(verts) {}
-
-    bool isValid() const { return vertices.size() >= 3; }
-};
-
-} // namespace PolyShow
-```
-
-### 2.2 QGraphicsItem 子类
-
-```cpp
-// include/ui/geometry_items.h
-class PointItem : public QGraphicsEllipseItem {
-public:
-    explicit PointItem(const PolyShow::Point& point, QGraphicsItem* parent = nullptr);
-    void setHighlight(bool highlight);
-
-private:
-    PolyShow::Point m_point;
-    bool m_highlight{false};
-};
-
-class LineItem : public QGraphicsLineItem {
-public:
-    explicit LineItem(const PolyShow::Line& line, QGraphicsItem* parent = nullptr);
-    void setHighlight(bool highlight);
-
-private:
-    PolyShow::Line m_line;
-    bool m_highlight{false};
-};
-
-class PolygonItem : public QGraphicsPolygonItem {
-public:
-    explicit PolygonItem(const PolyShow::Polygon& polygon, QGraphicsItem* parent = nullptr);
-    void setHighlight(bool highlight);
-
-private:
-    PolyShow::Polygon m_polygon;
-    bool m_highlight{false};
-};
-```
-
-### 2.3 图形场景管理
-
-```cpp
-// include/core/scene.h
-class GeometryScene : public QGraphicsScene {
-    Q_OBJECT
-
-public:
-    enum class RenderMode {
-        Solid,
-        Wireframe,
-        Points
-    };
-    Q_ENUM(RenderMode)
-
-    explicit GeometryScene(QObject* parent = nullptr);
-
-    void loadPLY(const QString& filePath);
-    void loadSTL(const QString& filePath);
-    void loadOBJ(const QString& filePath);
-
-    void setRenderMode(RenderMode mode);
-    RenderMode renderMode() const { return m_render_mode; }
-
-    void clearScene();
-    void showGrid(bool show);
-    void showAxes(bool show);
-
-signals:
-    void fileLoaded(const QString& filePath, int itemCount);
-    void selectionChanged(QList<QGraphicsItem*> items);
-    void errorOccurred(const QString& message);
-
-private:
-    void setupGrid();
-    void setupAxes();
-
-    RenderMode m_render_mode{RenderMode::Solid};
-    QGraphicsItem* m_gridItem{nullptr};
-    QGraphicsItem* m_axesItem{nullptr};
-};
-```
-
-### 2.4 图形视图控制器
-
-```cpp
-// include/ui/viewer.h
-class GeometryViewer : public QGraphicsView {
-    Q_OBJECT
-
-public:
-    explicit GeometryViewer(GeometryScene* scene, QWidget* parent = nullptr);
-
-    void zoomIn();
-    void zoomOut();
-    void fitInView();
-    void resetView();
-
-    void setPanMode(bool enabled);
-    void setSelectMode(bool enabled);
-    void setMeasureMode(bool enabled);
-
-protected:
-    void wheelEvent(QWheelEvent* event) override;
-    void mousePressEvent(QMouseEvent* event) override;
-    void mouseMoveEvent(QMouseEvent* event) override;
-    void mouseReleaseEvent(QMouseEvent* event) override;
-
-private:
-    enum class ViewMode {
-        Pan,
-        Select,
-        Measure
-    };
-
-    void updateTransform();
-    void startMeasurement(const QPointF& pos);
-
-    ViewMode m_viewMode{ViewMode::Pan};
-    QPointF m_last_mouse_position;
-    bool m_is_panning{false};
-    qreal m_zoom_factor{1.0};
-};
-```
-
-## 3. 文件解析器设计
-
-### 3.1 PLY 解析器
-
-```cpp
-// include/parsers/PlyParser.h
-class PlyParser {
-public:
-    struct PLYData {
-        QVector<PolyShow::Point> vertices;
-        QVector<PolyShow::Polygon> faces;
-        QVector<QVector3D> normals;
-        QVector<QColor> colors;
-    };
-
-    static bool parse(const QString& filePath, PLYData& data, QString* error = nullptr);
-
-private:
-    PlyParser() = default;
-
-    static bool parseASCII(QFile& file, PLYData& data);
-    static bool parseBinary(QFile& file, PLYData& data);
-};
-```
-
-### 3.2 STL 解析器
-
-```cpp
-// include/parsers/stl_parser.h
-class STLParser {
-public:
-    struct STLData {
-        QVector<PolyShow::Triangle> triangles;
-        QVector<QVector3D> normals;
-    };
-
-    static bool parse(const QString& filePath, STLData& data, QString* error = nullptr);
-
-private:
-    static bool parseASCII(QFile& file, STLData& data);
-    static bool parseBinary(QFile& file, STLData& data);
-};
-```
-
-## 4. IPC 通信设计
-
-### 4.1 协议定义
-
-使用简单的 JSON 格式进行通信：
-
-```json
-{
-    "type": "points",
-    "data": [
-        {"x": 0.0, "y": 0.0},
-        {"x": 1.0, "y": 1.0}
-    ]
-}
-```
-
-```json
-{
-    "type": "lines",
-    "data": [
-        {"start": {"x": 0, "y": 0}, "end": {"x": 1, "y": 1}}
-    ]
-}
-```
-
-```json
-{
-    "type": "polygon",
-    "data": {
-        "vertices": [
-            {"x": 0, "y": 0},
-            {"x": 1, "y": 1},
-            {"x": 2, "y": 0}
-        ]
-    }
-}
-```
-
-### 4.2 服务器端（查看器）
-
-```cpp
-// include/ipc/server.h
-class IPCServer : public QObject {
-    Q_OBJECT
-
-public:
-    explicit IPCServer(QObject* parent = nullptr);
-    ~IPCServer();
-
-    bool start(const QString& serverName = "PolyShowServer");
-    void stop();
-
-    void setScene(GeometryScene* scene);
-
-signals:
-    void dataReceived(const QString& type, const QJsonObject& data);
-    void errorOccurred(const QString& error);
-
-private slots:
-    void onNewConnection();
-    void onReadyRead();
-
-private:
-    QLocalServer* m_server;
-    QLocalSocket* m_socket;
-    GeometryScene* m_scene{nullptr};
-};
-```
-
-### 4.3 客户端（纯头文件）
-
-```cpp
-// include/ipc/debug_client.h
-class PolyShowDebug {
-public:
-    PolyShowDebug();
-    ~PolyShowDebug();
-
-    bool connect(const QString& serverName = "PolyShowServer");
-    void disconnect();
-
-    void sendPoints(const std::vector<PolyShow::Point>& points);
-    void sendLines(const std::vector<PolyShow::Line>& lines);
-    void sendPolygons(const std::vector<PolyShow::Polygon>& polygons);
-
-    void clear();
-    void setLineColor(const QColor& color);
-    void setFillColor(const QColor& color);
-
-private:
-    QLocalSocket* m_socket;
-};
-```
-
-## 5. 用户界面设计
-
-### 5.1 主窗口布局
-
-```
-┌────────────────────────────────────────────────────────────┐
-│ Menu Bar: File | View | Tools | Help                      │
-├──────────┬───────────────────────────────────────────────┤
-│ Toolbar  │                                               │
-│ ├────────┤                                               │
-│          │                                               │
-│          │            Graphics View                     │
-│          │                                               │
-│ Layer    │                                               │
-│ Panel    │                                               │
-│ ├────────┤                                               │
-│ Property │                                               │
-│ Panel    │                                               │
-└──────────┴───────────────────────────────────────────────┘
-│ Status Bar: X: 123.45 Y: 678.90 | Items: 156 | Ready   │
-└────────────────────────────────────────────────────────────┘
-```
-
-### 5.2 工具栏设计
-
-- **文件操作**: 打开, 保存, 导出截图
-- **视图控制**: 放大, 缩小, 适应视图, 重置视图
-- **模式切换**: 平移模式, 选择模式, 测量模式
-- **显示选项**: 网格, 坐标轴, 线框/实体切换
-
-### 5.3 属性面板
-
-```
-┌─────────────────────┐
-│ Selected Item       │
-├─────────────────────┤
-│ Type: Polygon       │
-│ Vertices: 5         │
-│ Area: 123.45        │
-│ Perimeter: 67.89    │
-├─────────────────────┤
-│ Position            │
-│ X: 123.45           │
-│ Y: 678.90           │
-└─────────────────────┘
-```
-
-## 6. 性能优化策略
-
-### 6.1 渲染优化
-
-- **BSP 树**: QGraphicsView 内置空间索引，优化元素查找
-- **LOD (Level of Detail)**: 远距离渲染简化几何体
-- **视口裁剪**: 只渲染可见区域元素
-- **OpenGL 加速**: 使用 QOpenGLWidget 作为视口
-
-### 6.2 数据加载优化
-
-- **流式加载**: 大文件分块加载
-- **延迟解析**: 按需解析文件内容
-- **缓存机制**: 缓存已解析的几何数据
-- **内存映射**: 使用内存映射文件处理超大文件
-
-### 6.3 交互优化
-
-- **区域选择**: 支持框选多元素
-- **批量操作**: 批量修改属性
-- **异步加载**: 文件加载不阻塞UI
-
-## 7. 测试策略
-
-### 7.1 单元测试
-
-- **几何计算**: 点、线、面的数学运算
-- **文件解析**: 各格式的正确性验证
-- **测量工具**: 距离、角度、面积计算精度
-
-### 7.2 集成测试
-
-- **文件加载流程**: 完整的打开-显示-关闭流程
-- **UI交互**: 视图控制、工具切换
-- **IPC通信**: 客户端-服务器数据传输
-
-### 7.3 性能测试
-
-- **大文件加载**: 百万级元素的加载时间
-- **渲染性能**: 不同元素数量的FPS
-- **内存占用**: 不同场景的内存使用情况
-
-## 8. 部署方案
-
-### 8.1 Windows
-
-- 使用 WinSparkle 进行自动更新
-- NSIS 或 WiX 创建安装程序
-- 打包 Qt DLL 和依赖库
-
-### 8.2 Linux
-
-- AppImage 格式分发
-- DEB/RPM 包构建
-- PPA 仓库发布
-
-## 9. 未来扩展
-
-### 9.1 三维支持
-
-- 使用 Qt Quick 3D 替代 QGraphicsView
-- 支持三维几何体的渲染和交互
-- 添加 2D/3D 视图切换
-
-### 9.2 高级功能
-
-- 动画播放（时间序列数据）
-- 几何变换（旋转、缩放、平移）
-- 几何运算（布尔运算、偏移、倒角）
-- 导出多种格式（DXF, SVG, PDF）
-
-### 9.3 插件系统
-
-- 支持自定义文件格式解析器
-- 支持自定义渲染效果
-- 支持自定义工具和命令
-
----
-
-**文档版本**: 1.0
-**最后更新**: 2026-02-01
-**维护者**: PolyShow Team
+# PolyShow UI 原型设计说明
+
+## 1. 文档目的
+
+本文档用于说明当前 [polyshow.pen](D:/project/polyshow/designs/ui-prototype/polyshow.pen) 中的 UI 原型设计。
+
+这份文档是当前设计稿的说明性来源，主要约束以下内容：
+
+- `.pen` 文件中的页面状态
+- 各区域的布局职责
+- 需要在后续迭代中保持一致的交互逻辑
+- 当前原型使用的视觉风格
+
+本文档聚焦产品 UI 设计，不讨论 Qt 代码实现细节。
+
+## 2. 当前设计稿页面
+
+当前原型包含 4 个顶层页面：
+
+1. `PolyShow - Primitive Selected`
+2. `PolyShow - Layer Selected`
+3. `PolyShow - Empty State`
+4. `PolyShow - Search Open`
+
+这 4 个页面不是 4 套独立风格，而是同一套产品在不同工作状态下的页面表达。
+
+## 3. 核心产品逻辑
+
+### 3.1 文件与图层关系
+
+- 一个导入文件等于一个图层。
+- 当前产品逻辑中，一个文件下面不会再拆成多个独立图层。
+- 因此左侧结构树应表现为：
+  - 顶层是文件/图层节点
+  - 文件/图层节点下面直接挂图元节点
+
+### 3.2 显隐控制
+
+- 文件/图层节点和图元节点都需要显隐控制。
+- 当前设计统一使用复选框表达显隐状态。
+- 勾选表示显示。
+- 未勾选表示隐藏。
+
+### 3.3 搜索行为
+
+- 搜索不是长期展开的输入框。
+- 默认状态下，左侧顶部只显示一个搜索按钮。
+- 当搜索被打开时，按钮进入激活态，并在左侧标题下方临时展开搜索输入框。
+- `PolyShow - Search Open` 页面专门用于表示这一展开状态。
+
+### 3.4 右侧检查器行为
+
+右侧检查器是状态驱动的：
+
+- 当没有任何选择时，右侧检查器隐藏。
+- 当选中文件/图层时，右侧显示图层信息。
+- 当选中图元时，右侧显示图元信息。
+
+这也是当前设计稿需要拆成 `Empty State`、`Layer Selected`、`Primitive Selected` 三个页面的原因。
+
+## 4. 统一布局结构
+
+所有主页面都遵循同一套桌面编辑器布局：
+
+1. 顶部菜单栏
+2. 中间主工作区
+3. 下方日志面板
+4. 底部状态栏
+
+### 4.1 顶部菜单栏
+
+- 这里只放全局菜单语义。
+- 当前菜单结构为：
+  - `File`
+  - `View`
+  - `Render`
+  - `Help`
+
+顶部不再使用第二层全局工具栏。
+
+### 4.2 左侧结构栏
+
+左侧主要负责结构导航和可见性管理。
+
+当前包含：
+
+- 标题区域
+- 搜索按钮或搜索展开态
+- 已导入文件分区标题
+- 文件/图层与图元树
+- 显隐复选框
+- 底部简要统计
+
+这个面板应保持紧凑、高密度、工具化。
+
+### 4.3 中央视图区
+
+中间区域是整个应用的视觉中心。
+
+当前包含：
+
+- 视图卡片容器
+- 内嵌在视图中的顶部工具条
+- 几何画布
+- 网格与坐标轴
+- 当前选中图元高亮
+
+关键原则：
+
+- 与图形视图直接相关的操作必须放在视图区内部，不再单独放到顶部全局工具栏。
+
+当前视图工具包括：
+
+- `Pan`
+- `Fit View`
+- `Zoom -`
+- `Zoom +`
+- `Reset`
+- `Grid On`
+- `Solid`
+
+### 4.4 右侧检查器
+
+右侧是一个统一的检查器面板，而不是多张分散的小卡片。
+
+当前检查器承担的职责：
+
+- 当前对象身份信息
+- 几何信息
+- 坐标信息
+- 样式信息
+- 后续可编辑方向提示
+
+目前视觉上是一个主信息卡片承载全部核心内容。
+
+### 4.5 底部日志面板
+
+底部日志区保持简化设计。
+
+- 只使用一个 `Log` 标签页。
+- 日志以逐行方式展示。
+- 可以继续使用颜色区分不同级别：
+  - error
+  - warning
+  - info
+
+当前设计明确不拆成 `Problems`、`Warnings`、`Output` 等多个标签页。
+
+## 5. 不同状态页规则
+
+### 5.1 Primitive Selected
+
+页面：`PolyShow - Primitive Selected`
+
+该页面用于表示“当前选中的是图元”。
+
+右侧应展示：
+
+- 图元名称
+- 图元类型
+- 几何摘要
+- 坐标点信息
+- 样式信息
+- 后续可编辑属性方向
+
+### 5.2 Layer Selected
+
+页面：`PolyShow - Layer Selected`
+
+该页面用于表示“当前选中的是文件/图层”。
+
+右侧应展示：
+
+- 文件名
+- 图层身份
+- 图元数量
+- 可见/隐藏数量
+- 各图元类型分布
+- 源文件信息
+
+### 5.3 Empty State
+
+页面：`PolyShow - Empty State`
+
+该页面用于表示“当前没有任何选择”。
+
+预期表现：
+
+- 右侧检查器隐藏
+- 中央视图成为更强的视觉中心
+- 左侧结构栏继续保留
+- 底部日志继续保留
+
+### 5.4 Search Open
+
+页面：`PolyShow - Search Open`
+
+该页面用于表示“左侧搜索被临时展开”的状态。
+
+预期表现：
+
+- 搜索按钮进入激活态
+- 左侧标题下方展开搜索输入框
+- 左侧分区标题可切换为搜索结果语义
+- 页脚可以显示匹配数量
+
+## 6. 当前视觉风格
+
+当前原型采用的是现代工具型桌面应用风格，整体方向偏干净、克制、编辑器化。
+
+### 6.1 配色方向
+
+整体使用接近 Tailwind 的中性色和蓝色强调体系：
+
+- 页面底色：`slate / gray 50-100`
+- 面板底色：白色
+- 分割线与边框：`slate 200`
+- 文本：
+  - 主文本：深色 slate
+  - 次文本：浅色 slate
+- 强调色：
+  - 选中与激活：蓝色
+  - 成功或状态提示：绿色
+  - 日志级别：红 / 橙 / 蓝
+
+### 6.2 形状与密度
+
+- 面板使用柔和圆角。
+- 整体应保持紧凑、工作导向。
+- 左侧结构栏和底部日志区密度高于视图区。
+- 视图区必须始终是最清晰、最大的视觉主体。
+
+### 6.3 字体策略
+
+当前原型使用：
+
+- `Inter`：通用 UI 文本
+- `IBM Plex Mono`：结构化数字、路径、日志、坐标等数据文本
+
+这套区分在后续版本中应继续保持。
+
+## 7. 后续迭代约束
+
+后续设计迭代应继续保持以下约束：
+
+- 一个文件就是一个图层
+- 文件行与图元行都要有显式的显隐复选框
+- 搜索默认保持收起
+- 检查器内容必须随选中状态切换
+- 视图工具必须留在视图区内部
+- 底部输出区在需求变化前保持简单
+
+如果未来代码行为有变化，这份文档和 `.pen` 原型应一起同步更新。
+
+## 8. 与后续实现的关系
+
+当前 UI 原型有意贴合项目的现阶段方向：
+
+- 左侧负责导入文件/图层结构与图元可见性管理
+- 中间是几何工作区
+- 右侧是未来可编辑的检查器
+- 下方是解析输出与运行反馈
+
+这份原型还不是精确到像素级的 Qt 部件实现图，但它应作为后续 UI 落地讨论时的体验和布局参考。
+
+## 9. 更新说明
+
+本文档反映的是 `2026-04-15` 当前设计稿状态。

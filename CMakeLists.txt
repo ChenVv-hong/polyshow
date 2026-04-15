@@ -18,8 +18,14 @@ set(POLYSHOW_HEADERS
     include/core/GeometryScene.h
     include/parsers/PlyParser.h
     include/ui/GeometryViewer.h
+    include/ui/InspectorPanel.h
+    include/ui/LayerSidebar.h
+    include/ui/LogPanel.h
     include/ui/PropertyPanel.h
     include/ui/MainWindow.h
+    include/ui/PanelFrame.h
+    include/ui/PillButton.h
+    include/ui/UiTheme.h
 )
 
 set(POLYSHOW_SOURCES
@@ -27,8 +33,14 @@ set(POLYSHOW_SOURCES
     src/core/GeometryScene.cpp
     src/parsers/PlyParser.cpp
     src/ui/GeometryViewer.cpp
+    src/ui/InspectorPanel.cpp
+    src/ui/LayerSidebar.cpp
+    src/ui/LogPanel.cpp
     src/ui/PropertyPanel.cpp
     src/ui/MainWindow.cpp
+    src/ui/PanelFrame.cpp
+    src/ui/PillButton.cpp
+    src/ui/UiTheme.cpp
 )
 
 add_executable(

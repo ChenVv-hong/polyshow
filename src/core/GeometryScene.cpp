@@ -260,6 +260,25 @@ GeometryScene::RenderMode GeometryScene::renderMode() const
     return m_render_mode;
 }
 
+/// Replaces the active inspector preview suppression state.
+void GeometryScene::setEditPreviewState(const PrimitiveEditPreviewState &previewState, bool shouldRebuildScene)
+{
+    if (m_edit_preview_state == previewState)
+    {
+        if (shouldRebuildScene)
+        {
+            this->rebuildScene();
+        }
+        return;
+    }
+
+    m_edit_preview_state = previewState;
+    if (shouldRebuildScene)
+    {
+        this->rebuildScene();
+    }
+}
+
 /// Shows or hides the background grid.
 void GeometryScene::setGridVisible(bool visible)
 {
@@ -362,6 +381,8 @@ void GeometryScene::rebuildScene()
     clear();
     rebuildGrid();
     const ThemeColors &themeColors = UiTheme::colors(ThemeMode::Light);
+    const bool suppressSelectedPrimitive = m_edit_preview_state.hide_selected_primitive
+        && m_edit_preview_state.selection_state.kind == SelectionKind::Primitive;
 
     const auto addPointMarker = [this](
                                     const Point2D &point,
@@ -385,6 +406,12 @@ void GeometryScene::rebuildScene()
         {
             continue;
         }
+
+        const auto shouldSuppressPrimitive = [this, suppressSelectedPrimitive, layerIndex](int primitiveIndex) {
+            return suppressSelectedPrimitive
+                && m_edit_preview_state.selection_state.layer_index == layerIndex
+                && m_edit_preview_state.selection_state.primitive_index == primitiveIndex;
+        };
 
         const LayerVisibilityMask mask = buildLayerVisibilityMask(layer);
 
@@ -415,6 +442,10 @@ void GeometryScene::rebuildScene()
                 QPen polygonPen(polygon.style.color);
                 polygonPen.setWidthF(polygon.style.width);
                 const int primitiveIndex = primitiveListIndexForReference(layer, PrimitiveKind::Polygon, i);
+                if (shouldSuppressPrimitive(primitiveIndex))
+                {
+                    continue;
+                }
                 const bool shouldUseFill = m_render_mode == RenderMode::Solid && polygon.style.fill_enabled;
                 const QBrush polygonBrush = shouldUseFill ? QBrush(polygon.style.fill_color) : QBrush(Qt::NoBrush);
                 auto *item = addPolygon(qtPolygon, polygonPen, polygonBrush);
@@ -446,6 +477,10 @@ void GeometryScene::rebuildScene()
                 QPen polylinePen(polyline.style.color);
                 polylinePen.setWidthF(polyline.style.width);
                 const int primitiveIndex = primitiveListIndexForReference(layer, PrimitiveKind::Polyline, i);
+                if (shouldSuppressPrimitive(primitiveIndex))
+                {
+                    continue;
+                }
                 auto *item = addPath(path, polylinePen);
                 item->setData(kLayerIndexRole, layerIndex);
                 item->setData(kPrimitiveIndexRole, primitiveIndex);
@@ -462,6 +497,10 @@ void GeometryScene::rebuildScene()
 
             const PointShape2D &point = layer.geometry.points.at(i);
             const int primitiveIndex = primitiveListIndexForReference(layer, PrimitiveKind::Point, i);
+            if (shouldSuppressPrimitive(primitiveIndex))
+            {
+                continue;
+            }
             addPointMarker(point.point, point.style, layerIndex, primitiveIndex);
         }
 
@@ -477,6 +516,10 @@ void GeometryScene::rebuildScene()
 
                 const Polyline2D &polyline = layer.geometry.polylines.at(i);
                 const int primitiveIndex = primitiveListIndexForReference(layer, PrimitiveKind::Polyline, i);
+                if (shouldSuppressPrimitive(primitiveIndex))
+                {
+                    continue;
+                }
                 for (const Point2D &vertex : polyline.vertices)
                 {
                     addPointMarker(vertex, polyline.style, layerIndex, primitiveIndex);
@@ -492,6 +535,10 @@ void GeometryScene::rebuildScene()
 
                 const Polygon2D &polygon = layer.geometry.polygons.at(i);
                 const int primitiveIndex = primitiveListIndexForReference(layer, PrimitiveKind::Polygon, i);
+                if (shouldSuppressPrimitive(primitiveIndex))
+                {
+                    continue;
+                }
                 for (const Point2D &vertex : polygon.vertices)
                 {
                     addPointMarker(vertex, polygon.style, layerIndex, primitiveIndex);
@@ -505,8 +552,13 @@ void GeometryScene::rebuildScene()
         && m_selection_state.layer_index >= 0
         && m_selection_state.layer_index < m_document_data.layers.size())
     {
-        selectionBounds =
-            primitiveSelectionBounds(m_document_data.layers.at(m_selection_state.layer_index), m_selection_state.primitive_index);
+        if (!(suppressSelectedPrimitive
+              && m_edit_preview_state.selection_state.layer_index == m_selection_state.layer_index
+              && m_edit_preview_state.selection_state.primitive_index == m_selection_state.primitive_index))
+        {
+            selectionBounds = primitiveSelectionBounds(
+                m_document_data.layers.at(m_selection_state.layer_index), m_selection_state.primitive_index);
+        }
     }
     else if (
         m_selection_state.kind == SelectionKind::Layer

@@ -44,17 +44,6 @@ const LayerPrimitiveData *layerPrimitive(const LayerData &layer, int primitiveIn
     return &layer.primitives.at(primitiveIndex);
 }
 
-/// Returns the mutable geometry reference for one primitive list entry.
-LayerPrimitiveData *layerPrimitive(LayerData &layer, int primitiveIndex)
-{
-    if (!isValidPrimitiveIndex(layer, primitiveIndex))
-    {
-        return nullptr;
-    }
-
-    return &layer.primitives[primitiveIndex];
-}
-
 /// Returns the formatted numeric text used by editable controls.
 QString formatNumber(double value)
 {
@@ -68,6 +57,12 @@ void assignError(QString *target, const QString &message)
     {
         *target = message;
     }
+}
+
+/// Builds a coordinate error with an optional source line number.
+QString coordinateErrorText(const QString &message, int errorLine)
+{
+    return errorLine > 0 ? QStringLiteral("Line %1: %2").arg(errorLine).arg(message) : message;
 }
 
 } // namespace
@@ -114,31 +109,6 @@ QVector<Point2D> primitivePoints(const LayerData &layer, int primitiveIndex)
     }
 }
 
-bool buildPrimitiveEditRequest(const LayerData &layer, int primitiveIndex, PrimitiveEditRequest *request)
-{
-    if (request == nullptr)
-    {
-        return false;
-    }
-
-    const LayerPrimitiveData *primitive = layerPrimitive(layer, primitiveIndex);
-    if (primitive == nullptr)
-    {
-        return false;
-    }
-
-    const PrimitiveStyle style = primitiveStyle(layer, primitiveIndex);
-    request->primitive_kind = primitive->reference.kind;
-    request->primitive_index = primitiveIndex;
-    request->stroke_color_text = formatColorText(style.color);
-    request->fill_color_text = formatColorText(style.fill_color);
-    request->width_text = formatNumber(style.width);
-    request->point_size_text = formatNumber(style.point_size);
-    request->coordinates_text = formatCoordinateText(primitivePoints(layer, primitiveIndex));
-    request->fill_enabled = style.fill_enabled;
-    return true;
-}
-
 bool readPrimitiveEditValues(const LayerData &layer, int primitiveIndex, PrimitiveEditValues *values)
 {
     if (values == nullptr)
@@ -159,38 +129,38 @@ bool readPrimitiveEditValues(const LayerData &layer, int primitiveIndex, Primiti
 
 bool applyPrimitiveEditValues(LayerData &layer, int primitiveIndex, const PrimitiveEditValues &values)
 {
-    const LayerPrimitiveData *primitive = layerPrimitive(layer, primitiveIndex);
-    if (primitive == nullptr)
+    if (!isValidPrimitiveIndex(layer, primitiveIndex))
     {
         return false;
     }
 
-    switch (primitive->reference.kind)
+    const LayerPrimitiveData &primitive = layer.primitives.at(primitiveIndex);
+    switch (primitive.reference.kind)
     {
     case PrimitiveKind::Point:
-        if (values.points.size() != 1 || primitive->reference.index < 0
-            || primitive->reference.index >= layer.geometry.points.size())
+        if (values.points.size() != 1 || primitive.reference.index < 0
+            || primitive.reference.index >= layer.geometry.points.size())
         {
             return false;
         }
-        layer.geometry.points[primitive->reference.index].point = values.points.first();
-        layer.geometry.points[primitive->reference.index].style = values.style;
+        layer.geometry.points[primitive.reference.index].point = values.points.first();
+        layer.geometry.points[primitive.reference.index].style = values.style;
         return true;
     case PrimitiveKind::Polyline:
-        if (primitive->reference.index < 0 || primitive->reference.index >= layer.geometry.polylines.size())
+        if (primitive.reference.index < 0 || primitive.reference.index >= layer.geometry.polylines.size())
         {
             return false;
         }
-        layer.geometry.polylines[primitive->reference.index].vertices = values.points;
-        layer.geometry.polylines[primitive->reference.index].style = values.style;
+        layer.geometry.polylines[primitive.reference.index].vertices = values.points;
+        layer.geometry.polylines[primitive.reference.index].style = values.style;
         return true;
     case PrimitiveKind::Polygon:
-        if (primitive->reference.index < 0 || primitive->reference.index >= layer.geometry.polygons.size())
+        if (primitive.reference.index < 0 || primitive.reference.index >= layer.geometry.polygons.size())
         {
             return false;
         }
-        layer.geometry.polygons[primitive->reference.index].vertices = values.points;
-        layer.geometry.polygons[primitive->reference.index].style = values.style;
+        layer.geometry.polygons[primitive.reference.index].vertices = values.points;
+        layer.geometry.polygons[primitive.reference.index].style = values.style;
         return true;
     default:
         return false;
@@ -222,12 +192,13 @@ bool parsePositiveDoubleText(const QString &text, double &value)
 
 bool parseColorText(const QString &text, QColor &color)
 {
-    if (!text.startsWith('#'))
+    const QString trimmed = text.trimmed();
+    if (!trimmed.startsWith('#'))
     {
         return false;
     }
 
-    const QString hex = text.mid(1);
+    const QString hex = trimmed.mid(1);
     if (hex.size() != 6 && hex.size() != 8)
     {
         return false;
@@ -370,93 +341,122 @@ bool validatePrimitivePoints(PrimitiveKind kind, const QVector<Point2D> &points,
     return true;
 }
 
-bool validatePrimitiveEditRequest(
+bool validateStyleChangeRequest(
     const LayerData &layer,
     int primitiveIndex,
-    const PrimitiveEditRequest &request,
+    const PrimitiveStyleChangeRequest &request,
     PrimitiveEditValues *values,
-    PrimitiveEditValidationErrors *errors)
+    QString *errorMessage)
 {
-    PrimitiveEditValues currentValues;
-    if (!readPrimitiveEditValues(layer, primitiveIndex, &currentValues))
+    PrimitiveEditValues parsedValues;
+    if (!readPrimitiveEditValues(layer, primitiveIndex, &parsedValues))
     {
         return false;
     }
 
-    if (errors != nullptr)
+    if (request.primitive_kind != layer.primitives.at(primitiveIndex).reference.kind)
     {
-        errors->clear();
+        assignError(errorMessage, QStringLiteral("Selection kind changed."));
+        return false;
     }
 
-    PrimitiveEditValues parsedValues = currentValues;
-
-    if (!parseColorText(request.stroke_color_text.trimmed(), parsedValues.style.color))
+    switch (request.field)
     {
-        if (errors != nullptr)
+    case PrimitiveStyleField::StrokeColor:
+        if (!parseColorText(request.text_value, parsedValues.style.color))
         {
-            errors->stroke_color = QStringLiteral("Use #RRGGBB or #RRGGBBAA.");
+            assignError(errorMessage, QStringLiteral("Use #RRGGBB or #RRGGBBAA."));
+            return false;
         }
-    }
-
-    if (request.primitive_kind == PrimitiveKind::Polygon)
-    {
-        parsedValues.style.fill_enabled = request.fill_enabled;
-        if (request.fill_enabled && !parseColorText(request.fill_color_text.trimmed(), parsedValues.style.fill_color))
+        break;
+    case PrimitiveStyleField::FillColor:
+        if (request.primitive_kind != PrimitiveKind::Polygon)
         {
-            if (errors != nullptr)
-            {
-                errors->fill_color = QStringLiteral("Use #RRGGBB or #RRGGBBAA.");
-            }
+            assignError(errorMessage, QStringLiteral("Fill color is only available for polygons."));
+            return false;
         }
-    }
-
-    if (request.primitive_kind != PrimitiveKind::Point)
-    {
-        if (!parsePositiveDoubleText(request.width_text.trimmed(), parsedValues.style.width))
+        if (!parseColorText(request.text_value, parsedValues.style.fill_color))
         {
-            if (errors != nullptr)
-            {
-                errors->width = QStringLiteral("Width must be greater than 0.");
-            }
+            assignError(errorMessage, QStringLiteral("Use #RRGGBB or #RRGGBBAA."));
+            return false;
         }
-    }
-
-    if (!parsePositiveDoubleText(request.point_size_text.trimmed(), parsedValues.style.point_size))
-    {
-        if (errors != nullptr)
+        break;
+    case PrimitiveStyleField::Width:
+        if (request.primitive_kind == PrimitiveKind::Point)
         {
-            errors->point_size = QStringLiteral("Point size must be greater than 0.");
+            assignError(errorMessage, QStringLiteral("Line width is not available for points."));
+            return false;
         }
-    }
-
-    QString coordinateError;
-    int coordinateLine = -1;
-    if (!parseCoordinateText(request.coordinates_text, parsedValues.points, &coordinateError, &coordinateLine))
-    {
-        if (errors != nullptr)
+        if (!parsePositiveDoubleText(request.text_value, parsedValues.style.width))
         {
-            errors->coordinates = coordinateLine > 0
-                ? QStringLiteral("Line %1: %2").arg(coordinateLine).arg(coordinateError)
-                : coordinateError;
+            assignError(errorMessage, QStringLiteral("Width must be greater than 0."));
+            return false;
         }
-    }
-    else
-    {
-        QString geometryError;
-        if (!validatePrimitivePoints(request.primitive_kind, parsedValues.points, &geometryError) && errors != nullptr)
+        break;
+    case PrimitiveStyleField::PointSize:
+        if (!parsePositiveDoubleText(request.text_value, parsedValues.style.point_size))
         {
-            errors->coordinates = geometryError;
+            assignError(errorMessage, QStringLiteral("Point size must be greater than 0."));
+            return false;
         }
-    }
-
-    if (errors != nullptr && errors->hasErrors())
-    {
+        break;
+    case PrimitiveStyleField::FillEnabled:
+        if (request.primitive_kind != PrimitiveKind::Polygon)
+        {
+            assignError(errorMessage, QStringLiteral("Fill is only available for polygons."));
+            return false;
+        }
+        parsedValues.style.fill_enabled = request.bool_value;
+        break;
+    default:
+        assignError(errorMessage, QStringLiteral("Unsupported style field."));
         return false;
     }
 
     if (values != nullptr)
     {
         *values = parsedValues;
+    }
+    return true;
+}
+
+bool validateCoordinateDraft(
+    const LayerData &layer,
+    int primitiveIndex,
+    const PrimitiveCoordinateDraft &draft,
+    QVector<Point2D> *points,
+    QString *errorMessage)
+{
+    if (!isValidPrimitiveIndex(layer, primitiveIndex))
+    {
+        return false;
+    }
+
+    if (draft.primitive_kind != layer.primitives.at(primitiveIndex).reference.kind)
+    {
+        assignError(errorMessage, QStringLiteral("Selection kind changed."));
+        return false;
+    }
+
+    QVector<Point2D> parsedPoints;
+    QString parseError;
+    int errorLine = -1;
+    if (!parseCoordinateText(draft.coordinates_text, parsedPoints, &parseError, &errorLine))
+    {
+        assignError(errorMessage, coordinateErrorText(parseError, errorLine));
+        return false;
+    }
+
+    QString geometryError;
+    if (!validatePrimitivePoints(draft.primitive_kind, parsedPoints, &geometryError))
+    {
+        assignError(errorMessage, geometryError);
+        return false;
+    }
+
+    if (points != nullptr)
+    {
+        *points = parsedPoints;
     }
     return true;
 }
@@ -476,7 +476,36 @@ QString formatCoordinateText(const QVector<Point2D> &points)
 
 QString formatColorText(const QColor &color)
 {
-    return color.name(QColor::HexArgb).toUpper();
+    const auto toHex = [](int value) {
+        return QStringLiteral("%1").arg(value, 2, 16, QLatin1Char('0')).toUpper();
+    };
+
+    const QString base = QStringLiteral("#%1%2%3").arg(toHex(color.red()), toHex(color.green()), toHex(color.blue()));
+    if (color.alpha() == 255)
+    {
+        return base;
+    }
+
+    return QStringLiteral("%1%2").arg(base, toHex(color.alpha()));
+}
+
+QString primitiveStyleFieldText(PrimitiveStyleField field)
+{
+    switch (field)
+    {
+    case PrimitiveStyleField::StrokeColor:
+        return QStringLiteral("stroke color");
+    case PrimitiveStyleField::FillColor:
+        return QStringLiteral("fill color");
+    case PrimitiveStyleField::Width:
+        return QStringLiteral("line width");
+    case PrimitiveStyleField::PointSize:
+        return QStringLiteral("point size");
+    case PrimitiveStyleField::FillEnabled:
+        return QStringLiteral("fill");
+    default:
+        return QStringLiteral("style field");
+    }
 }
 
 } // namespace PolyShow

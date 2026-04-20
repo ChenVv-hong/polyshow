@@ -161,6 +161,19 @@ QString formatNumber(double value)
     return QString::number(value, 'f', 2);
 }
 
+/// Builds one primitive selection state.
+SelectionState primitiveSelectionState(int layerIndex, int primitiveIndex)
+{
+    return SelectionState {SelectionKind::Primitive, layerIndex, primitiveIndex};
+}
+
+/// Returns whether the selection references one specific primitive.
+bool matchesPrimitiveSelection(const SelectionState &selectionState, int layerIndex, int primitiveIndex)
+{
+    return selectionState.kind == SelectionKind::Primitive && selectionState.layer_index == layerIndex
+        && selectionState.primitive_index == primitiveIndex;
+}
+
 /// Returns the user-facing log label for one selected primitive.
 QString primitiveLogLabel(const DocumentData &documentData, int layerIndex, int primitiveIndex)
 {
@@ -198,92 +211,50 @@ bool pointsMatch(const QVector<Point2D> &lhs, const QVector<Point2D> &rhs)
 }
 
 /// Builds a compact summary of one applied primitive edit.
-QString primitiveEditSummary(
-    PrimitiveKind kind, const PrimitiveEditValues &beforeValues, const PrimitiveEditValues &afterValues)
+QString styleFieldChangeSummary(
+    PrimitiveStyleField field, const PrimitiveEditValues &beforeValues, const PrimitiveEditValues &afterValues)
 {
-    QStringList changes;
-
-    if (beforeValues.style.color != afterValues.style.color)
+    switch (field)
     {
-        changes.append(
-            QStringLiteral("stroke %1 -> %2")
-                .arg(formatColorText(beforeValues.style.color), formatColorText(afterValues.style.color)));
+    case PrimitiveStyleField::StrokeColor:
+        return QStringLiteral("%1 -> %2")
+            .arg(formatColorText(beforeValues.style.color), formatColorText(afterValues.style.color));
+    case PrimitiveStyleField::FillColor:
+        return QStringLiteral("%1 -> %2")
+            .arg(formatColorText(beforeValues.style.fill_color), formatColorText(afterValues.style.fill_color));
+    case PrimitiveStyleField::Width:
+        return QStringLiteral("%1 -> %2")
+            .arg(formatNumber(beforeValues.style.width), formatNumber(afterValues.style.width));
+    case PrimitiveStyleField::PointSize:
+        return QStringLiteral("%1 -> %2")
+            .arg(formatNumber(beforeValues.style.point_size), formatNumber(afterValues.style.point_size));
+    case PrimitiveStyleField::FillEnabled:
+        return QStringLiteral("%1 -> %2")
+            .arg(beforeValues.style.fill_enabled ? QStringLiteral("on") : QStringLiteral("off"))
+            .arg(afterValues.style.fill_enabled ? QStringLiteral("on") : QStringLiteral("off"));
+    default:
+        return QStringLiteral("updated");
     }
-
-    if (kind == PrimitiveKind::Polygon)
-    {
-        if (beforeValues.style.fill_enabled != afterValues.style.fill_enabled)
-        {
-            changes.append(
-                QStringLiteral("fill %1 -> %2")
-                    .arg(beforeValues.style.fill_enabled ? QStringLiteral("on") : QStringLiteral("off"))
-                    .arg(afterValues.style.fill_enabled ? QStringLiteral("on") : QStringLiteral("off")));
-        }
-
-        if (beforeValues.style.fill_color != afterValues.style.fill_color)
-        {
-            changes.append(
-                QStringLiteral("fill color %1 -> %2")
-                    .arg(formatColorText(beforeValues.style.fill_color), formatColorText(afterValues.style.fill_color)));
-        }
-    }
-
-    if (kind != PrimitiveKind::Point && beforeValues.style.width != afterValues.style.width)
-    {
-        changes.append(
-            QStringLiteral("width %1 -> %2")
-                .arg(formatNumber(beforeValues.style.width), formatNumber(afterValues.style.width)));
-    }
-
-    if (beforeValues.style.point_size != afterValues.style.point_size)
-    {
-        changes.append(
-            QStringLiteral("point size %1 -> %2")
-                .arg(formatNumber(beforeValues.style.point_size), formatNumber(afterValues.style.point_size)));
-    }
-
-    if (!pointsMatch(beforeValues.points, afterValues.points))
-    {
-        changes.append(
-            QStringLiteral("coordinates %1 -> %2 vertices")
-                .arg(beforeValues.points.size())
-                .arg(afterValues.points.size()));
-    }
-
-    return changes.isEmpty() ? QStringLiteral("no visible value changes") : changes.join(QStringLiteral(", "));
 }
 
-/// Formats validation errors for the log panel.
-QString validationLogSummary(const PrimitiveEditValidationErrors &errors)
+/// Returns whether the requested style field actually changed.
+bool styleFieldChanged(PrimitiveStyleField field, const PrimitiveEditValues &beforeValues, const PrimitiveEditValues &afterValues)
 {
-    QStringList issues;
-
-    if (!errors.stroke_color.isEmpty())
+    switch (field)
     {
-        issues.append(QStringLiteral("stroke color: %1").arg(errors.stroke_color));
+    case PrimitiveStyleField::StrokeColor:
+        return beforeValues.style.color != afterValues.style.color;
+    case PrimitiveStyleField::FillColor:
+        return beforeValues.style.fill_color != afterValues.style.fill_color;
+    case PrimitiveStyleField::Width:
+        return beforeValues.style.width != afterValues.style.width;
+    case PrimitiveStyleField::PointSize:
+        return beforeValues.style.point_size != afterValues.style.point_size;
+    case PrimitiveStyleField::FillEnabled:
+        return beforeValues.style.fill_enabled != afterValues.style.fill_enabled;
+    default:
+        return false;
     }
-
-    if (!errors.fill_color.isEmpty())
-    {
-        issues.append(QStringLiteral("fill color: %1").arg(errors.fill_color));
-    }
-
-    if (!errors.width.isEmpty())
-    {
-        issues.append(QStringLiteral("width: %1").arg(errors.width));
-    }
-
-    if (!errors.point_size.isEmpty())
-    {
-        issues.append(QStringLiteral("point size: %1").arg(errors.point_size));
-    }
-
-    if (!errors.coordinates.isEmpty())
-    {
-        issues.append(QStringLiteral("coordinates: %1").arg(errors.coordinates));
-    }
-
-    return issues.join(QStringLiteral("; "));
 }
 
 } // namespace
@@ -365,10 +336,7 @@ void MainWindow::onLayerVisibilityChanged(int layerIndex, bool visible)
     }
 
     m_document_data.layers[layerIndex].visible = visible;
-    m_layer_sidebar->setDocumentData(m_document_data, false);
-    m_scene->setDocumentData(m_document_data);
-    m_inspector_panel->setDocumentData(m_document_data);
-    onSelectionStateChanged(normalizedSelectionState(m_selection_state));
+    refreshViewsForVisibilityChange();
 }
 
 void MainWindow::onPrimitiveVisibilityChanged(int layerIndex, int primitiveIndex, bool visible)
@@ -385,10 +353,7 @@ void MainWindow::onPrimitiveVisibilityChanged(int layerIndex, int primitiveIndex
     }
 
     layer.primitives[primitiveIndex].visible = visible;
-    m_layer_sidebar->setDocumentData(m_document_data, false);
-    m_scene->setDocumentData(m_document_data);
-    m_inspector_panel->setDocumentData(m_document_data);
-    onSelectionStateChanged(normalizedSelectionState(m_selection_state));
+    refreshViewsForVisibilityChange();
 }
 
 void MainWindow::onRenderModeChanged(int index)
@@ -411,7 +376,14 @@ void MainWindow::onRenderModeChanged(int index)
 
 void MainWindow::onSelectionStateChanged(const SelectionState &selectionState)
 {
-    m_selection_state = normalizedSelectionState(selectionState);
+    const SelectionState normalizedSelectionStateValue = normalizedSelectionState(selectionState);
+    if (normalizedSelectionStateValue != m_selection_state)
+    {
+        clearCoordinatePreviewState();
+    }
+
+    m_selection_state = normalizedSelectionStateValue;
+    m_scene->setEditPreviewState(m_edit_preview_state, false);
     m_scene->setSelectionState(m_selection_state);
     m_layer_sidebar->setSelectionState(m_selection_state);
     m_inspector_panel->setSelectionState(m_selection_state);
@@ -442,7 +414,7 @@ void MainWindow::onEmptySceneActivated()
     onSelectionStateChanged(SelectionState {});
 }
 
-void MainWindow::onInspectorApplyRequested(const PrimitiveEditRequest &request)
+void MainWindow::onInspectorStyleChangeRequested(const PrimitiveStyleChangeRequest &request)
 {
     if (request.layer_index < 0 || request.layer_index >= m_document_data.layers.size())
     {
@@ -457,16 +429,13 @@ void MainWindow::onInspectorApplyRequested(const PrimitiveEditRequest &request)
 
     const PrimitiveKind expectedKind = currentLayer.primitives.at(request.primitive_index).reference.kind;
     const QString targetLabel = primitiveLogLabel(m_document_data, request.layer_index, request.primitive_index);
-    m_log_panel->appendMessage(
-        LogSeverity::Info,
-        QStringLiteral("[info] Applying inspector edits to %1").arg(targetLabel));
-
     if (request.primitive_kind != expectedKind)
     {
         m_log_panel->appendMessage(
             LogSeverity::Error,
-            QStringLiteral("[error] Failed to apply inspector edits to %1: selection kind changed").arg(targetLabel));
-        statusBar()->showMessage(QStringLiteral("Inspector apply failed"), 3000);
+            QStringLiteral("[error] Failed to update %1 %2: selection kind changed")
+                .arg(targetLabel, primitiveStyleFieldText(request.field)));
+        statusBar()->showMessage(QStringLiteral("Inspector update failed"), 3000);
         return;
     }
 
@@ -475,54 +444,132 @@ void MainWindow::onInspectorApplyRequested(const PrimitiveEditRequest &request)
     {
         m_log_panel->appendMessage(
             LogSeverity::Error,
-            QStringLiteral("[error] Failed to read %1 before applying edits").arg(targetLabel));
-        statusBar()->showMessage(QStringLiteral("Inspector apply failed"), 3000);
+            QStringLiteral("[error] Failed to read %1 before updating %2")
+                .arg(targetLabel, primitiveStyleFieldText(request.field)));
+        statusBar()->showMessage(QStringLiteral("Inspector update failed"), 3000);
         return;
     }
 
-    PrimitiveEditValidationErrors errors;
     PrimitiveEditValues parsedValues;
-    if (!validatePrimitiveEditRequest(currentLayer, request.primitive_index, request, &parsedValues, &errors))
+    QString errorMessage;
+    if (!validateStyleChangeRequest(currentLayer, request.primitive_index, request, &parsedValues, &errorMessage))
     {
-        m_inspector_panel->setValidationErrors(errors);
+        m_inspector_panel->setStyleFieldError(request.field, errorMessage);
         m_log_panel->appendMessage(
             LogSeverity::Error,
-            QStringLiteral("[error] Failed to apply inspector edits to %1: %2")
-                .arg(targetLabel, validationLogSummary(errors)));
-        statusBar()->showMessage(QStringLiteral("Inspector apply failed"), 3000);
+            QStringLiteral("[error] Failed to update %1 %2: %3")
+                .arg(targetLabel, primitiveStyleFieldText(request.field), errorMessage));
+        statusBar()->showMessage(QStringLiteral("Inspector update failed"), 3000);
         return;
     }
 
-    m_inspector_panel->clearValidationErrors();
+    m_inspector_panel->clearStyleFieldError(request.field);
+    const bool didChange = styleFieldChanged(request.field, beforeValues, parsedValues);
+    if (!didChange)
+    {
+        refreshViewsForDocumentChange(false);
+        m_inspector_panel->syncStyleFieldFromSelection(request.field);
+        return;
+    }
+
     if (!applyPrimitiveEditValues(m_document_data.layers[request.layer_index], request.primitive_index, parsedValues))
     {
         m_log_panel->appendMessage(
             LogSeverity::Error,
-            QStringLiteral("[error] Failed to write inspector edits to %1").arg(targetLabel));
-        statusBar()->showMessage(QStringLiteral("Inspector apply failed"), 3000);
+            QStringLiteral("[error] Failed to write %1 %2")
+                .arg(targetLabel, primitiveStyleFieldText(request.field)));
+        statusBar()->showMessage(QStringLiteral("Inspector update failed"), 3000);
         return;
     }
 
+    refreshViewsForDocumentChange(false);
+    m_inspector_panel->syncStyleFieldFromSelection(request.field);
     m_log_panel->appendMessage(
         LogSeverity::Info,
-        QStringLiteral("[info] Updated %1: %2")
-            .arg(targetLabel, primitiveEditSummary(expectedKind, beforeValues, parsedValues)));
-    syncDocumentToViews(false);
+        QStringLiteral("[info] Updated %1 %2: %3")
+            .arg(targetLabel, primitiveStyleFieldText(request.field), styleFieldChangeSummary(request.field, beforeValues, parsedValues)));
     statusBar()->showMessage(QStringLiteral("Primitive updated"), 3000);
 }
 
-void MainWindow::onInspectorResetRequested()
+void MainWindow::onInspectorCoordinateDraftChanged(const PrimitiveCoordinateDraft &draft)
 {
-    if (m_selection_state.kind != SelectionKind::Primitive)
+    if (draft.layer_index < 0 || draft.layer_index >= m_document_data.layers.size())
     {
         return;
     }
 
-    const QString targetLabel = primitiveLogLabel(m_document_data, m_selection_state.layer_index, m_selection_state.primitive_index);
-    m_log_panel->appendMessage(
-        LogSeverity::Info,
-        QStringLiteral("[info] Reset unsaved inspector edits for %1").arg(targetLabel));
-    statusBar()->showMessage(QStringLiteral("Inspector edits reset"), 2000);
+    const LayerData &currentLayer = m_document_data.layers.at(draft.layer_index);
+    if (draft.primitive_index < 0 || draft.primitive_index >= currentLayer.primitives.size())
+    {
+        return;
+    }
+
+    const QString targetLabel = primitiveLogLabel(m_document_data, draft.layer_index, draft.primitive_index);
+    QVector<Point2D> parsedPoints;
+    QString errorMessage;
+    if (!validateCoordinateDraft(currentLayer, draft.primitive_index, draft, &parsedPoints, &errorMessage))
+    {
+        const bool alreadyInvalid = m_edit_preview_state.hide_selected_primitive
+            && matchesPrimitiveSelection(m_edit_preview_state.selection_state, draft.layer_index, draft.primitive_index);
+
+        m_inspector_panel->setCoordinateError(errorMessage);
+        m_edit_preview_state.selection_state = primitiveSelectionState(draft.layer_index, draft.primitive_index);
+        m_edit_preview_state.hide_selected_primitive = true;
+        m_scene->setEditPreviewState(m_edit_preview_state);
+
+        if (!alreadyInvalid || !m_has_logged_invalid_coordinate_draft)
+        {
+            m_log_panel->appendMessage(
+                LogSeverity::Error,
+                QStringLiteral("[error] Invalid coordinates for %1: %2").arg(targetLabel, errorMessage));
+            m_has_logged_invalid_coordinate_draft = true;
+        }
+
+        statusBar()->showMessage(QStringLiteral("Coordinate draft invalid"), 2000);
+        return;
+    }
+
+    PrimitiveEditValues beforeValues;
+    if (!readPrimitiveEditValues(currentLayer, draft.primitive_index, &beforeValues))
+    {
+        return;
+    }
+
+    const bool wasInvalid = m_edit_preview_state.hide_selected_primitive
+        && matchesPrimitiveSelection(m_edit_preview_state.selection_state, draft.layer_index, draft.primitive_index);
+    const bool pointsChanged = !pointsMatch(beforeValues.points, parsedPoints);
+
+    clearCoordinatePreviewState();
+    if (!pointsChanged)
+    {
+        if (wasInvalid)
+        {
+            m_scene->setEditPreviewState(m_edit_preview_state);
+        }
+        return;
+    }
+
+    PrimitiveEditValues nextValues = beforeValues;
+    nextValues.points = parsedPoints;
+    if (!applyPrimitiveEditValues(m_document_data.layers[draft.layer_index], draft.primitive_index, nextValues))
+    {
+        m_log_panel->appendMessage(
+            LogSeverity::Error,
+            QStringLiteral("[error] Failed to write coordinates for %1").arg(targetLabel));
+        statusBar()->showMessage(QStringLiteral("Coordinate update failed"), 3000);
+        return;
+    }
+
+    refreshViewsForDocumentChange(false);
+    if (wasInvalid)
+    {
+        m_log_panel->appendMessage(
+            LogSeverity::Info,
+            QStringLiteral("[info] Restored coordinates for %1: %2 -> %3 vertices")
+                .arg(targetLabel)
+                .arg(beforeValues.points.size())
+                .arg(nextValues.points.size()));
+    }
 }
 
 void MainWindow::showAboutDialog()
@@ -634,8 +681,12 @@ void MainWindow::setupUi()
     connect(m_layer_sidebar, &LayerSidebar::selectionChanged, this, &MainWindow::onSelectionStateChanged);
     connect(m_layer_sidebar, &LayerSidebar::layerVisibilityChanged, this, &MainWindow::onLayerVisibilityChanged);
     connect(m_layer_sidebar, &LayerSidebar::primitiveVisibilityChanged, this, &MainWindow::onPrimitiveVisibilityChanged);
-    connect(m_inspector_panel, &InspectorPanel::applyRequested, this, &MainWindow::onInspectorApplyRequested);
-    connect(m_inspector_panel, &InspectorPanel::resetRequested, this, &MainWindow::onInspectorResetRequested);
+    connect(m_inspector_panel, &InspectorPanel::styleChangeRequested, this, &MainWindow::onInspectorStyleChangeRequested);
+    connect(
+        m_inspector_panel,
+        &InspectorPanel::coordinateDraftChanged,
+        this,
+        &MainWindow::onInspectorCoordinateDraftChanged);
 }
 
 void MainWindow::setupMenuBar()
@@ -892,8 +943,10 @@ void MainWindow::importFiles(const QStringList &filePaths, bool replaceExisting)
 
 void MainWindow::syncDocumentToViews(bool fitScene)
 {
+    clearCoordinatePreviewState();
     m_selection_state = normalizedSelectionState(m_selection_state);
     m_layer_sidebar->setDocumentData(m_document_data, true);
+    m_scene->setEditPreviewState(m_edit_preview_state, false);
     m_scene->setDocumentData(m_document_data);
     m_inspector_panel->setDocumentData(m_document_data);
     onSelectionStateChanged(m_selection_state);
@@ -907,6 +960,34 @@ void MainWindow::syncDocumentToViews(bool fitScene)
 SelectionState MainWindow::normalizedSelectionState(const SelectionState &selectionState) const
 {
     return normalizedSelection(m_document_data, selectionState);
+}
+
+void MainWindow::refreshViewsForVisibilityChange()
+{
+    // Never rebuild the sidebar tree from a checkbox signal stack, otherwise the
+    // currently-emitting QTreeWidgetItem can be destroyed mid-signal.
+    clearCoordinatePreviewState();
+    m_selection_state = normalizedSelectionState(m_selection_state);
+    m_layer_sidebar->setDocumentData(m_document_data, false);
+    m_scene->setEditPreviewState(m_edit_preview_state, false);
+    m_scene->setDocumentData(m_document_data);
+    m_inspector_panel->setDocumentData(m_document_data, false);
+    onSelectionStateChanged(m_selection_state);
+}
+
+void MainWindow::refreshViewsForDocumentChange(bool reloadInspectorEditorControls)
+{
+    m_scene->setEditPreviewState(m_edit_preview_state, false);
+    m_scene->setDocumentData(m_document_data);
+    m_inspector_panel->setDocumentData(m_document_data, reloadInspectorEditorControls);
+}
+
+void MainWindow::clearCoordinatePreviewState()
+{
+    m_edit_preview_state = PrimitiveEditPreviewState {};
+    m_has_logged_invalid_coordinate_draft = false;
+    m_scene->setEditPreviewState(m_edit_preview_state, false);
+    m_inspector_panel->clearCoordinateError();
 }
 
 void MainWindow::updateUiFromScene()

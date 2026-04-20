@@ -74,11 +74,11 @@ private slots:
     /// Handles a click on empty scene space.
     void onEmptySceneActivated();
 
-    /// Validates and applies inspector edits to the current primitive.
-    void onInspectorApplyRequested(const PrimitiveEditRequest &request);
+    /// Validates and applies one field-level style change from the inspector.
+    void onInspectorStyleChangeRequested(const PrimitiveStyleChangeRequest &request);
 
-    /// Records a reset of the current inspector edits.
-    void onInspectorResetRequested();
+    /// Validates one real-time coordinate draft from the inspector.
+    void onInspectorCoordinateDraftChanged(const PrimitiveCoordinateDraft &draft);
 
     /// Shows the About dialog.
     void showAboutDialog();
@@ -107,6 +107,15 @@ private:
 
     /// Pushes the current document state into the scene and side panel.
     void syncDocumentToViews(bool fitScene);
+
+    /// Refreshes visibility-dependent UI without rebuilding the sidebar tree.
+    void refreshViewsForVisibilityChange();
+
+    /// Refreshes the scene and inspector after a document mutation.
+    void refreshViewsForDocumentChange(bool reloadInspectorEditorControls);
+
+    /// Clears the current coordinate preview suppression state.
+    void clearCoordinatePreviewState();
 
     /// Normalizes one selection state against the current document.
     [[nodiscard]]
@@ -148,6 +157,8 @@ private:
 
     DocumentData m_document_data;
     SelectionState m_selection_state;
+    PrimitiveEditPreviewState m_edit_preview_state;
+    bool m_has_logged_invalid_coordinate_draft {false};
     ThemeMode m_theme_mode {ThemeMode::Light};
 };
 

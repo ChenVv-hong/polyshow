@@ -1,5 +1,6 @@
 #pragma once
 
+#include "core/PrimitiveEditing.h"
 #include "core/GeometryTypes.h"
 
 #include <QGraphicsScene>
@@ -64,6 +65,9 @@ public:
     /// Updates the selected layer or primitive.
     void setSelectionState(const SelectionState &selectionState);
 
+    /// Replaces the active inspector preview suppression state.
+    void setEditPreviewState(const PrimitiveEditPreviewState &previewState, bool rebuildScene = true);
+
 signals:
     /// Emitted after the geometry statistics change.
     void geometryChanged(int pointCount, int polylineCount, int polygonCount);
@@ -88,6 +92,7 @@ private:
     int m_polyline_count {0};
     int m_polygon_count {0};
     SelectionState m_selection_state;
+    PrimitiveEditPreviewState m_edit_preview_state;
 };
 
 } // namespace PolyShow

@@ -1,6 +1,7 @@
 #include "ui/InspectorPanel.h"
 
 #include "core/PrimitiveEditing.h"
+#include "ui/ColorField.h"
 #include "ui/PanelFrame.h"
 
 #include <QCheckBox>
@@ -9,7 +10,6 @@
 #include <QLabel>
 #include <QLineEdit>
 #include <QPlainTextEdit>
-#include <QPushButton>
 #include <QRectF>
 #include <QStyle>
 #include <QVBoxLayout>
@@ -163,28 +163,21 @@ void refreshValidationStyle(QWidget *widget)
 
 /// Creates a titled field section that can be hidden as one block.
 QWidget *createFieldSection(
-    QWidget *parent, const QString &title, QWidget *editor, QLabel **errorLabel, QLabel **titleLabel = nullptr)
+    QWidget *parent, const QString &title, QWidget *editor, QLabel **errorLabel = nullptr)
 {
     auto *section = new QWidget(parent);
     auto *layout = new QVBoxLayout(section);
     layout->setContentsMargins(0, 0, 0, 0);
     layout->setSpacing(4);
 
-    QLabel *fieldTitle = createSectionTitle(title, section);
-    layout->addWidget(fieldTitle);
+    layout->addWidget(createSectionTitle(title, section));
     layout->addWidget(editor);
-
-    QLabel *fieldErrorLabel = createErrorLabel(section);
-    layout->addWidget(fieldErrorLabel);
 
     if (errorLabel != nullptr)
     {
+        QLabel *fieldErrorLabel = createErrorLabel(section);
+        layout->addWidget(fieldErrorLabel);
         *errorLabel = fieldErrorLabel;
-    }
-
-    if (titleLabel != nullptr)
-    {
-        *titleLabel = fieldTitle;
     }
 
     return section;
@@ -240,32 +233,33 @@ InspectorPanel::InspectorPanel(QWidget *parent)
     editorLayout->setContentsMargins(0, 0, 0, 0);
     editorLayout->setSpacing(8);
 
-    m_edit_state_label = new QLabel(m_editor_widget);
-    m_edit_state_label->setWordWrap(true);
-    editorLayout->addWidget(m_edit_state_label);
+    m_editor_help_label = new QLabel(m_editor_widget);
+    m_editor_help_label->setWordWrap(true);
+    editorLayout->addWidget(m_editor_help_label);
 
-    m_stroke_color_line_edit = new QLineEdit(m_editor_widget);
-    m_stroke_color_line_edit->setPlaceholderText(QStringLiteral("#RRGGBB or #RRGGBBAA"));
-    editorLayout->addWidget(
-        createFieldSection(m_editor_widget, QStringLiteral("Stroke Color"), m_stroke_color_line_edit, &m_stroke_color_error_label));
+    m_stroke_color_field = new ColorField(m_editor_widget);
+    m_stroke_color_field->setPlaceholderText(QStringLiteral("#RRGGBB or #RRGGBBAA"));
+    editorLayout->addWidget(createFieldSection(m_editor_widget, QStringLiteral("Stroke Color"), m_stroke_color_field));
 
     auto *fillWrapper = new QWidget(m_editor_widget);
     auto *fillLayout = new QVBoxLayout(fillWrapper);
     fillLayout->setContentsMargins(0, 0, 0, 0);
     fillLayout->setSpacing(6);
+
     m_fill_enabled_check_box = new QCheckBox(QStringLiteral("Enable Fill"), fillWrapper);
     fillLayout->addWidget(m_fill_enabled_check_box);
-    m_fill_color_line_edit = new QLineEdit(fillWrapper);
-    m_fill_color_line_edit->setPlaceholderText(QStringLiteral("#RRGGBB or #RRGGBBAA"));
-    fillLayout->addWidget(
-        createFieldSection(fillWrapper, QStringLiteral("Fill Color"), m_fill_color_line_edit, &m_fill_color_error_label));
-    m_fill_section_widget = createFieldSection(m_editor_widget, QStringLiteral("Fill"), fillWrapper, nullptr);
+
+    m_fill_color_field = new ColorField(fillWrapper);
+    m_fill_color_field->setPlaceholderText(QStringLiteral("#RRGGBB or #RRGGBBAA"));
+    fillLayout->addWidget(createFieldSection(fillWrapper, QStringLiteral("Fill Color"), m_fill_color_field));
+
+    m_fill_section_widget = createFieldSection(m_editor_widget, QStringLiteral("Fill"), fillWrapper);
     editorLayout->addWidget(m_fill_section_widget);
 
     m_width_line_edit = new QLineEdit(m_editor_widget);
     m_width_line_edit->setPlaceholderText(QStringLiteral("Greater than 0"));
-    m_width_section_widget =
-        createFieldSection(m_editor_widget, QStringLiteral("Line Width"), m_width_line_edit, &m_width_error_label);
+    m_width_section_widget = createFieldSection(
+        m_editor_widget, QStringLiteral("Line Width"), m_width_line_edit, &m_width_error_label);
     editorLayout->addWidget(m_width_section_widget);
 
     m_point_size_line_edit = new QLineEdit(m_editor_widget);
@@ -281,18 +275,6 @@ InspectorPanel::InspectorPanel(QWidget *parent)
     editorLayout->addWidget(
         createFieldSection(m_editor_widget, QStringLiteral("Coordinates"), m_coordinates_text_edit, &m_coordinates_error_label));
 
-    auto *buttonLayout = new QHBoxLayout();
-    buttonLayout->setContentsMargins(0, 0, 0, 0);
-    buttonLayout->setSpacing(8);
-    buttonLayout->addStretch();
-
-    m_reset_button = new QPushButton(QStringLiteral("Reset"), m_editor_widget);
-    buttonLayout->addWidget(m_reset_button);
-
-    m_apply_button = new QPushButton(QStringLiteral("Apply"), m_editor_widget);
-    buttonLayout->addWidget(m_apply_button);
-    editorLayout->addLayout(buttonLayout);
-
     cardLayout->addWidget(m_editor_widget);
 
     m_hint_label = new QLabel(card);
@@ -302,51 +284,57 @@ InspectorPanel::InspectorPanel(QWidget *parent)
     cardLayout->addStretch();
     layout->addWidget(card);
 
-    const auto connectEditorChanged = [this]() {
+    connect(m_stroke_color_field, &ColorField::colorTextCommitted, this, [this](const QString &) {
         if (!m_is_loading_form)
         {
-            updateEditorState();
+            emit styleChangeRequested(buildStyleChangeRequest(PrimitiveStyleField::StrokeColor));
         }
-    };
-
-    connect(m_stroke_color_line_edit, &QLineEdit::textChanged, this, [connectEditorChanged](const QString &) {
-        connectEditorChanged();
+    });
+    connect(m_fill_color_field, &ColorField::colorTextCommitted, this, [this](const QString &) {
+        if (!m_is_loading_form)
+        {
+            emit styleChangeRequested(buildStyleChangeRequest(PrimitiveStyleField::FillColor));
+        }
     });
     connect(m_fill_enabled_check_box, &QCheckBox::toggled, this, [this](bool) {
         if (!m_is_loading_form)
         {
-            updateVisibleEditorFields(currentEditRequest().primitive_kind);
-            updateEditorState();
+            updateVisibleEditorFields(currentPrimitiveKind());
+            emit styleChangeRequested(buildStyleChangeRequest(PrimitiveStyleField::FillEnabled));
         }
     });
-    connect(m_fill_color_line_edit, &QLineEdit::textChanged, this, [connectEditorChanged](const QString &) {
-        connectEditorChanged();
+    connect(m_width_line_edit, &QLineEdit::editingFinished, this, [this]() {
+        if (!m_is_loading_form)
+        {
+            emit styleChangeRequested(buildStyleChangeRequest(PrimitiveStyleField::Width));
+        }
     });
-    connect(m_width_line_edit, &QLineEdit::textChanged, this, [connectEditorChanged](const QString &) {
-        connectEditorChanged();
+    connect(m_point_size_line_edit, &QLineEdit::editingFinished, this, [this]() {
+        if (!m_is_loading_form)
+        {
+            emit styleChangeRequested(buildStyleChangeRequest(PrimitiveStyleField::PointSize));
+        }
     });
-    connect(m_point_size_line_edit, &QLineEdit::textChanged, this, [connectEditorChanged](const QString &) {
-        connectEditorChanged();
-    });
-    connect(m_coordinates_text_edit, &QPlainTextEdit::textChanged, this, [connectEditorChanged]() {
-        connectEditorChanged();
-    });
-
-    connect(m_apply_button, &QPushButton::clicked, this, [this]() {
-        emit applyRequested(currentEditRequest());
-    });
-    connect(m_reset_button, &QPushButton::clicked, this, [this]() {
-        reloadCurrentPrimitiveEditor();
-        emit resetRequested();
+    connect(m_coordinates_text_edit, &QPlainTextEdit::textChanged, this, [this]() {
+        if (!m_is_loading_form)
+        {
+            emit coordinateDraftChanged(currentCoordinateDraft());
+        }
     });
 
     updateContent();
 }
 
-void InspectorPanel::setDocumentData(const DocumentData &documentData)
+void InspectorPanel::setDocumentData(const DocumentData &documentData, bool reloadEditorControls)
 {
     m_document_data = documentData;
-    updateContent();
+    if (reloadEditorControls)
+    {
+        updateContent();
+        return;
+    }
+
+    updateSummary(true);
 }
 
 void InspectorPanel::setSelectionState(const SelectionState &selectionState)
@@ -355,26 +343,99 @@ void InspectorPanel::setSelectionState(const SelectionState &selectionState)
     updateContent();
 }
 
-void InspectorPanel::setValidationErrors(const PrimitiveEditValidationErrors &errors)
+void InspectorPanel::setStyleFieldError(PrimitiveStyleField field, const QString &message)
 {
-    setFieldError(m_stroke_color_line_edit, m_stroke_color_error_label, errors.stroke_color);
-    setFieldError(m_fill_color_line_edit, m_fill_color_error_label, errors.fill_color);
-    setFieldError(m_width_line_edit, m_width_error_label, errors.width);
-    setFieldError(m_point_size_line_edit, m_point_size_error_label, errors.point_size);
-    setFieldError(m_coordinates_text_edit, m_coordinates_error_label, errors.coordinates);
+    switch (field)
+    {
+    case PrimitiveStyleField::StrokeColor:
+        m_validation_errors.stroke_color = message;
+        break;
+    case PrimitiveStyleField::FillColor:
+        m_validation_errors.fill_color = message;
+        break;
+    case PrimitiveStyleField::Width:
+        m_validation_errors.width = message;
+        break;
+    case PrimitiveStyleField::PointSize:
+        m_validation_errors.point_size = message;
+        break;
+    case PrimitiveStyleField::FillEnabled:
+        break;
+    }
+
+    updateFieldErrors();
 }
 
-void InspectorPanel::clearValidationErrors()
+void InspectorPanel::clearStyleFieldError(PrimitiveStyleField field)
 {
-    setValidationErrors(PrimitiveEditValidationErrors {});
+    setStyleFieldError(field, QString());
+}
+
+void InspectorPanel::setCoordinateError(const QString &message)
+{
+    m_validation_errors.coordinates = message;
+    updateFieldErrors();
+}
+
+void InspectorPanel::clearCoordinateError()
+{
+    setCoordinateError(QString());
+}
+
+void InspectorPanel::syncStyleFieldFromSelection(PrimitiveStyleField field)
+{
+    if (!hasActivePrimitiveSelection())
+    {
+        return;
+    }
+
+    const LayerData &layer = m_document_data.layers.at(m_selection_state.layer_index);
+    const PrimitiveStyle style = primitiveStyle(layer, m_selection_state.primitive_index);
+
+    m_is_loading_form = true;
+    switch (field)
+    {
+    case PrimitiveStyleField::StrokeColor:
+        m_stroke_color_field->setColorText(formatColorText(style.color));
+        break;
+    case PrimitiveStyleField::FillColor:
+        m_fill_color_field->setColorText(formatColorText(style.fill_color));
+        break;
+    case PrimitiveStyleField::Width:
+        m_width_line_edit->setText(QString::number(style.width, 'f', 2));
+        break;
+    case PrimitiveStyleField::PointSize:
+        m_point_size_line_edit->setText(QString::number(style.point_size, 'f', 2));
+        break;
+    case PrimitiveStyleField::FillEnabled:
+        m_fill_enabled_check_box->setChecked(style.fill_enabled);
+        break;
+    }
+    updateVisibleEditorFields(currentPrimitiveKind());
+    m_is_loading_form = false;
 }
 
 void InspectorPanel::updateContent()
 {
+    m_validation_errors.clear();
+    updateSummary(false);
+
+    if (hasActivePrimitiveSelection())
+    {
+        const LayerData &layer = m_document_data.layers.at(m_selection_state.layer_index);
+        loadPrimitiveEditor(layer, m_selection_state.primitive_index);
+    }
+
+    updateFieldErrors();
+}
+
+void InspectorPanel::updateSummary(bool preserveEditorVisibility)
+{
     m_badge_label->setText(selectionBadgeText(m_selection_state.kind));
-    m_editor_widget->setVisible(false);
-    m_has_loaded_request = false;
-    clearValidationErrors();
+    if (!preserveEditorVisibility)
+    {
+        m_editor_widget->setVisible(false);
+    }
 
     if (m_selection_state.kind == SelectionKind::Layer
         && m_selection_state.layer_index >= 0
@@ -389,24 +450,23 @@ void InspectorPanel::updateContent()
         return;
     }
 
-    if (m_selection_state.kind == SelectionKind::Primitive
-        && m_selection_state.layer_index >= 0
-        && m_selection_state.layer_index < m_document_data.layers.size())
+    if (hasActivePrimitiveSelection())
     {
         const LayerData &layer = m_document_data.layers.at(m_selection_state.layer_index);
-        if (m_selection_state.primitive_index >= 0 && m_selection_state.primitive_index < layer.primitives.size())
+        const LayerPrimitiveData &primitive = layer.primitives.at(m_selection_state.primitive_index);
+        m_title_label->setText(primitive.display_name);
+        m_meta_label->setText(QStringLiteral("Primitive / selected in %1").arg(layer.display_name));
+        m_geometry_label->setText(QStringLiteral("Geometry"));
+        m_geometry_body_label->setText(primitiveGeometryText(layer, m_selection_state.primitive_index));
+        m_editor_help_label->setText(
+            QStringLiteral("Style fields submit on Enter or when focus leaves. Coordinates update in real time."));
+        m_hint_label->setText(QStringLiteral("Invalid coordinates keep the text, turn the border red, and hide the preview."));
+        if (!preserveEditorVisibility || !m_editor_widget->isVisible())
         {
-            const LayerPrimitiveData &primitive = layer.primitives.at(m_selection_state.primitive_index);
-            m_title_label->setText(primitive.display_name);
-            m_meta_label->setText(QStringLiteral("Primitive / selected in %1").arg(layer.display_name));
-            m_geometry_label->setText(QStringLiteral("Geometry"));
-            m_geometry_body_label->setText(primitiveGeometryText(layer, m_selection_state.primitive_index));
-            m_hint_label->setText(
-                QStringLiteral("Apply updates the current in-memory primitive. Reset discards unsaved edits."));
             m_editor_widget->setVisible(true);
-            loadPrimitiveEditor(layer, m_selection_state.primitive_index);
-            return;
         }
+        updateVisibleEditorFields(primitive.reference.kind);
+        return;
     }
 
     m_title_label->setText(QStringLiteral("No selection"));
@@ -418,80 +478,24 @@ void InspectorPanel::updateContent()
 
 void InspectorPanel::loadPrimitiveEditor(const LayerData &layer, int primitiveIndex)
 {
-    PrimitiveEditRequest request;
-    if (!buildPrimitiveEditRequest(layer, primitiveIndex, &request))
+    PrimitiveEditValues values;
+    if (!readPrimitiveEditValues(layer, primitiveIndex, &values))
     {
         return;
     }
 
     m_is_loading_form = true;
-    request.layer_index = m_selection_state.layer_index;
-    request.primitive_index = primitiveIndex;
-    m_loaded_request = request;
-    m_has_loaded_request = true;
-
-    m_stroke_color_line_edit->setText(request.stroke_color_text);
-    m_fill_enabled_check_box->setChecked(request.fill_enabled);
-    m_fill_color_line_edit->setText(request.fill_color_text);
-    m_width_line_edit->setText(request.width_text);
-    m_point_size_line_edit->setText(request.point_size_text);
-    m_coordinates_text_edit->setPlainText(request.coordinates_text);
-    updateVisibleEditorFields(request.primitive_kind);
+    m_stroke_color_field->setColorText(formatColorText(values.style.color));
+    m_fill_enabled_check_box->setChecked(values.style.fill_enabled);
+    m_fill_color_field->setColorText(formatColorText(values.style.fill_color));
+    m_width_line_edit->setText(QString::number(values.style.width, 'f', 2));
+    m_point_size_line_edit->setText(QString::number(values.style.point_size, 'f', 2));
+    m_coordinates_text_edit->setPlainText(formatCoordinateText(values.points));
+    updateVisibleEditorFields(layer.primitives.at(primitiveIndex).reference.kind);
     m_is_loading_form = false;
-
-    clearValidationErrors();
-    updateEditorState();
 }
 
-void InspectorPanel::reloadCurrentPrimitiveEditor()
-{
-    if (m_selection_state.kind != SelectionKind::Primitive || m_selection_state.layer_index < 0
-        || m_selection_state.layer_index >= m_document_data.layers.size())
-    {
-        return;
-    }
-
-    const LayerData &layer = m_document_data.layers.at(m_selection_state.layer_index);
-    if (m_selection_state.primitive_index < 0 || m_selection_state.primitive_index >= layer.primitives.size())
-    {
-        return;
-    }
-
-    loadPrimitiveEditor(layer, m_selection_state.primitive_index);
-}
-
-PrimitiveEditRequest InspectorPanel::currentEditRequest() const
-{
-    PrimitiveEditRequest request = m_loaded_request;
-    request.layer_index = m_selection_state.layer_index;
-    request.primitive_index = m_selection_state.primitive_index;
-    request.stroke_color_text = m_stroke_color_line_edit->text().trimmed();
-    request.fill_enabled = m_fill_enabled_check_box->isChecked();
-    request.fill_color_text = m_fill_color_line_edit->text().trimmed();
-    request.width_text = m_width_line_edit->text().trimmed();
-    request.point_size_text = m_point_size_line_edit->text().trimmed();
-    request.coordinates_text = m_coordinates_text_edit->toPlainText();
-    return request;
-}
-
-void InspectorPanel::updateEditorState()
-{
-    if (!m_has_loaded_request)
-    {
-        m_apply_button->setEnabled(false);
-        m_reset_button->setEnabled(false);
-        m_edit_state_label->setText(QStringLiteral("Select a primitive to edit it."));
-        return;
-    }
-
-    const bool isDirty = currentEditRequest() != m_loaded_request;
-    m_apply_button->setEnabled(isDirty);
-    m_reset_button->setEnabled(isDirty);
-    m_edit_state_label->setText(
-        isDirty ? QStringLiteral("Unsaved changes pending.") : QStringLiteral("No pending changes."));
-}
-
-void InspectorPanel::setFieldError(QWidget *editor, QLabel *errorLabel, const QString &message)
+void InspectorPanel::setTextFieldError(QWidget *editor, QLabel *errorLabel, const QString &message)
 {
     if (editor != nullptr)
     {
@@ -506,6 +510,15 @@ void InspectorPanel::setFieldError(QWidget *editor, QLabel *errorLabel, const QS
     }
 }
 
+void InspectorPanel::updateFieldErrors()
+{
+    m_stroke_color_field->setErrorMessage(m_validation_errors.stroke_color);
+    m_fill_color_field->setErrorMessage(m_validation_errors.fill_color);
+    setTextFieldError(m_width_line_edit, m_width_error_label, m_validation_errors.width);
+    setTextFieldError(m_point_size_line_edit, m_point_size_error_label, m_validation_errors.point_size);
+    setTextFieldError(m_coordinates_text_edit, m_coordinates_error_label, m_validation_errors.coordinates);
+}
+
 void InspectorPanel::updateVisibleEditorFields(PrimitiveKind kind)
 {
     const bool showFill = kind == PrimitiveKind::Polygon;
@@ -513,7 +526,68 @@ void InspectorPanel::updateVisibleEditorFields(PrimitiveKind kind)
 
     m_fill_section_widget->setVisible(showFill);
     m_width_section_widget->setVisible(showWidth);
-    m_fill_color_line_edit->setEnabled(showFill && m_fill_enabled_check_box->isChecked());
+    m_fill_color_field->setEnabled(showFill && m_fill_enabled_check_box->isChecked());
+}
+
+bool InspectorPanel::hasActivePrimitiveSelection() const
+{
+    return m_selection_state.kind == SelectionKind::Primitive
+        && m_selection_state.layer_index >= 0
+        && m_selection_state.layer_index < m_document_data.layers.size()
+        && m_selection_state.primitive_index >= 0
+        && m_selection_state.primitive_index < m_document_data.layers.at(m_selection_state.layer_index).primitives.size();
+}
+
+PrimitiveKind InspectorPanel::currentPrimitiveKind() const
+{
+    if (!hasActivePrimitiveSelection())
+    {
+        return PrimitiveKind::Point;
+    }
+
+    return m_document_data.layers.at(m_selection_state.layer_index)
+        .primitives.at(m_selection_state.primitive_index)
+        .reference.kind;
+}
+
+PrimitiveStyleChangeRequest InspectorPanel::buildStyleChangeRequest(PrimitiveStyleField field) const
+{
+    PrimitiveStyleChangeRequest request;
+    request.field = field;
+    request.primitive_kind = currentPrimitiveKind();
+    request.layer_index = m_selection_state.layer_index;
+    request.primitive_index = m_selection_state.primitive_index;
+
+    switch (field)
+    {
+    case PrimitiveStyleField::StrokeColor:
+        request.text_value = m_stroke_color_field->colorText();
+        break;
+    case PrimitiveStyleField::FillColor:
+        request.text_value = m_fill_color_field->colorText();
+        break;
+    case PrimitiveStyleField::Width:
+        request.text_value = m_width_line_edit->text().trimmed();
+        break;
+    case PrimitiveStyleField::PointSize:
+        request.text_value = m_point_size_line_edit->text().trimmed();
+        break;
+    case PrimitiveStyleField::FillEnabled:
+        request.bool_value = m_fill_enabled_check_box->isChecked();
+        break;
+    }
+
+    return request;
+}
+
+PrimitiveCoordinateDraft InspectorPanel::currentCoordinateDraft() const
+{
+    PrimitiveCoordinateDraft draft;
+    draft.primitive_kind = currentPrimitiveKind();
+    draft.layer_index = m_selection_state.layer_index;
+    draft.primitive_index = m_selection_state.primitive_index;
+    draft.coordinates_text = m_coordinates_text_edit->toPlainText();
+    return draft;
 }
 
 } // namespace PolyShow

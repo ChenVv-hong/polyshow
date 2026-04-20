@@ -1,6 +1,5 @@
 #include "ui/LayerSidebar.h"
 
-#include <QCheckBox>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QLineEdit>
@@ -75,10 +74,11 @@ LayerSidebar::LayerSidebar(QWidget *parent)
     headerLayout->addWidget(titleLabel);
     headerLayout->addStretch();
 
-    m_search_button = new QPushButton(QStringLiteral("⌕"), this);
+    m_search_button = new QPushButton(QStringLiteral("S"), this);
     m_search_button->setCheckable(true);
     m_search_button->setCursor(Qt::PointingHandCursor);
     m_search_button->setFixedSize(28, 28);
+    m_search_button->setToolTip(QStringLiteral("Search"));
     headerLayout->addWidget(m_search_button);
     layout->addLayout(headerLayout);
 
@@ -110,7 +110,7 @@ LayerSidebar::LayerSidebar(QWidget *parent)
         applyFilter();
     });
     connect(m_tree_widget, &QTreeWidget::itemChanged, this, [this](QTreeWidgetItem *item, int column) {
-        if (column != 0 || item == nullptr)
+        if (m_is_rebuilding_tree || m_is_syncing_selection || column != 0 || item == nullptr)
         {
             return;
         }
@@ -132,6 +132,11 @@ LayerSidebar::LayerSidebar(QWidget *parent)
         }
     });
     connect(m_tree_widget, &QTreeWidget::currentItemChanged, this, [this](QTreeWidgetItem *current, QTreeWidgetItem *) {
+        if (m_is_rebuilding_tree || m_is_syncing_selection)
+        {
+            return;
+        }
+
         if (current == nullptr)
         {
             m_selection_state = SelectionState {};
@@ -155,29 +160,39 @@ LayerSidebar::LayerSidebar(QWidget *parent)
     updateFooter();
 }
 
-void LayerSidebar::setDocumentData(const DocumentData &documentData)
+void LayerSidebar::setDocumentData(const DocumentData &documentData, bool rebuildTreeItems)
 {
     m_document_data = documentData;
-    rebuildTree();
-    applyFilter();
+    if (rebuildTreeItems)
+    {
+        rebuildTree();
+        applyFilter();
+        updateFooter();
+        setSelectionState(m_selection_state);
+        return;
+    }
+
     updateFooter();
-    setSelectionState(m_selection_state);
 }
 
 void LayerSidebar::setSelectionState(const SelectionState &selectionState)
 {
+    m_is_syncing_selection = true;
     m_selection_state = selectionState;
+
     const QSignalBlocker blocker(m_tree_widget);
     QTreeWidgetItem *item = findItem(selectionState);
     if (item == nullptr)
     {
         m_tree_widget->clearSelection();
         m_tree_widget->setCurrentItem(nullptr);
+        m_is_syncing_selection = false;
         return;
     }
 
     m_tree_widget->setCurrentItem(item);
     item->setSelected(true);
+    m_is_syncing_selection = false;
 }
 
 void LayerSidebar::setSearchExpanded(bool expanded)
@@ -231,6 +246,7 @@ void LayerSidebar::updateFooter()
 
 void LayerSidebar::rebuildTree()
 {
+    m_is_rebuilding_tree = true;
     const QSignalBlocker blocker(m_tree_widget);
     m_tree_widget->clear();
 
@@ -263,6 +279,8 @@ void LayerSidebar::rebuildTree()
 
         layerItem->setExpanded(true);
     }
+
+    m_is_rebuilding_tree = false;
 }
 
 void LayerSidebar::applyFilter()

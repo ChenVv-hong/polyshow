@@ -19,6 +19,7 @@ set(POLYSHOW_HEADERS
     include/core/GeometryScene.h
     include/parsers/PlyParser.h
     include/ui/GeometryViewer.h
+    include/ui/ColorField.h
     include/ui/InspectorPanel.h
     include/ui/LayerSidebar.h
     include/ui/LogPanel.h
@@ -34,6 +35,7 @@ set(POLYSHOW_SOURCES
     src/core/GeometryScene.cpp
     src/core/PrimitiveEditing.cpp
     src/parsers/PlyParser.cpp
+    src/ui/ColorField.cpp
     src/ui/GeometryViewer.cpp
     src/ui/InspectorPanel.cpp
     src/ui/LayerSidebar.cpp

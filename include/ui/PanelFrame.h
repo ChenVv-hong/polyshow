@@ -29,6 +29,9 @@ public:
 private:
     /// Maps the enum to the stylesheet property string.
     static QString variantName(Variant variant);
+
+    /// Applies the current variant colors directly to the widget.
+    void applyVariantStyle(Variant variant);
 };
 
 } // namespace PolyShow

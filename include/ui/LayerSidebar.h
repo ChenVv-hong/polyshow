@@ -23,7 +23,7 @@ public:
     explicit LayerSidebar(QWidget *parent = nullptr);
 
     /// Rebuilds the sidebar from the current document.
-    void setDocumentData(const DocumentData &documentData);
+    void setDocumentData(const DocumentData &documentData, bool rebuildTreeItems = true);
 
     /// Synchronizes the current layer or primitive selection.
     void setSelectionState(const SelectionState &selectionState);
@@ -63,6 +63,8 @@ private:
     QLabel *m_footer_label {nullptr};
     QTreeWidget *m_tree_widget {nullptr};
     bool m_is_search_expanded {false};
+    bool m_is_rebuilding_tree {false};
+    bool m_is_syncing_selection {false};
 };
 
 } // namespace PolyShow

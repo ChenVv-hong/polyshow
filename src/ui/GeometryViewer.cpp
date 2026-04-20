@@ -15,6 +15,7 @@ namespace
 
 constexpr int kLayerIndexRole = 1;
 constexpr int kPrimitiveIndexRole = 2;
+constexpr int kSelectionOverlayRole = 3;
 
 } // namespace
 
@@ -33,6 +34,9 @@ GeometryViewer::GeometryViewer(QWidget *parent)
     setResizeAnchor(QGraphicsView::AnchorViewCenter);
     setDragMode(QGraphicsView::NoDrag);
     setViewportUpdateMode(QGraphicsView::SmartViewportUpdate);
+    setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+    setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+    setFrameShape(QFrame::NoFrame);
     setBackgroundBrush(themeColors.canvas_background);
 }
 
@@ -96,23 +100,27 @@ void GeometryViewer::mousePressEvent(QMouseEvent *event)
 
     if (event->button() == Qt::LeftButton)
     {
-        if (QGraphicsItem *item = itemAt(event->pos()))
+        const QList<QGraphicsItem *> sceneItems = items(event->pos());
+        for (QGraphicsItem *item : sceneItems)
         {
+            if (item == nullptr || item->data(kSelectionOverlayRole).toBool())
+            {
+                continue;
+            }
+
             const QVariant layerIndex = item->data(kLayerIndexRole);
             const QVariant primitiveIndex = item->data(kPrimitiveIndexRole);
             if (layerIndex.isValid() && primitiveIndex.isValid())
             {
                 emit primitiveActivated(layerIndex.toInt(), primitiveIndex.toInt());
-            }
-            else
-            {
-                emit emptyAreaActivated();
+                event->accept();
+                return;
             }
         }
-        else
-        {
-            emit emptyAreaActivated();
-        }
+
+        emit emptyAreaActivated();
+        event->accept();
+        return;
     }
 
     QGraphicsView::mousePressEvent(event);

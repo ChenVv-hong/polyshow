@@ -19,6 +19,7 @@
 #include <QMenu>
 #include <QMenuBar>
 #include <QMessageBox>
+#include <QPalette>
 #include <QSignalBlocker>
 #include <QSplitter>
 #include <QStatusBar>
@@ -128,16 +129,161 @@ SelectionState normalizedSelection(const DocumentData &documentData, const Selec
 
     if (selectionState.kind == SelectionKind::Layer)
     {
+        if (!documentData.layers.at(selectionState.layer_index).visible)
+        {
+            return {};
+        }
         return selectionState;
     }
 
     const LayerData &layer = documentData.layers.at(selectionState.layer_index);
+    if (!layer.visible)
+    {
+        return {};
+    }
+
     if (selectionState.primitive_index < 0 || selectionState.primitive_index >= layer.primitives.size())
     {
         return {};
     }
 
+    if (!layer.primitives.at(selectionState.primitive_index).visible)
+    {
+        return {};
+    }
+
     return selectionState;
+}
+
+/// Formats one numeric value for compact log output.
+QString formatNumber(double value)
+{
+    return QString::number(value, 'f', 2);
+}
+
+/// Returns the user-facing log label for one selected primitive.
+QString primitiveLogLabel(const DocumentData &documentData, int layerIndex, int primitiveIndex)
+{
+    if (layerIndex < 0 || layerIndex >= documentData.layers.size())
+    {
+        return QStringLiteral("selected primitive");
+    }
+
+    const LayerData &layer = documentData.layers.at(layerIndex);
+    if (primitiveIndex < 0 || primitiveIndex >= layer.primitives.size())
+    {
+        return QStringLiteral("selected primitive");
+    }
+
+    return QStringLiteral("%1 in %2").arg(layer.primitives.at(primitiveIndex).display_name, layer.display_name);
+}
+
+/// Returns whether two point lists carry the same geometry.
+bool pointsMatch(const QVector<Point2D> &lhs, const QVector<Point2D> &rhs)
+{
+    if (lhs.size() != rhs.size())
+    {
+        return false;
+    }
+
+    for (int index = 0; index < lhs.size(); ++index)
+    {
+        if (!pointsEqual(lhs.at(index), rhs.at(index)))
+        {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+/// Builds a compact summary of one applied primitive edit.
+QString primitiveEditSummary(
+    PrimitiveKind kind, const PrimitiveEditValues &beforeValues, const PrimitiveEditValues &afterValues)
+{
+    QStringList changes;
+
+    if (beforeValues.style.color != afterValues.style.color)
+    {
+        changes.append(
+            QStringLiteral("stroke %1 -> %2")
+                .arg(formatColorText(beforeValues.style.color), formatColorText(afterValues.style.color)));
+    }
+
+    if (kind == PrimitiveKind::Polygon)
+    {
+        if (beforeValues.style.fill_enabled != afterValues.style.fill_enabled)
+        {
+            changes.append(
+                QStringLiteral("fill %1 -> %2")
+                    .arg(beforeValues.style.fill_enabled ? QStringLiteral("on") : QStringLiteral("off"))
+                    .arg(afterValues.style.fill_enabled ? QStringLiteral("on") : QStringLiteral("off")));
+        }
+
+        if (beforeValues.style.fill_color != afterValues.style.fill_color)
+        {
+            changes.append(
+                QStringLiteral("fill color %1 -> %2")
+                    .arg(formatColorText(beforeValues.style.fill_color), formatColorText(afterValues.style.fill_color)));
+        }
+    }
+
+    if (kind != PrimitiveKind::Point && beforeValues.style.width != afterValues.style.width)
+    {
+        changes.append(
+            QStringLiteral("width %1 -> %2")
+                .arg(formatNumber(beforeValues.style.width), formatNumber(afterValues.style.width)));
+    }
+
+    if (beforeValues.style.point_size != afterValues.style.point_size)
+    {
+        changes.append(
+            QStringLiteral("point size %1 -> %2")
+                .arg(formatNumber(beforeValues.style.point_size), formatNumber(afterValues.style.point_size)));
+    }
+
+    if (!pointsMatch(beforeValues.points, afterValues.points))
+    {
+        changes.append(
+            QStringLiteral("coordinates %1 -> %2 vertices")
+                .arg(beforeValues.points.size())
+                .arg(afterValues.points.size()));
+    }
+
+    return changes.isEmpty() ? QStringLiteral("no visible value changes") : changes.join(QStringLiteral(", "));
+}
+
+/// Formats validation errors for the log panel.
+QString validationLogSummary(const PrimitiveEditValidationErrors &errors)
+{
+    QStringList issues;
+
+    if (!errors.stroke_color.isEmpty())
+    {
+        issues.append(QStringLiteral("stroke color: %1").arg(errors.stroke_color));
+    }
+
+    if (!errors.fill_color.isEmpty())
+    {
+        issues.append(QStringLiteral("fill color: %1").arg(errors.fill_color));
+    }
+
+    if (!errors.width.isEmpty())
+    {
+        issues.append(QStringLiteral("width: %1").arg(errors.width));
+    }
+
+    if (!errors.point_size.isEmpty())
+    {
+        issues.append(QStringLiteral("point size: %1").arg(errors.point_size));
+    }
+
+    if (!errors.coordinates.isEmpty())
+    {
+        issues.append(QStringLiteral("coordinates: %1").arg(errors.coordinates));
+    }
+
+    return issues.join(QStringLiteral("; "));
 }
 
 } // namespace
@@ -219,7 +365,10 @@ void MainWindow::onLayerVisibilityChanged(int layerIndex, bool visible)
     }
 
     m_document_data.layers[layerIndex].visible = visible;
-    syncDocumentToViews(false);
+    m_layer_sidebar->setDocumentData(m_document_data, false);
+    m_scene->setDocumentData(m_document_data);
+    m_inspector_panel->setDocumentData(m_document_data);
+    onSelectionStateChanged(normalizedSelectionState(m_selection_state));
 }
 
 void MainWindow::onPrimitiveVisibilityChanged(int layerIndex, int primitiveIndex, bool visible)
@@ -236,7 +385,10 @@ void MainWindow::onPrimitiveVisibilityChanged(int layerIndex, int primitiveIndex
     }
 
     layer.primitives[primitiveIndex].visible = visible;
-    syncDocumentToViews(false);
+    m_layer_sidebar->setDocumentData(m_document_data, false);
+    m_scene->setDocumentData(m_document_data);
+    m_inspector_panel->setDocumentData(m_document_data);
+    onSelectionStateChanged(normalizedSelectionState(m_selection_state));
 }
 
 void MainWindow::onRenderModeChanged(int index)
@@ -290,6 +442,89 @@ void MainWindow::onEmptySceneActivated()
     onSelectionStateChanged(SelectionState {});
 }
 
+void MainWindow::onInspectorApplyRequested(const PrimitiveEditRequest &request)
+{
+    if (request.layer_index < 0 || request.layer_index >= m_document_data.layers.size())
+    {
+        return;
+    }
+
+    const LayerData &currentLayer = m_document_data.layers.at(request.layer_index);
+    if (request.primitive_index < 0 || request.primitive_index >= currentLayer.primitives.size())
+    {
+        return;
+    }
+
+    const PrimitiveKind expectedKind = currentLayer.primitives.at(request.primitive_index).reference.kind;
+    const QString targetLabel = primitiveLogLabel(m_document_data, request.layer_index, request.primitive_index);
+    m_log_panel->appendMessage(
+        LogSeverity::Info,
+        QStringLiteral("[info] Applying inspector edits to %1").arg(targetLabel));
+
+    if (request.primitive_kind != expectedKind)
+    {
+        m_log_panel->appendMessage(
+            LogSeverity::Error,
+            QStringLiteral("[error] Failed to apply inspector edits to %1: selection kind changed").arg(targetLabel));
+        statusBar()->showMessage(QStringLiteral("Inspector apply failed"), 3000);
+        return;
+    }
+
+    PrimitiveEditValues beforeValues;
+    if (!readPrimitiveEditValues(currentLayer, request.primitive_index, &beforeValues))
+    {
+        m_log_panel->appendMessage(
+            LogSeverity::Error,
+            QStringLiteral("[error] Failed to read %1 before applying edits").arg(targetLabel));
+        statusBar()->showMessage(QStringLiteral("Inspector apply failed"), 3000);
+        return;
+    }
+
+    PrimitiveEditValidationErrors errors;
+    PrimitiveEditValues parsedValues;
+    if (!validatePrimitiveEditRequest(currentLayer, request.primitive_index, request, &parsedValues, &errors))
+    {
+        m_inspector_panel->setValidationErrors(errors);
+        m_log_panel->appendMessage(
+            LogSeverity::Error,
+            QStringLiteral("[error] Failed to apply inspector edits to %1: %2")
+                .arg(targetLabel, validationLogSummary(errors)));
+        statusBar()->showMessage(QStringLiteral("Inspector apply failed"), 3000);
+        return;
+    }
+
+    m_inspector_panel->clearValidationErrors();
+    if (!applyPrimitiveEditValues(m_document_data.layers[request.layer_index], request.primitive_index, parsedValues))
+    {
+        m_log_panel->appendMessage(
+            LogSeverity::Error,
+            QStringLiteral("[error] Failed to write inspector edits to %1").arg(targetLabel));
+        statusBar()->showMessage(QStringLiteral("Inspector apply failed"), 3000);
+        return;
+    }
+
+    m_log_panel->appendMessage(
+        LogSeverity::Info,
+        QStringLiteral("[info] Updated %1: %2")
+            .arg(targetLabel, primitiveEditSummary(expectedKind, beforeValues, parsedValues)));
+    syncDocumentToViews(false);
+    statusBar()->showMessage(QStringLiteral("Primitive updated"), 3000);
+}
+
+void MainWindow::onInspectorResetRequested()
+{
+    if (m_selection_state.kind != SelectionKind::Primitive)
+    {
+        return;
+    }
+
+    const QString targetLabel = primitiveLogLabel(m_document_data, m_selection_state.layer_index, m_selection_state.primitive_index);
+    m_log_panel->appendMessage(
+        LogSeverity::Info,
+        QStringLiteral("[info] Reset unsaved inspector edits for %1").arg(targetLabel));
+    statusBar()->showMessage(QStringLiteral("Inspector edits reset"), 2000);
+}
+
 void MainWindow::showAboutDialog()
 {
     QMessageBox::about(
@@ -307,6 +542,7 @@ void MainWindow::setupUi()
 {
     setWindowTitle(QStringLiteral("PolyShow"));
     resize(1280, 800);
+    const ThemeColors &themeColors = UiTheme::colors(m_theme_mode);
 
     m_scene = new GeometryScene(this);
     m_geometry_viewer = new GeometryViewer(this);
@@ -337,6 +573,7 @@ void MainWindow::setupUi()
 
     m_splitter = new QSplitter(Qt::Horizontal, this);
     m_splitter->setChildrenCollapsible(false);
+    m_splitter->setHandleWidth(8);
     m_splitter->addWidget(leftContainer);
     m_splitter->addWidget(m_viewport_frame);
     m_splitter->addWidget(m_inspector_container);
@@ -349,14 +586,46 @@ void MainWindow::setupUi()
     auto *logLayout = new QVBoxLayout(m_log_panel_container);
     logLayout->setContentsMargins(0, 0, 0, 0);
     logLayout->addWidget(m_log_panel);
+    m_log_panel_container->setMinimumHeight(96);
+
+    m_vertical_splitter = new QSplitter(Qt::Vertical, this);
+    m_vertical_splitter->setChildrenCollapsible(false);
+    m_vertical_splitter->setHandleWidth(8);
+    m_vertical_splitter->addWidget(m_splitter);
+    m_vertical_splitter->addWidget(m_log_panel_container);
+    m_vertical_splitter->setStretchFactor(0, 1);
+    m_vertical_splitter->setStretchFactor(1, 0);
+    m_vertical_splitter->setSizes({640, 140});
 
     auto *centralWidget = new QWidget(this);
+    centralWidget->setObjectName(QStringLiteral("workspaceRoot"));
+    centralWidget->setAutoFillBackground(true);
+    centralWidget->setAttribute(Qt::WA_StyledBackground, true);
+    // centralWidget->setStyleSheet(QStringLiteral("#workspaceRoot { background-color: %1; }")
+    //                                  .arg(themeColors.window_background.name(QColor::HexArgb)));
+    QPalette centralPalette = centralWidget->palette();
+    centralPalette.setColor(QPalette::Window, themeColors.window_background);
+    centralWidget->setPalette(centralPalette);
     auto *layout = new QVBoxLayout(centralWidget);
     layout->setContentsMargins(12, 12, 12, 12);
     layout->setSpacing(12);
-    layout->addWidget(m_splitter, 1);
-    layout->addWidget(m_log_panel_container);
+    layout->addWidget(m_vertical_splitter, 1);
     setCentralWidget(centralWidget);
+
+    const QString splitterStyle = QStringLiteral(
+        "QSplitter::handle {"
+        "  background-color: %1;"
+        "}"
+        "QSplitter::handle:hover {"
+        "  background-color: %2;"
+        "}"
+        "QSplitter::handle:pressed {"
+        "  background-color: %2;"
+        "}")
+                                      .arg(themeColors.border_subtle.name(QColor::HexArgb))
+                                      .arg(themeColors.text_muted.name(QColor::HexArgb));
+    // m_splitter->setStyleSheet(splitterStyle);
+    // m_vertical_splitter->setStyleSheet(splitterStyle);
 
     connect(m_scene, &GeometryScene::geometryChanged, this, &MainWindow::onGeometryChanged);
     connect(m_geometry_viewer, &GeometryViewer::mousePositionChanged, this, &MainWindow::updateMousePosition);
@@ -365,6 +634,8 @@ void MainWindow::setupUi()
     connect(m_layer_sidebar, &LayerSidebar::selectionChanged, this, &MainWindow::onSelectionStateChanged);
     connect(m_layer_sidebar, &LayerSidebar::layerVisibilityChanged, this, &MainWindow::onLayerVisibilityChanged);
     connect(m_layer_sidebar, &LayerSidebar::primitiveVisibilityChanged, this, &MainWindow::onPrimitiveVisibilityChanged);
+    connect(m_inspector_panel, &InspectorPanel::applyRequested, this, &MainWindow::onInspectorApplyRequested);
+    connect(m_inspector_panel, &InspectorPanel::resetRequested, this, &MainWindow::onInspectorResetRequested);
 }
 
 void MainWindow::setupMenuBar()
@@ -622,7 +893,7 @@ void MainWindow::importFiles(const QStringList &filePaths, bool replaceExisting)
 void MainWindow::syncDocumentToViews(bool fitScene)
 {
     m_selection_state = normalizedSelectionState(m_selection_state);
-    m_layer_sidebar->setDocumentData(m_document_data);
+    m_layer_sidebar->setDocumentData(m_document_data, true);
     m_scene->setDocumentData(m_document_data);
     m_inspector_panel->setDocumentData(m_document_data);
     onSelectionStateChanged(m_selection_state);

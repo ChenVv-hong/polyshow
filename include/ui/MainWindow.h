@@ -1,5 +1,6 @@
 #pragma once
 
+#include "core/PrimitiveEditing.h"
 #include "core/GeometryScene.h"
 #include "ui/UiTheme.h"
 
@@ -73,6 +74,12 @@ private slots:
     /// Handles a click on empty scene space.
     void onEmptySceneActivated();
 
+    /// Validates and applies inspector edits to the current primitive.
+    void onInspectorApplyRequested(const PrimitiveEditRequest &request);
+
+    /// Records a reset of the current inspector edits.
+    void onInspectorResetRequested();
+
     /// Shows the About dialog.
     void showAboutDialog();
 
@@ -114,6 +121,7 @@ private:
     InspectorPanel *m_inspector_panel {nullptr};
     LogPanel *m_log_panel {nullptr};
     QSplitter *m_splitter {nullptr};
+    QSplitter *m_vertical_splitter {nullptr};
     PanelFrame *m_viewport_frame {nullptr};
     PanelFrame *m_inspector_container {nullptr};
     PanelFrame *m_log_panel_container {nullptr};

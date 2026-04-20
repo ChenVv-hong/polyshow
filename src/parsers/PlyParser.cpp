@@ -1,11 +1,12 @@
 #include "parsers/PlyParser.h"
 
+#include "core/PrimitiveEditing.h"
+
 #include <QFile>
 #include <QRegularExpression>
 #include <QStringList>
 #include <QTextStream>
 
-#include <cmath>
 #include <utility>
 
 namespace PolyShow
@@ -32,72 +33,10 @@ struct StyleConfig
     }
 };
 
-constexpr double kPointEqualityEpsilon = 1e-9;
-
 /// Formats an error message with the source line number.
 QString lineError(int lineNumber, const QString &message)
 {
     return QStringLiteral("Line %1: %2").arg(lineNumber).arg(message);
-}
-
-/// Parses a floating-point number.
-bool parseDouble(const QString &text, double &value)
-{
-    bool ok = false;
-    const double parsed = text.toDouble(&ok);
-    if (!ok)
-    {
-        return false;
-    }
-
-    value = parsed;
-    return true;
-}
-
-/// Parses one hex color channel.
-bool parseHexByte(const QString &text, int &value)
-{
-    bool ok = false;
-    const int parsed = text.toInt(&ok, 16);
-    if (!ok)
-    {
-        return false;
-    }
-
-    value = parsed;
-    return true;
-}
-
-/// Parses `#RRGGBB` or `#RRGGBBAA` color text.
-bool parseColor(const QString &text, QColor &color)
-{
-    if (!text.startsWith('#'))
-    {
-        return false;
-    }
-
-    const QString hex = text.mid(1);
-    if (hex.size() != 6 && hex.size() != 8)
-    {
-        return false;
-    }
-
-    int red = 0;
-    int green = 0;
-    int blue = 0;
-    int alpha = 255;
-    if (!parseHexByte(hex.mid(0, 2), red) || !parseHexByte(hex.mid(2, 2), green) || !parseHexByte(hex.mid(4, 2), blue))
-    {
-        return false;
-    }
-
-    if (hex.size() == 8 && !parseHexByte(hex.mid(6, 2), alpha))
-    {
-        return false;
-    }
-
-    color = QColor(red, green, blue, alpha);
-    return true;
 }
 
 /// Builds the default translucent fill color from the stroke color.
@@ -106,40 +45,6 @@ QColor translucentFillColor(const QColor &color)
     QColor fillColor = color;
     fillColor.setAlpha(80);
     return fillColor;
-}
-
-/// Returns whether two points should be treated as equal.
-bool pointsEqual(const Point2D &lhs, const Point2D &rhs)
-{
-    return std::abs(lhs.x - rhs.x) <= kPointEqualityEpsilon && std::abs(lhs.y - rhs.y) <= kPointEqualityEpsilon;
-}
-
-/// Counts unique points, optionally ignoring the duplicated closing point.
-int uniquePointCount(const QVector<Point2D> &points, bool ignoreClosingPoint)
-{
-    const int lastIndex = ignoreClosingPoint ? (points.size() - 1) : points.size();
-    QVector<Point2D> uniquePoints;
-    uniquePoints.reserve(lastIndex);
-
-    for (int i = 0; i < lastIndex; ++i)
-    {
-        bool found = false;
-        for (const Point2D &existing : std::as_const(uniquePoints))
-        {
-            if (pointsEqual(existing, points[i]))
-            {
-                found = true;
-                break;
-            }
-        }
-
-        if (!found)
-        {
-            uniquePoints.append(points[i]);
-        }
-    }
-
-    return uniquePoints.size();
 }
 
 /// Returns whether the token is a supported style directive.
@@ -171,7 +76,7 @@ bool applyDirective(
     if (directive == QStringLiteral("COLOR"))
     {
         QColor color;
-        if (!parseColor(value, color))
+        if (!parseColorText(value, color))
         {
             errorMessage = lineError(lineNumber, QStringLiteral("Invalid COLOR value: %1").arg(value));
             return false;
@@ -197,7 +102,7 @@ bool applyDirective(
         }
 
         QColor fillColor;
-        if (!parseColor(value, fillColor))
+        if (!parseColorText(value, fillColor))
         {
             errorMessage = lineError(lineNumber, QStringLiteral("Invalid FILL value: %1").arg(value));
             return false;
@@ -211,7 +116,7 @@ bool applyDirective(
     }
 
     double number = 0.0;
-    if (!parseDouble(value, number))
+    if (!parseDoubleText(value, number))
     {
         errorMessage = lineError(lineNumber, QStringLiteral("Invalid numeric value: %1").arg(value));
         return false;
@@ -401,7 +306,7 @@ bool PlyParser::parseFile(const QString &filePath, GeometryData &geometryData, Q
 
         double x = 0.0;
         double y = 0.0;
-        if (!parseDouble(parts[0], x) || !parseDouble(parts[1], y))
+        if (!parseDoubleText(parts[0], x) || !parseDoubleText(parts[1], y))
         {
             if (errorMessage != nullptr)
             {

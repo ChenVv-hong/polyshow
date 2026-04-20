@@ -1,5 +1,6 @@
 #include "core/GeometryScene.h"
 
+#include "core/PrimitiveEditing.h"
 #include "ui/UiTheme.h"
 
 #include <QBrush>
@@ -7,6 +8,7 @@
 #include <QGraphicsEllipseItem>
 #include <QGraphicsPathItem>
 #include <QGraphicsPolygonItem>
+#include <QGraphicsRectItem>
 #include <QPainterPath>
 #include <QPen>
 #include <QPolygonF>
@@ -23,6 +25,9 @@ constexpr int kGridHalfSize = 2000;
 constexpr int kGridStep = 50;
 constexpr int kLayerIndexRole = 1;
 constexpr int kPrimitiveIndexRole = 2;
+constexpr int kSelectionOverlayRole = 3;
+constexpr double kSelectionPadding = 6.0;
+constexpr double kMinimumSelectionSize = 12.0;
 
 struct LayerVisibilityMask
 {
@@ -82,11 +87,25 @@ PolyShow::SelectionState normalizeSelectionState(
 
     if (selectionState.kind == PolyShow::SelectionKind::Layer)
     {
+        if (!documentData.layers.at(selectionState.layer_index).visible)
+        {
+            return {};
+        }
         return selectionState;
     }
 
     const PolyShow::LayerData &layer = documentData.layers.at(selectionState.layer_index);
+    if (!layer.visible)
+    {
+        return {};
+    }
+
     if (selectionState.primitive_index < 0 || selectionState.primitive_index >= layer.primitives.size())
+    {
+        return {};
+    }
+
+    if (!layer.primitives.at(selectionState.primitive_index).visible)
     {
         return {};
     }
@@ -107,6 +126,87 @@ int primitiveListIndexForReference(
     }
 
     return -1;
+}
+
+/// Returns the padded selection bounds for one primitive.
+QRectF primitiveSelectionBounds(const PolyShow::LayerData &layer, int primitiveIndex)
+{
+    if (primitiveIndex < 0 || primitiveIndex >= layer.primitives.size())
+    {
+        return {};
+    }
+
+    const PolyShow::LayerPrimitiveData &primitive = layer.primitives.at(primitiveIndex);
+    const QVector<PolyShow::Point2D> points = PolyShow::primitivePoints(layer, primitiveIndex);
+    if (points.isEmpty())
+    {
+        return {};
+    }
+
+    double minX = points.first().x;
+    double maxX = points.first().x;
+    double minY = points.first().y;
+    double maxY = points.first().y;
+
+    for (const PolyShow::Point2D &point : points)
+    {
+        minX = std::min(minX, point.x);
+        maxX = std::max(maxX, point.x);
+        minY = std::min(minY, point.y);
+        maxY = std::max(maxY, point.y);
+    }
+
+    const PolyShow::PrimitiveStyle style = PolyShow::primitiveStyle(layer, primitiveIndex);
+    const double shapePadding = primitive.reference.kind == PolyShow::PrimitiveKind::Point
+        ? std::max(style.point_size, kMinimumSelectionSize * 0.5)
+        : std::max(style.width * 0.5, 1.0);
+    QRectF bounds(minX, minY, maxX - minX, maxY - minY);
+    bounds = bounds.adjusted(
+        -(shapePadding + kSelectionPadding),
+        -(shapePadding + kSelectionPadding),
+        shapePadding + kSelectionPadding,
+        shapePadding + kSelectionPadding);
+
+    if (bounds.width() < kMinimumSelectionSize)
+    {
+        const double delta = (kMinimumSelectionSize - bounds.width()) * 0.5;
+        bounds.adjust(-delta, 0.0, delta, 0.0);
+    }
+
+    if (bounds.height() < kMinimumSelectionSize)
+    {
+        const double delta = (kMinimumSelectionSize - bounds.height()) * 0.5;
+        bounds.adjust(0.0, -delta, 0.0, delta);
+    }
+
+    return bounds;
+}
+
+/// Returns the union bounds of every visible primitive in one layer.
+QRectF layerSelectionBounds(const PolyShow::LayerData &layer)
+{
+    QRectF combinedBounds;
+    bool hasBounds = false;
+
+    for (int primitiveIndex = 0; primitiveIndex < layer.primitives.size(); ++primitiveIndex)
+    {
+        const PolyShow::LayerPrimitiveData &primitive = layer.primitives.at(primitiveIndex);
+        if (!primitive.visible)
+        {
+            continue;
+        }
+
+        const QRectF bounds = primitiveSelectionBounds(layer, primitiveIndex);
+        if (bounds.isEmpty() && bounds.isNull())
+        {
+            continue;
+        }
+
+        combinedBounds = hasBounds ? combinedBounds.united(bounds) : bounds;
+        hasBounds = true;
+    }
+
+    return hasBounds ? combinedBounds : QRectF {};
 }
 
 } // namespace
@@ -263,21 +363,17 @@ void GeometryScene::rebuildScene()
     rebuildGrid();
     const ThemeColors &themeColors = UiTheme::colors(ThemeMode::Light);
 
-    const auto addPointMarker = [this, &themeColors](
+    const auto addPointMarker = [this](
                                     const Point2D &point,
                                     const PrimitiveStyle &style,
                                     int layerIndex,
-                                    int primitiveIndex,
-                                    bool selected) {
+                                    int primitiveIndex) {
         // Draw every point as a filled circle so point mode and vertex previews look identical.
-        const double radius = selected ? std::max(style.point_size + 1.0, 4.0) : style.point_size;
+        const double radius = style.point_size;
         const QRectF markerRect(point.x - radius, point.y - radius, radius * 2.0, radius * 2.0);
-        QPen pointPen(selected ? themeColors.selection_stroke : style.color);
+        QPen pointPen(style.color);
         pointPen.setWidthF(1.0);
-        auto *item = addEllipse(
-            markerRect,
-            pointPen,
-            QBrush(selected ? themeColors.selection_stroke : style.color));
+        auto *item = addEllipse(markerRect, pointPen, QBrush(style.color));
         item->setData(kLayerIndexRole, layerIndex);
         item->setData(kPrimitiveIndexRole, primitiveIndex);
     };
@@ -319,19 +415,8 @@ void GeometryScene::rebuildScene()
                 QPen polygonPen(polygon.style.color);
                 polygonPen.setWidthF(polygon.style.width);
                 const int primitiveIndex = primitiveListIndexForReference(layer, PrimitiveKind::Polygon, i);
-                const bool selected = m_selection_state.kind == SelectionKind::Primitive
-                    && m_selection_state.layer_index == layerIndex
-                    && m_selection_state.primitive_index == primitiveIndex;
-                if (selected)
-                {
-                    polygonPen.setColor(themeColors.selection_stroke);
-                    polygonPen.setWidthF(std::max(polygon.style.width + 0.5, 2.0));
-                }
-
                 const bool shouldUseFill = m_render_mode == RenderMode::Solid && polygon.style.fill_enabled;
-                const QBrush polygonBrush = shouldUseFill
-                    ? QBrush(selected ? themeColors.selection_fill : polygon.style.fill_color)
-                    : QBrush(Qt::NoBrush);
+                const QBrush polygonBrush = shouldUseFill ? QBrush(polygon.style.fill_color) : QBrush(Qt::NoBrush);
                 auto *item = addPolygon(qtPolygon, polygonPen, polygonBrush);
                 item->setData(kLayerIndexRole, layerIndex);
                 item->setData(kPrimitiveIndexRole, primitiveIndex);
@@ -361,15 +446,6 @@ void GeometryScene::rebuildScene()
                 QPen polylinePen(polyline.style.color);
                 polylinePen.setWidthF(polyline.style.width);
                 const int primitiveIndex = primitiveListIndexForReference(layer, PrimitiveKind::Polyline, i);
-                const bool selected = m_selection_state.kind == SelectionKind::Primitive
-                    && m_selection_state.layer_index == layerIndex
-                    && m_selection_state.primitive_index == primitiveIndex;
-                if (selected)
-                {
-                    polylinePen.setColor(themeColors.selection_stroke);
-                    polylinePen.setWidthF(std::max(polyline.style.width + 0.5, 2.0));
-                }
-
                 auto *item = addPath(path, polylinePen);
                 item->setData(kLayerIndexRole, layerIndex);
                 item->setData(kPrimitiveIndexRole, primitiveIndex);
@@ -386,10 +462,7 @@ void GeometryScene::rebuildScene()
 
             const PointShape2D &point = layer.geometry.points.at(i);
             const int primitiveIndex = primitiveListIndexForReference(layer, PrimitiveKind::Point, i);
-            const bool selected = m_selection_state.kind == SelectionKind::Primitive
-                && m_selection_state.layer_index == layerIndex
-                && m_selection_state.primitive_index == primitiveIndex;
-            addPointMarker(point.point, point.style, layerIndex, primitiveIndex, selected);
+            addPointMarker(point.point, point.style, layerIndex, primitiveIndex);
         }
 
         if (m_render_mode == RenderMode::Points)
@@ -406,10 +479,7 @@ void GeometryScene::rebuildScene()
                 const int primitiveIndex = primitiveListIndexForReference(layer, PrimitiveKind::Polyline, i);
                 for (const Point2D &vertex : polyline.vertices)
                 {
-                    const bool selected = m_selection_state.kind == SelectionKind::Primitive
-                        && m_selection_state.layer_index == layerIndex
-                        && m_selection_state.primitive_index == primitiveIndex;
-                    addPointMarker(vertex, polyline.style, layerIndex, primitiveIndex, selected);
+                    addPointMarker(vertex, polyline.style, layerIndex, primitiveIndex);
                 }
             }
 
@@ -424,13 +494,39 @@ void GeometryScene::rebuildScene()
                 const int primitiveIndex = primitiveListIndexForReference(layer, PrimitiveKind::Polygon, i);
                 for (const Point2D &vertex : polygon.vertices)
                 {
-                    const bool selected = m_selection_state.kind == SelectionKind::Primitive
-                        && m_selection_state.layer_index == layerIndex
-                        && m_selection_state.primitive_index == primitiveIndex;
-                    addPointMarker(vertex, polygon.style, layerIndex, primitiveIndex, selected);
+                    addPointMarker(vertex, polygon.style, layerIndex, primitiveIndex);
                 }
             }
         }
+    }
+
+    QRectF selectionBounds;
+    if (m_selection_state.kind == SelectionKind::Primitive
+        && m_selection_state.layer_index >= 0
+        && m_selection_state.layer_index < m_document_data.layers.size())
+    {
+        selectionBounds =
+            primitiveSelectionBounds(m_document_data.layers.at(m_selection_state.layer_index), m_selection_state.primitive_index);
+    }
+    else if (
+        m_selection_state.kind == SelectionKind::Layer
+        && m_selection_state.layer_index >= 0
+        && m_selection_state.layer_index < m_document_data.layers.size())
+    {
+        selectionBounds = layerSelectionBounds(m_document_data.layers.at(m_selection_state.layer_index));
+    }
+
+    if (!selectionBounds.isNull())
+    {
+        QPen selectionPen(themeColors.selection_stroke);
+        selectionPen.setStyle(Qt::DashLine);
+        selectionPen.setCosmetic(true);
+        selectionPen.setWidthF(1.5);
+
+        auto *overlay = addRect(selectionBounds, selectionPen, QBrush(Qt::NoBrush));
+        overlay->setData(kSelectionOverlayRole, true);
+        overlay->setAcceptedMouseButtons(Qt::NoButton);
+        overlay->setZValue(10000.0);
     }
 }
 

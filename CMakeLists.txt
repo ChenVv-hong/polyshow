@@ -15,6 +15,7 @@ find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets)
 
 set(POLYSHOW_HEADERS
     include/core/GeometryTypes.h
+    include/core/PrimitiveEditing.h
     include/core/GeometryScene.h
     include/parsers/PlyParser.h
     include/ui/GeometryViewer.h
@@ -31,6 +32,7 @@ set(POLYSHOW_HEADERS
 set(POLYSHOW_SOURCES
     main.cpp
     src/core/GeometryScene.cpp
+    src/core/PrimitiveEditing.cpp
     src/parsers/PlyParser.cpp
     src/ui/GeometryViewer.cpp
     src/ui/InspectorPanel.cpp

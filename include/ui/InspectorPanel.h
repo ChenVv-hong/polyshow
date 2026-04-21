@@ -25,11 +25,8 @@ public:
     /// Creates the inspector panel widget.
     explicit InspectorPanel(QWidget *parent = nullptr);
 
-    /// Replaces the document used for the displayed details.
-    void setDocumentData(const DocumentData &documentData, bool reloadEditorControls = true);
-
-    /// Replaces the active selection and refreshes the panel.
-    void setSelectionState(const SelectionState &selectionState);
+    /// Rebuilds the inspector from the current selection context.
+    void loadSelectionContext(const DocumentData &documentData, const SelectionState &selectionState);
 
     /// Replaces the validation error for one style field.
     void setStyleFieldError(PrimitiveStyleField field, const QString &message);
@@ -43,9 +40,6 @@ public:
     /// Clears the validation error for the coordinates editor.
     void clearCoordinateError();
 
-    /// Synchronizes one committed style field from the current document.
-    void syncStyleFieldFromSelection(PrimitiveStyleField field);
-
 signals:
     /// Emitted when the user commits one style field.
     void styleChangeRequested(const PrimitiveStyleChangeRequest &request);
@@ -54,11 +48,8 @@ signals:
     void coordinateDraftChanged(const PrimitiveCoordinateDraft &draft);
 
 private:
-    /// Rebuilds the visible summary plus editor from the stored state.
+    /// Rebuilds the visible summary plus editor from the stored selection context.
     void updateContent();
-
-    /// Refreshes the title and geometry summary without reloading editor widgets.
-    void updateSummary(bool preserveEditorVisibility = false);
 
     /// Loads the editor controls from one selected primitive.
     void loadPrimitiveEditor(const LayerData &layer, int primitiveIndex);

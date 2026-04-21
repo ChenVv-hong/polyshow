@@ -386,7 +386,7 @@ void MainWindow::onSelectionStateChanged(const SelectionState &selectionState)
     m_scene->setEditPreviewState(m_edit_preview_state, false);
     m_scene->setSelectionState(m_selection_state);
     m_layer_sidebar->setSelectionState(m_selection_state);
-    m_inspector_panel->setSelectionState(m_selection_state);
+    reloadInspectorForSelectionChange();
     const bool showInspector = m_selection_state.kind != SelectionKind::None;
     m_inspector_container->setVisible(showInspector);
     if (showInspector)
@@ -467,8 +467,6 @@ void MainWindow::onInspectorStyleChangeRequested(const PrimitiveStyleChangeReque
     const bool didChange = styleFieldChanged(request.field, beforeValues, parsedValues);
     if (!didChange)
     {
-        refreshViewsForDocumentChange(false);
-        m_inspector_panel->syncStyleFieldFromSelection(request.field);
         return;
     }
 
@@ -482,8 +480,7 @@ void MainWindow::onInspectorStyleChangeRequested(const PrimitiveStyleChangeReque
         return;
     }
 
-    refreshViewsForDocumentChange(false);
-    m_inspector_panel->syncStyleFieldFromSelection(request.field);
+    refreshSceneForPrimitiveEdit();
     m_log_panel->appendMessage(
         LogSeverity::Info,
         QStringLiteral("[info] Updated %1 %2: %3")
@@ -544,7 +541,7 @@ void MainWindow::onInspectorCoordinateDraftChanged(const PrimitiveCoordinateDraf
     {
         if (wasInvalid)
         {
-            m_scene->setEditPreviewState(m_edit_preview_state);
+            m_scene->setEditPreviewState(m_edit_preview_state, true);
         }
         return;
     }
@@ -560,7 +557,7 @@ void MainWindow::onInspectorCoordinateDraftChanged(const PrimitiveCoordinateDraf
         return;
     }
 
-    refreshViewsForDocumentChange(false);
+    refreshSceneForPrimitiveEdit();
     if (wasInvalid)
     {
         m_log_panel->appendMessage(
@@ -948,7 +945,6 @@ void MainWindow::syncDocumentToViews(bool fitScene)
     m_layer_sidebar->setDocumentData(m_document_data, true);
     m_scene->setEditPreviewState(m_edit_preview_state, false);
     m_scene->setDocumentData(m_document_data);
-    m_inspector_panel->setDocumentData(m_document_data);
     onSelectionStateChanged(m_selection_state);
 
     if (fitScene)
@@ -967,19 +963,25 @@ void MainWindow::refreshViewsForVisibilityChange()
     // Never rebuild the sidebar tree from a checkbox signal stack, otherwise the
     // currently-emitting QTreeWidgetItem can be destroyed mid-signal.
     clearCoordinatePreviewState();
-    m_selection_state = normalizedSelectionState(m_selection_state);
+    const SelectionState nextSelection = normalizedSelectionState(m_selection_state);
     m_layer_sidebar->setDocumentData(m_document_data, false);
     m_scene->setEditPreviewState(m_edit_preview_state, false);
     m_scene->setDocumentData(m_document_data);
-    m_inspector_panel->setDocumentData(m_document_data, false);
-    onSelectionStateChanged(m_selection_state);
+    if (nextSelection != m_selection_state)
+    {
+        onSelectionStateChanged(nextSelection);
+    }
 }
 
-void MainWindow::refreshViewsForDocumentChange(bool reloadInspectorEditorControls)
+void MainWindow::reloadInspectorForSelectionChange()
+{
+    m_inspector_panel->loadSelectionContext(m_document_data, m_selection_state);
+}
+
+void MainWindow::refreshSceneForPrimitiveEdit()
 {
     m_scene->setEditPreviewState(m_edit_preview_state, false);
     m_scene->setDocumentData(m_document_data);
-    m_inspector_panel->setDocumentData(m_document_data, reloadInspectorEditorControls);
 }
 
 void MainWindow::clearCoordinatePreviewState()

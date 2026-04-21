@@ -111,8 +111,11 @@ private:
     /// Refreshes visibility-dependent UI without rebuilding the sidebar tree.
     void refreshViewsForVisibilityChange();
 
-    /// Refreshes the scene and inspector after a document mutation.
-    void refreshViewsForDocumentChange(bool reloadInspectorEditorControls);
+    /// Reloads the inspector after one selection-context change.
+    void reloadInspectorForSelectionChange();
+
+    /// Refreshes the scene after one primitive edit without touching other views.
+    void refreshSceneForPrimitiveEdit();
 
     /// Clears the current coordinate preview suppression state.
     void clearCoordinatePreviewState();

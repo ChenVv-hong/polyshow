@@ -325,20 +325,9 @@ InspectorPanel::InspectorPanel(QWidget *parent)
     updateContent();
 }
 
-void InspectorPanel::setDocumentData(const DocumentData &documentData, bool reloadEditorControls)
+void InspectorPanel::loadSelectionContext(const DocumentData &documentData, const SelectionState &selectionState)
 {
     m_document_data = documentData;
-    if (reloadEditorControls)
-    {
-        updateContent();
-        return;
-    }
-
-    updateSummary(true);
-}
-
-void InspectorPanel::setSelectionState(const SelectionState &selectionState)
-{
     m_selection_state = selectionState;
     updateContent();
 }
@@ -382,60 +371,11 @@ void InspectorPanel::clearCoordinateError()
     setCoordinateError(QString());
 }
 
-void InspectorPanel::syncStyleFieldFromSelection(PrimitiveStyleField field)
-{
-    if (!hasActivePrimitiveSelection())
-    {
-        return;
-    }
-
-    const LayerData &layer = m_document_data.layers.at(m_selection_state.layer_index);
-    const PrimitiveStyle style = primitiveStyle(layer, m_selection_state.primitive_index);
-
-    m_is_loading_form = true;
-    switch (field)
-    {
-    case PrimitiveStyleField::StrokeColor:
-        m_stroke_color_field->setColorText(formatColorText(style.color));
-        break;
-    case PrimitiveStyleField::FillColor:
-        m_fill_color_field->setColorText(formatColorText(style.fill_color));
-        break;
-    case PrimitiveStyleField::Width:
-        m_width_line_edit->setText(QString::number(style.width, 'f', 2));
-        break;
-    case PrimitiveStyleField::PointSize:
-        m_point_size_line_edit->setText(QString::number(style.point_size, 'f', 2));
-        break;
-    case PrimitiveStyleField::FillEnabled:
-        m_fill_enabled_check_box->setChecked(style.fill_enabled);
-        break;
-    }
-    updateVisibleEditorFields(currentPrimitiveKind());
-    m_is_loading_form = false;
-}
-
 void InspectorPanel::updateContent()
 {
     m_validation_errors.clear();
-    updateSummary(false);
-
-    if (hasActivePrimitiveSelection())
-    {
-        const LayerData &layer = m_document_data.layers.at(m_selection_state.layer_index);
-        loadPrimitiveEditor(layer, m_selection_state.primitive_index);
-    }
-
-    updateFieldErrors();
-}
-
-void InspectorPanel::updateSummary(bool preserveEditorVisibility)
-{
     m_badge_label->setText(selectionBadgeText(m_selection_state.kind));
-    if (!preserveEditorVisibility)
-    {
-        m_editor_widget->setVisible(false);
-    }
+    m_editor_widget->setVisible(false);
 
     if (m_selection_state.kind == SelectionKind::Layer
         && m_selection_state.layer_index >= 0
@@ -447,6 +387,7 @@ void InspectorPanel::updateSummary(bool preserveEditorVisibility)
         m_geometry_label->setText(QStringLiteral("Summary"));
         m_geometry_body_label->setText(layerSummaryText(layer));
         m_hint_label->setText(QStringLiteral("Select a primitive to edit its in-memory style and coordinates."));
+        updateFieldErrors();
         return;
     }
 
@@ -461,11 +402,10 @@ void InspectorPanel::updateSummary(bool preserveEditorVisibility)
         m_editor_help_label->setText(
             QStringLiteral("Style fields submit on Enter or when focus leaves. Coordinates update in real time."));
         m_hint_label->setText(QStringLiteral("Invalid coordinates keep the text, turn the border red, and hide the preview."));
-        if (!preserveEditorVisibility || !m_editor_widget->isVisible())
-        {
-            m_editor_widget->setVisible(true);
-        }
+        m_editor_widget->setVisible(true);
         updateVisibleEditorFields(primitive.reference.kind);
+        loadPrimitiveEditor(layer, m_selection_state.primitive_index);
+        updateFieldErrors();
         return;
     }
 
@@ -474,6 +414,7 @@ void InspectorPanel::updateSummary(bool preserveEditorVisibility)
     m_geometry_label->setText(QStringLiteral("Geometry"));
     m_geometry_body_label->setText(QStringLiteral("Nothing selected."));
     m_hint_label->setText(QStringLiteral("Primitive editing becomes available after you select one shape."));
+    updateFieldErrors();
 }
 
 void InspectorPanel::loadPrimitiveEditor(const LayerData &layer, int primitiveIndex)

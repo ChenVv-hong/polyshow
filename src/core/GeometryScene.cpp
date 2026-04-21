@@ -1,7 +1,7 @@
 #include "core/GeometryScene.h"
 
 #include "core/PrimitiveEditing.h"
-#include "ui/UiTheme.h"
+#include "style/RenderTheme.h"
 
 #include <QBrush>
 #include <QColor>
@@ -380,7 +380,7 @@ void GeometryScene::rebuildScene()
     // Rebuild everything from scratch so render mode switches do not leave stale items behind.
     clear();
     rebuildGrid();
-    const ThemeColors &themeColors = UiTheme::colors(ThemeMode::Light);
+    const RenderColors &renderColors = RenderTheme::colors();
     const bool suppressSelectedPrimitive = m_edit_preview_state.hide_selected_primitive
         && m_edit_preview_state.selection_state.kind == SelectionKind::Primitive;
 
@@ -570,7 +570,7 @@ void GeometryScene::rebuildScene()
 
     if (!selectionBounds.isNull())
     {
-        QPen selectionPen(themeColors.selection_stroke);
+        QPen selectionPen(renderColors.selection_stroke);
         selectionPen.setStyle(Qt::DashLine);
         selectionPen.setCosmetic(true);
         selectionPen.setWidthF(1.5);
@@ -591,12 +591,12 @@ void GeometryScene::rebuildGrid()
     }
 
     // Use a light grid so the geometry remains the visual focus.
-    const ThemeColors &themeColors = UiTheme::colors(ThemeMode::Light);
-    QPen gridPen(themeColors.grid_line);
+    const RenderColors &renderColors = RenderTheme::colors();
+    QPen gridPen(renderColors.grid_line);
     gridPen.setWidthF(0.0);
 
     // Use a slightly darker pen for the origin axes.
-    QPen axisPen(themeColors.axis_line);
+    QPen axisPen(renderColors.axis_line);
     axisPen.setWidthF(0.0);
 
     for (int x = -kGridHalfSize; x <= kGridHalfSize; x += kGridStep)

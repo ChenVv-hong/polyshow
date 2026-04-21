@@ -1,6 +1,6 @@
 #include "ui/PanelFrame.h"
 
-#include "ui/UiTheme.h"
+#include <QStyle>
 
 namespace PolyShow
 {
@@ -18,7 +18,9 @@ PanelFrame::PanelFrame(Variant variant, QWidget *parent)
 void PanelFrame::setVariant(Variant variant)
 {
     setProperty("panelVariant", variantName(variant));
-    applyVariantStyle(variant);
+    style()->unpolish(this);
+    style()->polish(this);
+    update();
 }
 
 QString PanelFrame::variantName(Variant variant)
@@ -34,39 +36,6 @@ QString PanelFrame::variantName(Variant variant)
     default:
         return QStringLiteral("panel");
     }
-}
-
-void PanelFrame::applyVariantStyle(Variant variant)
-{
-    const ThemeColors &colors = UiTheme::colors(ThemeMode::Light);
-
-    QString backgroundColor = colors.panel_background.name(QColor::HexArgb);
-    int borderRadius = 12;
-
-    switch (variant)
-    {
-    case Variant::Panel:
-        backgroundColor = colors.panel_background.name(QColor::HexArgb);
-        borderRadius = 12;
-        break;
-    case Variant::Card:
-        backgroundColor = colors.card_background.name(QColor::HexArgb);
-        borderRadius = 10;
-        break;
-    case Variant::Canvas:
-        backgroundColor = colors.panel_background.name(QColor::HexArgb);
-        borderRadius = 12;
-        break;
-    default:
-        break;
-    }
-
-    // setStyleSheet(QStringLiteral(
-    //     "#PanelFrameWidget {"
-    //     "  background-color: %1;"
-    //     "  border: 1px solid %2;"
-    //     "  border-radius: %3px;"
-    //     "}").arg(backgroundColor, colors.border_subtle.name(QColor::HexArgb), QString::number(borderRadius)));
 }
 
 } // namespace PolyShow

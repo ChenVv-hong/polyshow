@@ -1,0 +1,230 @@
+QWidget {
+    color: #E4E4E4;
+    font-family: "Segoe UI";
+    font-size: 12px;
+}
+
+QMainWindow,
+QWidget#workspaceRoot {
+    background-color: #2B2B2B;
+}
+
+PanelFrame[panelVariant="panel"] {
+    background-color: #353535;
+    border: 1px solid #494949;
+    border-radius: 12px;
+}
+
+PanelFrame[panelVariant="card"] {
+    background-color: #303030;
+    border: 1px solid #494949;
+    border-radius: 10px;
+}
+
+PanelFrame[panelVariant="canvas"] {
+    background-color: #353535;
+    border: 1px solid #494949;
+    border-radius: 12px;
+}
+
+PillButton,
+QPushButton {
+    background-color: #3A3A3A;
+    color: #E4E4E4;
+    border: 1px solid #5A5A5A;
+    border-radius: 8px;
+    padding: 6px 10px;
+}
+
+PillButton:hover,
+QPushButton:hover {
+    border-color: #4E8CFF;
+}
+
+PillButton[buttonVariant="primary"] {
+    background-color: #254A73;
+    border-color: #4E8CFF;
+    color: #DCEBFF;
+}
+
+PillButton[buttonVariant="success"] {
+    background-color: #214736;
+    border-color: #5FBF8F;
+    color: #DFF9EC;
+}
+
+QPushButton[colorSwatch="true"] {
+    min-width: 28px;
+    max-width: 28px;
+    min-height: 28px;
+    max-height: 28px;
+    padding: 0px;
+    background-color: transparent;
+    border-radius: 6px;
+}
+
+QPushButton[colorSwatch="true"][validationState="error"] {
+    border-color: #C76969;
+}
+
+QLineEdit,
+QPlainTextEdit,
+QComboBox {
+    background-color: #303030;
+    color: #E4E4E4;
+    border: 1px solid #5A5A5A;
+    border-radius: 8px;
+    padding: 6px 10px;
+}
+
+QLineEdit:focus,
+QPlainTextEdit:focus,
+QComboBox:focus {
+    border-color: #4E8CFF;
+}
+
+QLineEdit[validationState="error"],
+QPlainTextEdit[validationState="error"] {
+    border-color: #C76969;
+}
+
+QTreeWidget {
+    background-color: #303030;
+    border: 1px solid #494949;
+    border-radius: 10px;
+    outline: 0px;
+}
+
+QTreeWidget::item {
+    padding: 4px 0px;
+}
+
+QTreeWidget::item:selected {
+    background-color: #254A73;
+    color: #DCEBFF;
+}
+
+QTreeWidget::branch:selected {
+    background-color: transparent;
+}
+
+QTreeView::indicator,
+QCheckBox::indicator {
+    width: 14px;
+    height: 14px;
+    border-radius: 4px;
+    border: 1px solid #7A7A7A;
+    background-color: #2B2B2B;
+}
+
+QTreeView::indicator:checked,
+QCheckBox::indicator:checked {
+    border-color: #4E8CFF;
+    background-color: #4E8CFF;
+}
+
+QLabel[role="sectionTitle"] {
+    color: #A0A0A0;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+QLabel[role="panelTitle"] {
+    color: #F3F3F3;
+    font-size: 15px;
+    font-weight: 700;
+}
+
+QLabel#inspectorBadge {
+    background-color: #254A73;
+    color: #DCEBFF;
+    border-radius: 10px;
+    padding: 3px 8px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+QLabel[role="mono"] {
+    font-family: "Consolas";
+}
+
+QLabel[role="validationError"] {
+    color: #E6A0A0;
+    font-size: 11px;
+}
+
+QListWidget {
+    background-color: #303030;
+    border: none;
+}
+
+QListWidget::item {
+    border-radius: 8px;
+    padding: 5px 8px;
+    margin: 1px 0px;
+}
+
+QScrollBar:vertical {
+    background-color: transparent;
+    width: 10px;
+    margin: 2px 0px;
+}
+
+QScrollBar:horizontal {
+    background-color: transparent;
+    height: 10px;
+    margin: 0px 2px;
+}
+
+QScrollBar::handle:vertical,
+QScrollBar::handle:horizontal {
+    background-color: #666666;
+    border-radius: 5px;
+    min-height: 24px;
+    min-width: 24px;
+}
+
+QScrollBar::handle:vertical:hover,
+QScrollBar::handle:horizontal:hover {
+    background-color: #7A7A7A;
+}
+
+QScrollBar::add-line,
+QScrollBar::sub-line,
+QScrollBar::add-page,
+QScrollBar::sub-page {
+    background-color: transparent;
+    border: none;
+}
+
+QSplitter::handle {
+    background-color: #494949;
+}
+
+QSplitter::handle:hover,
+QSplitter::handle:pressed {
+    background-color: #4E8CFF;
+}
+
+QSplitter::handle:horizontal {
+    width: 6px;
+}
+
+QSplitter::handle:vertical {
+    height: 6px;
+}
+
+QStatusBar,
+QMenuBar {
+    background-color: #353535;
+}
+
+QGraphicsView {
+    border: 1px solid #494949;
+    border-radius: 10px;
+}
+
+QMenu {
+    background-color: #353535;
+    border: 1px solid #494949;
+}

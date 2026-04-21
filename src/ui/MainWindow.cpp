@@ -19,7 +19,6 @@
 #include <QMenu>
 #include <QMenuBar>
 #include <QMessageBox>
-#include <QPalette>
 #include <QSignalBlocker>
 #include <QSplitter>
 #include <QStatusBar>
@@ -586,7 +585,6 @@ void MainWindow::setupUi()
 {
     setWindowTitle(QStringLiteral("PolyShow"));
     resize(1280, 800);
-    const ThemeColors &themeColors = UiTheme::colors(m_theme_mode);
 
     m_scene = new GeometryScene(this);
     m_geometry_viewer = new GeometryViewer(this);
@@ -643,33 +641,12 @@ void MainWindow::setupUi()
 
     auto *centralWidget = new QWidget(this);
     centralWidget->setObjectName(QStringLiteral("workspaceRoot"));
-    centralWidget->setAutoFillBackground(true);
     centralWidget->setAttribute(Qt::WA_StyledBackground, true);
-    // centralWidget->setStyleSheet(QStringLiteral("#workspaceRoot { background-color: %1; }")
-    //                                  .arg(themeColors.window_background.name(QColor::HexArgb)));
-    QPalette centralPalette = centralWidget->palette();
-    centralPalette.setColor(QPalette::Window, themeColors.window_background);
-    centralWidget->setPalette(centralPalette);
     auto *layout = new QVBoxLayout(centralWidget);
     layout->setContentsMargins(12, 12, 12, 12);
     layout->setSpacing(12);
     layout->addWidget(m_vertical_splitter, 1);
     setCentralWidget(centralWidget);
-
-    const QString splitterStyle = QStringLiteral(
-        "QSplitter::handle {"
-        "  background-color: %1;"
-        "}"
-        "QSplitter::handle:hover {"
-        "  background-color: %2;"
-        "}"
-        "QSplitter::handle:pressed {"
-        "  background-color: %2;"
-        "}")
-                                      .arg(themeColors.border_subtle.name(QColor::HexArgb))
-                                      .arg(themeColors.text_muted.name(QColor::HexArgb));
-    // m_splitter->setStyleSheet(splitterStyle);
-    // m_vertical_splitter->setStyleSheet(splitterStyle);
 
     connect(m_scene, &GeometryScene::geometryChanged, this, &MainWindow::onGeometryChanged);
     connect(m_geometry_viewer, &GeometryViewer::mousePositionChanged, this, &MainWindow::updateMousePosition);

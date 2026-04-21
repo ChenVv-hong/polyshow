@@ -2,7 +2,6 @@
 
 #include "core/PrimitiveEditing.h"
 #include "core/GeometryScene.h"
-#include "ui/UiTheme.h"
 
 #include <QMainWindow>
 #include <QPointF>
@@ -162,7 +161,6 @@ private:
     SelectionState m_selection_state;
     PrimitiveEditPreviewState m_edit_preview_state;
     bool m_has_logged_invalid_coordinate_draft {false};
-    ThemeMode m_theme_mode {ThemeMode::Light};
 };
 
 } // namespace PolyShow

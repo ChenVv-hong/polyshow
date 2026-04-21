@@ -1,7 +1,6 @@
 #include "ui/LogPanel.h"
 
-#include "ui/PanelFrame.h"
-#include "ui/UiTheme.h"
+#include "style/RenderTheme.h"
 
 #include <QHBoxLayout>
 #include <QLabel>
@@ -19,33 +18,33 @@ namespace
 
 QColor lineBorder(LogSeverity severity)
 {
-    const ThemeColors &themeColors = UiTheme::colors(ThemeMode::Light);
+    const RenderColors &renderColors = RenderTheme::colors();
     switch (severity)
     {
     case LogSeverity::Error:
-        return themeColors.log_error_border;
+        return renderColors.log_error_border;
     case LogSeverity::Warning:
-        return themeColors.log_warning_border;
+        return renderColors.log_warning_border;
     case LogSeverity::Info:
-        return themeColors.log_info_border;
+        return renderColors.log_info_border;
     default:
-        return themeColors.border_subtle;
+        return QColor(QStringLiteral("#808080"));
     }
 }
 
 QColor lineText(LogSeverity severity)
 {
-    const ThemeColors &themeColors = UiTheme::colors(ThemeMode::Light);
+    const RenderColors &renderColors = RenderTheme::colors();
     switch (severity)
     {
     case LogSeverity::Error:
-        return themeColors.log_error_text;
+        return renderColors.log_error_text;
     case LogSeverity::Warning:
-        return themeColors.log_warning_text;
+        return renderColors.log_warning_text;
     case LogSeverity::Info:
-        return themeColors.log_info_text;
+        return renderColors.log_info_text;
     default:
-        return themeColors.text_secondary;
+        return QColor(QStringLiteral("#808080"));
     }
 }
 
@@ -87,7 +86,7 @@ void LogPanel::appendMessage(LogSeverity severity, const QString &message)
     auto *item = new QListWidgetItem(message, m_list_widget);
     item->setFont(QFont(QStringLiteral("IBM Plex Mono"), 10));
     item->setForeground(lineText(severity));
-    item->setBackground(QColor(QStringLiteral("#FFFFFF")));
+    item->setBackground(m_list_widget->palette().base());
     item->setData(Qt::UserRole, lineBorder(severity));
     item->setToolTip(message);
 }

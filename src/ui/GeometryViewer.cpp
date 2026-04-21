@@ -1,5 +1,5 @@
 #include "ui/GeometryViewer.h"
-#include "ui/UiTheme.h"
+#include "style/RenderTheme.h"
 
 #include <QGraphicsItem>
 #include <QMouseEvent>
@@ -23,7 +23,7 @@ constexpr int kSelectionOverlayRole = 3;
 GeometryViewer::GeometryViewer(QWidget *parent)
     : QGraphicsView(parent)
 {
-    const ThemeColors &themeColors = UiTheme::colors(ThemeMode::Light);
+    const RenderColors &renderColors = RenderTheme::colors();
 
     // Enable smoothing so points and lines remain readable while zooming.
     setRenderHint(QPainter::Antialiasing, true);
@@ -37,7 +37,7 @@ GeometryViewer::GeometryViewer(QWidget *parent)
     setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
     setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
     setFrameShape(QFrame::NoFrame);
-    setBackgroundBrush(themeColors.canvas_background);
+    setBackgroundBrush(renderColors.canvas_background);
 }
 
 /// Applies the standard zoom-in ratio.

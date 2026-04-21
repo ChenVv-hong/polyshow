@@ -18,6 +18,11 @@ set(POLYSHOW_HEADERS
     include/core/PrimitiveEditing.h
     include/core/GeometryScene.h
     include/parsers/PlyParser.h
+    include/style/AppStyle.h
+    include/style/DarkStyle.h
+    include/style/LightStyle.h
+    include/style/RenderTheme.h
+    include/style/ThemeMode.h
     include/ui/GeometryViewer.h
     include/ui/ColorField.h
     include/ui/InspectorPanel.h
@@ -27,7 +32,6 @@ set(POLYSHOW_HEADERS
     include/ui/MainWindow.h
     include/ui/PanelFrame.h
     include/ui/PillButton.h
-    include/ui/UiTheme.h
 )
 
 set(POLYSHOW_SOURCES
@@ -35,6 +39,11 @@ set(POLYSHOW_SOURCES
     src/core/GeometryScene.cpp
     src/core/PrimitiveEditing.cpp
     src/parsers/PlyParser.cpp
+    resources/style/style.qrc
+    src/style/AppStyle.cpp
+    src/style/DarkStyle.cpp
+    src/style/LightStyle.cpp
+    src/style/RenderTheme.cpp
     src/ui/ColorField.cpp
     src/ui/GeometryViewer.cpp
     src/ui/InspectorPanel.cpp
@@ -44,7 +53,6 @@ set(POLYSHOW_SOURCES
     src/ui/MainWindow.cpp
     src/ui/PanelFrame.cpp
     src/ui/PillButton.cpp
-    src/ui/UiTheme.cpp
 )
 
 add_executable(

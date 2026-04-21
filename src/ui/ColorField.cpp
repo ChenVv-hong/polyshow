@@ -6,7 +6,9 @@
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QLineEdit>
+#include <QPainter>
 #include <QPushButton>
+#include <QStyleOptionButton>
 #include <QStyle>
 #include <QVBoxLayout>
 
@@ -15,6 +17,41 @@ namespace PolyShow
 
 namespace
 {
+
+/// Small push button that paints a color preview swatch.
+class ColorSwatchButton final : public QPushButton
+{
+public:
+    explicit ColorSwatchButton(QWidget *parent = nullptr)
+        : QPushButton(parent)
+    {
+    }
+
+    void setDisplayColor(const QColor &color, bool hasValidColor)
+    {
+        m_color = color;
+        m_has_valid_color = hasValidColor;
+        update();
+    }
+
+protected:
+    void paintEvent(QPaintEvent *event) override
+    {
+        QPushButton::paintEvent(event);
+
+        QPainter painter(this);
+        painter.setRenderHint(QPainter::Antialiasing, true);
+        const QRect fillRect = rect().adjusted(4, 4, -4, -4);
+        const QColor fillColor = m_has_valid_color ? m_color : palette().color(QPalette::Button);
+        painter.setPen(Qt::NoPen);
+        painter.setBrush(fillColor);
+        painter.drawRoundedRect(fillRect, 4.0, 4.0);
+    }
+
+private:
+    QColor m_color;
+    bool m_has_valid_color {false};
+};
 
 /// Refreshes one widget after a validation property change.
 void refreshValidationStyle(QWidget *widget)
@@ -27,16 +64,6 @@ void refreshValidationStyle(QWidget *widget)
     widget->style()->unpolish(widget);
     widget->style()->polish(widget);
     widget->update();
-}
-
-/// Converts one QColor to a Qt stylesheet rgba string.
-QString rgbaColorText(const QColor &color)
-{
-    return QStringLiteral("rgba(%1, %2, %3, %4)")
-        .arg(color.red())
-        .arg(color.green())
-        .arg(color.blue())
-        .arg(color.alpha());
 }
 
 } // namespace
@@ -52,7 +79,7 @@ ColorField::ColorField(QWidget *parent)
     rowLayout->setContentsMargins(0, 0, 0, 0);
     rowLayout->setSpacing(8);
 
-    m_swatch_button = new QPushButton(this);
+    m_swatch_button = new ColorSwatchButton(this);
     m_swatch_button->setProperty("colorSwatch", true);
     m_swatch_button->setCursor(Qt::PointingHandCursor);
     m_swatch_button->setToolTip(QStringLiteral("Pick a color"));
@@ -143,11 +170,7 @@ void ColorField::updateSwatch()
 {
     QColor previewColor;
     const bool hasValidColor = parseColorText(colorText(), previewColor);
-    const QString backgroundColor = hasValidColor
-        ? rgbaColorText(previewColor)
-        : QStringLiteral("transparent");
-    m_swatch_button->setStyleSheet(
-        QStringLiteral("QPushButton { background-color: %1; }").arg(backgroundColor));
+    static_cast<ColorSwatchButton *>(m_swatch_button)->setDisplayColor(previewColor, hasValidColor);
 }
 
 } // namespace PolyShow

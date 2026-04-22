@@ -10,6 +10,7 @@
 #include <QPainter>
 #include <QScrollBar>
 #include <QSvgRenderer>
+#include <QVector>
 #include <QWheelEvent>
 
 #include <cmath>
@@ -27,27 +28,31 @@ constexpr int kScaleBarMargin = 16;
 constexpr int kScaleBarPadding = 8;
 constexpr int kScaleBarTickHeight = 10;
 constexpr int kHintCardMargin = 16;
-constexpr int kHintCardPadding = 14;
-constexpr int kHintCardCornerRadius = 10;
-constexpr int kHintCardMaxWidth = 260;
-constexpr int kHintCardMinimumWidth = 156;
-constexpr int kHintCardGap = 16;
+constexpr int kHintCardPadding = 10;
+constexpr int kHintCardCornerRadius = 8;
+constexpr int kHintCardMaxWidth = 220;
+constexpr int kHintCardMinimumWidth = 112;
+constexpr int kHintCardGap = 12;
 constexpr int kHintCardIconSize = 24;
-constexpr int kHintCardIconTextGap = 10;
-constexpr int kHintCardRowGap = 8;
-constexpr int kHintCardSectionGap = 10;
+constexpr int kHintCardIconTextGap = 8;
+constexpr int kHintCardRowGap = 6;
 constexpr qreal kFallbackFitHalfExtent = 250.0;
 constexpr int kLayerIndexRole = 1;
 constexpr int kPrimitiveIndexRole = 2;
 constexpr int kSelectionOverlayRole = 3;
 
-struct DrawingHintContent
+enum class HintIconKind
 {
-    QString title;
-    QString primary_action;
-    QString secondary_action;
-    QString footer;
-    bool has_secondary_action {false};
+    WheelZoom,
+    MiddleDrag,
+    LeftClick,
+    RightClick
+};
+
+struct HintRow
+{
+    HintIconKind icon_kind {HintIconKind::LeftClick};
+    QString action;
 };
 
 /// Rounds a raw scale bar length down to a human-friendly 1/2/5 * 10^n increment.
@@ -116,47 +121,54 @@ QString scaleLabelText(qreal sceneLength)
     return QString::number(sceneLength, 'g', 3);
 }
 
-QString mouseIconResourcePath(bool leftButton, ThemeMode themeMode)
+QString hintIconResourcePath(HintIconKind iconKind, ThemeMode themeMode)
 {
-    if (leftButton)
+    switch (iconKind)
     {
+    case HintIconKind::WheelZoom:
+        return themeMode == ThemeMode::Dark ? QStringLiteral(":/overlay/mouse_wheel_zoom_dark.svg")
+                                            : QStringLiteral(":/overlay/mouse_wheel_zoom_light.svg");
+    case HintIconKind::MiddleDrag:
+        return themeMode == ThemeMode::Dark ? QStringLiteral(":/overlay/mouse_middle_drag_dark.svg")
+                                            : QStringLiteral(":/overlay/mouse_middle_drag_light.svg");
+    case HintIconKind::LeftClick:
         return themeMode == ThemeMode::Dark ? QStringLiteral(":/overlay/mouse_left_click_dark.svg")
                                             : QStringLiteral(":/overlay/mouse_left_click_light.svg");
+    case HintIconKind::RightClick:
+    default:
+        return themeMode == ThemeMode::Dark ? QStringLiteral(":/overlay/mouse_right_click_dark.svg")
+                                            : QStringLiteral(":/overlay/mouse_right_click_light.svg");
     }
-
-    return themeMode == ThemeMode::Dark ? QStringLiteral(":/overlay/mouse_right_click_dark.svg")
-                                        : QStringLiteral(":/overlay/mouse_right_click_light.svg");
 }
 
-DrawingHintContent drawingHintContent(GeometryViewer::ToolMode toolMode)
+QVector<HintRow> hintRows(GeometryViewer::ToolMode toolMode)
 {
+    QVector<HintRow> rows {
+        HintRow {HintIconKind::WheelZoom, QStringLiteral("Zoom")},
+        HintRow {HintIconKind::MiddleDrag, QStringLiteral("Pan")}
+    };
+
     switch (toolMode)
     {
-    case GeometryViewer::ToolMode::DrawPoint:
-        return DrawingHintContent {
-            QStringLiteral("Point Tool"),
-            QStringLiteral("Create point"),
-            QString(),
-            QStringLiteral("Choose another tool to stop drawing points."),
-            false};
-    case GeometryViewer::ToolMode::DrawPolyline:
-        return DrawingHintContent {
-            QStringLiteral("Polyline Tool"),
-            QStringLiteral("Add vertex"),
-            QStringLiteral("Finish polyline"),
-            QStringLiteral("Use Cancel in toolbar to discard draft."),
-            true};
-    case GeometryViewer::ToolMode::DrawPolygon:
-        return DrawingHintContent {
-            QStringLiteral("Polygon Tool"),
-            QStringLiteral("Add vertex"),
-            QStringLiteral("Finish polygon"),
-            QStringLiteral("Use Cancel in toolbar to discard draft."),
-            true};
     case GeometryViewer::ToolMode::Browse:
+        rows.append(HintRow {HintIconKind::LeftClick, QStringLiteral("Select")});
+        break;
+    case GeometryViewer::ToolMode::DrawPoint:
+        rows.append(HintRow {HintIconKind::LeftClick, QStringLiteral("Create point")});
+        break;
+    case GeometryViewer::ToolMode::DrawPolyline:
+        rows.append(HintRow {HintIconKind::LeftClick, QStringLiteral("Add vertex")});
+        rows.append(HintRow {HintIconKind::RightClick, QStringLiteral("Finish polyline")});
+        break;
+    case GeometryViewer::ToolMode::DrawPolygon:
+        rows.append(HintRow {HintIconKind::LeftClick, QStringLiteral("Add vertex")});
+        rows.append(HintRow {HintIconKind::RightClick, QStringLiteral("Finish polygon")});
+        break;
     default:
-        return {};
+        break;
     }
+
+    return rows;
 }
 
 void drawHintActionRow(
@@ -387,19 +399,14 @@ void GeometryViewer::drawForeground(QPainter *painter, const QRectF &rect)
 
     painter->restore();
 
-    if (m_tool_mode == ToolMode::Browse)
-    {
-        return;
-    }
-
     const int maxHintWidth = std::min(kHintCardMaxWidth, scaleBarRect.left() - kHintCardGap - kHintCardMargin);
     if (maxHintWidth < kHintCardMinimumWidth)
     {
         return;
     }
 
-    const DrawingHintContent hintContent = drawingHintContent(m_tool_mode);
-    if (hintContent.title.isEmpty())
+    const QVector<HintRow> rows = hintRows(m_tool_mode);
+    if (rows.isEmpty())
     {
         return;
     }
@@ -407,38 +414,23 @@ void GeometryViewer::drawForeground(QPainter *painter, const QRectF &rect)
     const RenderColors &renderColors = RenderTheme::colors();
     const ThemeMode themeMode = RenderTheme::activeTheme();
 
-    QFont titleFont = font();
-    titleFont.setBold(true);
-
     QFont bodyFont = font();
-
-    QFont footerFont = font();
-    footerFont.setPointSizeF(std::max(footerFont.pointSizeF() - 1.0, 8.0));
-
-    const QFontMetrics titleMetrics(titleFont);
     const QFontMetrics bodyMetrics(bodyFont);
-    const QFontMetrics footerMetrics(footerFont);
-
-    const int cardWidth = maxHintWidth;
-    const int contentWidth = cardWidth - kHintCardPadding * 2;
-
-    const QRect titleMeasureRect(0, 0, contentWidth, 200);
-    const QRect footerMeasureRect(0, 0, contentWidth, 400);
-    const QRect titleTextRect = titleMetrics.boundingRect(
-        titleMeasureRect,
-        Qt::AlignLeft | Qt::AlignTop | Qt::TextWordWrap,
-        hintContent.title);
-    const QRect footerTextRect = footerMetrics.boundingRect(
-        footerMeasureRect,
-        Qt::AlignLeft | Qt::AlignTop | Qt::TextWordWrap,
-        hintContent.footer);
 
     const int actionRowHeight = std::max(bodyMetrics.height(), kHintCardIconSize);
-    const int actionCount = hintContent.has_secondary_action ? 2 : 1;
-    const int actionsHeight = actionRowHeight * actionCount + kHintCardRowGap * (actionCount - 1);
-    const int dividerGap = kHintCardSectionGap;
-    const int cardHeight = kHintCardPadding + titleTextRect.height() + kHintCardSectionGap + actionsHeight
-        + dividerGap + footerTextRect.height() + kHintCardPadding;
+    int maxActionWidth = 0;
+    for (const HintRow &row : rows)
+    {
+        maxActionWidth = std::max(maxActionWidth, bodyMetrics.horizontalAdvance(row.action));
+    }
+
+    const int cardWidth = std::min(
+        maxHintWidth,
+        std::max(kHintCardMinimumWidth, kHintCardPadding * 2 + kHintCardIconSize + kHintCardIconTextGap + maxActionWidth));
+    const int contentWidth = cardWidth - kHintCardPadding * 2;
+    const int rowCount = rows.size();
+    const int rowsHeight = actionRowHeight * rowCount + kHintCardRowGap * std::max(rowCount - 1, 0);
+    const int cardHeight = kHintCardPadding * 2 + rowsHeight;
 
     const QRect hintCardRect(
         kHintCardMargin,
@@ -454,68 +446,27 @@ void GeometryViewer::drawForeground(QPainter *painter, const QRectF &rect)
     painter->drawRoundedRect(hintCardRect, kHintCardCornerRadius, kHintCardCornerRadius);
 
     int cursorY = hintCardRect.top() + kHintCardPadding;
-
-    painter->setFont(titleFont);
-    painter->setPen(renderColors.overlay_title_text);
-    const QRect titleRect(
-        hintCardRect.left() + kHintCardPadding,
-        cursorY,
-        contentWidth,
-        titleTextRect.height());
-    painter->drawText(titleRect, Qt::AlignLeft | Qt::AlignTop | Qt::TextWordWrap, hintContent.title);
-    cursorY = titleRect.bottom() + 1 + kHintCardSectionGap;
-
-    const QRect primaryRowRect(
-        hintCardRect.left() + kHintCardPadding,
-        cursorY,
-        contentWidth,
-        actionRowHeight);
-    drawHintActionRow(
-        painter,
-        primaryRowRect,
-        mouseIconResourcePath(true, themeMode),
-        hintContent.primary_action,
-        renderColors.overlay_body_text,
-        bodyFont);
-    cursorY = primaryRowRect.bottom() + 1;
-
-    if (hintContent.has_secondary_action)
+    for (int rowIndex = 0; rowIndex < rows.size(); ++rowIndex)
     {
-        cursorY += kHintCardRowGap;
-        const QRect secondaryRowRect(
+        const HintRow &row = rows.at(rowIndex);
+        const QRect rowRect(
             hintCardRect.left() + kHintCardPadding,
             cursorY,
             contentWidth,
             actionRowHeight);
         drawHintActionRow(
             painter,
-            secondaryRowRect,
-            mouseIconResourcePath(false, themeMode),
-            hintContent.secondary_action,
+            rowRect,
+            hintIconResourcePath(row.icon_kind, themeMode),
+            row.action,
             renderColors.overlay_body_text,
             bodyFont);
-        cursorY = secondaryRowRect.bottom() + 1;
+        cursorY = rowRect.bottom() + 1;
+        if (rowIndex + 1 < rows.size())
+        {
+            cursorY += kHintCardRowGap;
+        }
     }
-
-    cursorY += dividerGap / 2;
-    painter->setPen(QPen(renderColors.overlay_panel_border));
-    painter->drawLine(
-        hintCardRect.left() + kHintCardPadding,
-        cursorY,
-        hintCardRect.right() - kHintCardPadding,
-        cursorY);
-
-    cursorY += dividerGap / 2;
-    painter->setFont(footerFont);
-    painter->setPen(renderColors.overlay_muted_text);
-    painter->drawText(
-        QRect(
-            hintCardRect.left() + kHintCardPadding,
-            cursorY,
-            contentWidth,
-            footerTextRect.height()),
-        Qt::AlignLeft | Qt::AlignTop | Qt::TextWordWrap,
-        hintContent.footer);
 
     painter->restore();
 }

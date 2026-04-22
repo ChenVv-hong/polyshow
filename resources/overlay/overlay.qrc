@@ -1,8 +1,12 @@
 <RCC>
     <qresource prefix="/overlay">
+        <file>mouse_middle_drag_dark.svg</file>
+        <file>mouse_middle_drag_light.svg</file>
         <file>mouse_left_click_dark.svg</file>
         <file>mouse_left_click_light.svg</file>
         <file>mouse_right_click_dark.svg</file>
         <file>mouse_right_click_light.svg</file>
+        <file>mouse_wheel_zoom_dark.svg</file>
+        <file>mouse_wheel_zoom_light.svg</file>
     </qresource>
 </RCC>

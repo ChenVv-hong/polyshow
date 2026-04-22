@@ -269,6 +269,26 @@ void GeometryScene::setEditPreviewState(const PrimitiveEditPreviewState &preview
     }
 }
 
+void GeometryScene::setDrawingPreview(PrimitiveKind primitiveKind, const QVector<Point2D> &points)
+{
+    m_has_drawing_preview = !points.isEmpty();
+    m_drawing_preview_kind = primitiveKind;
+    m_drawing_preview_points = points;
+    rebuildScene();
+}
+
+void GeometryScene::clearDrawingPreview()
+{
+    if (!m_has_drawing_preview && m_drawing_preview_points.isEmpty())
+    {
+        return;
+    }
+
+    m_has_drawing_preview = false;
+    m_drawing_preview_points.clear();
+    rebuildScene();
+}
+
 /// Shows or hides the background grid.
 void GeometryScene::setGridVisible(bool visible)
 {
@@ -558,6 +578,67 @@ void GeometryScene::rebuildScene()
         overlay->setData(kSelectionOverlayRole, true);
         overlay->setAcceptedMouseButtons(Qt::NoButton);
         overlay->setZValue(10000.0);
+    }
+
+    if (m_has_drawing_preview && !m_drawing_preview_points.isEmpty())
+    {
+        QPen previewPen(renderColors.selection_stroke);
+        previewPen.setStyle(Qt::DashLine);
+        previewPen.setCosmetic(true);
+        previewPen.setWidthF(1.5);
+
+        QColor previewFill = renderColors.selection_fill;
+        previewFill.setAlpha(std::max(previewFill.alpha(), 96));
+
+        const auto markOverlayItem = [](QGraphicsItem *item) {
+            if (item == nullptr)
+            {
+                return;
+            }
+
+            item->setData(kSelectionOverlayRole, true);
+            item->setAcceptedMouseButtons(Qt::NoButton);
+            item->setZValue(9000.0);
+        };
+
+        if (m_drawing_preview_kind == PrimitiveKind::Point)
+        {
+            const Point2D &point = m_drawing_preview_points.first();
+            const QRectF markerRect(point.x - 4.0, point.y - 4.0, 8.0, 8.0);
+            markOverlayItem(addEllipse(markerRect, previewPen, QBrush(previewFill)));
+            return;
+        }
+
+        if (m_drawing_preview_points.size() >= 2)
+        {
+            if (m_drawing_preview_kind == PrimitiveKind::Polygon && m_drawing_preview_points.size() >= 3)
+            {
+                QPolygonF previewPolygon;
+                previewPolygon.reserve(m_drawing_preview_points.size());
+                for (const Point2D &point : m_drawing_preview_points)
+                {
+                    previewPolygon << point.toPointF();
+                }
+
+                markOverlayItem(addPolygon(previewPolygon, previewPen, QBrush(previewFill)));
+            }
+            else
+            {
+                QPainterPath previewPath(m_drawing_preview_points.first().toPointF());
+                for (int pointIndex = 1; pointIndex < m_drawing_preview_points.size(); ++pointIndex)
+                {
+                    previewPath.lineTo(m_drawing_preview_points.at(pointIndex).toPointF());
+                }
+
+                markOverlayItem(addPath(previewPath, previewPen));
+            }
+        }
+
+        for (const Point2D &point : m_drawing_preview_points)
+        {
+            const QRectF markerRect(point.x - 4.0, point.y - 4.0, 8.0, 8.0);
+            markOverlayItem(addEllipse(markerRect, previewPen, QBrush(previewFill)));
+        }
     }
 }
 

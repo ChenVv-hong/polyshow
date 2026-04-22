@@ -13,8 +13,25 @@ class GeometryViewer final : public QGraphicsView
     Q_OBJECT
 
 public:
+    /// Supported interaction tools for the workspace.
+    enum class ToolMode
+    {
+        Browse,
+        DrawPoint,
+        DrawPolyline,
+        DrawPolygon
+    };
+    Q_ENUM(ToolMode)
+
     /// Creates the viewer widget.
     explicit GeometryViewer(QWidget *parent = nullptr);
+
+    /// Switches the active workspace tool.
+    void setToolMode(ToolMode toolMode);
+
+    /// Returns the active workspace tool.
+    [[nodiscard]]
+    ToolMode toolMode() const;
 
 public slots:
     /// Zooms the current view in.
@@ -38,6 +55,12 @@ signals:
 
     /// Emitted when the user clicks empty scene space.
     void emptyAreaActivated();
+
+    /// Emitted when the active drawing tool receives one vertex click.
+    void drawingPointRequested(const QPointF &scenePosition);
+
+    /// Emitted when the active drawing tool requests a commit.
+    void drawingFinishedRequested();
 
 protected:
     /// Draws the viewport-relative dynamic grid background.
@@ -65,6 +88,7 @@ private:
     /// Updates the cursor for the current drag state.
     void updateDragCursor(bool active);
 
+    ToolMode m_tool_mode {ToolMode::Browse};
     bool m_is_panning {false};
     QPoint m_last_mouse_position;
 };

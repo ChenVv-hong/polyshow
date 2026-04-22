@@ -118,6 +118,21 @@ GeometryViewer::GeometryViewer(QWidget *parent)
     setBackgroundBrush(renderColors.canvas_background);
 }
 
+void GeometryViewer::setToolMode(ToolMode toolMode)
+{
+    if (m_tool_mode == toolMode)
+    {
+        return;
+    }
+
+    m_tool_mode = toolMode;
+}
+
+GeometryViewer::ToolMode GeometryViewer::toolMode() const
+{
+    return m_tool_mode;
+}
+
 /// Applies the standard zoom-in ratio.
 void GeometryViewer::zoomIn()
 {
@@ -285,6 +300,24 @@ void GeometryViewer::mousePressEvent(QMouseEvent *event)
         updateDragCursor(true);
         event->accept();
         return;
+    }
+
+    if (m_tool_mode != ToolMode::Browse)
+    {
+        if (event->button() == Qt::LeftButton)
+        {
+            emit drawingPointRequested(mapToScene(event->pos()));
+            event->accept();
+            return;
+        }
+
+        if (event->button() == Qt::RightButton
+            && (m_tool_mode == ToolMode::DrawPolyline || m_tool_mode == ToolMode::DrawPolygon))
+        {
+            emit drawingFinishedRequested();
+            event->accept();
+            return;
+        }
     }
 
     if (event->button() == Qt::LeftButton)

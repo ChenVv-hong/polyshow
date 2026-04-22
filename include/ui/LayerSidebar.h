@@ -38,6 +38,12 @@ signals:
     /// Emitted when the user toggles one primitive.
     void primitiveVisibilityChanged(int layerIndex, int primitiveIndex, bool visible);
 
+    /// Emitted when the user requests a new layer.
+    void createLayerRequested();
+
+    /// Emitted when the user requests exporting the active layer.
+    void exportLayerRequested();
+
 private:
     /// Expands or collapses the search field.
     void setSearchExpanded(bool expanded);
@@ -60,6 +66,8 @@ private:
 
     DocumentData m_document_data;
     SelectionState m_selection_state;
+    QPushButton *m_new_layer_button {nullptr};
+    QPushButton *m_export_layer_button {nullptr};
     QPushButton *m_search_button {nullptr};
     QLineEdit *m_search_line_edit {nullptr};
     QLabel *m_section_label {nullptr};

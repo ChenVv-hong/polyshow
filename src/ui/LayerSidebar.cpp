@@ -31,7 +31,7 @@ Qt::CheckState layerCheckState(const LayerData &layer)
 {
     if (layer.primitives.isEmpty())
     {
-        return Qt::Unchecked;
+        return Qt::Checked;
     }
 
     int visibleCount = 0;
@@ -60,7 +60,7 @@ Qt::CheckState layerCheckState(const QTreeWidgetItem *layerItem)
 {
     if (layerItem == nullptr || layerItem->childCount() == 0)
     {
-        return Qt::Unchecked;
+        return Qt::Checked;
     }
 
     int checkedCount = 0;
@@ -119,7 +119,7 @@ QString footerSummary(const DocumentData &documentData)
         }
     }
 
-    return QStringLiteral("%1 files  /  %2 visible primitives")
+    return QStringLiteral("%1 layers  /  %2 visible primitives")
         .arg(documentData.layers.size())
         .arg(visiblePrimitiveCount);
 }
@@ -142,6 +142,16 @@ LayerSidebar::LayerSidebar(QWidget *parent)
     headerLayout->addWidget(titleLabel);
     headerLayout->addStretch();
 
+    m_new_layer_button = new QPushButton(QStringLiteral("New"), this);
+    m_new_layer_button->setCursor(Qt::PointingHandCursor);
+    m_new_layer_button->setToolTip(QStringLiteral("Create Layer"));
+    headerLayout->addWidget(m_new_layer_button);
+
+    m_export_layer_button = new QPushButton(QStringLiteral("Export"), this);
+    m_export_layer_button->setCursor(Qt::PointingHandCursor);
+    m_export_layer_button->setToolTip(QStringLiteral("Export Active Layer"));
+    headerLayout->addWidget(m_export_layer_button);
+
     m_search_button = new QPushButton(QStringLiteral("S"), this);
     m_search_button->setCheckable(true);
     m_search_button->setCursor(Qt::PointingHandCursor);
@@ -151,11 +161,11 @@ LayerSidebar::LayerSidebar(QWidget *parent)
     layout->addLayout(headerLayout);
 
     m_search_line_edit = new QLineEdit(this);
-    m_search_line_edit->setPlaceholderText(QStringLiteral("Filter files and primitives"));
+    m_search_line_edit->setPlaceholderText(QStringLiteral("Filter layers and primitives"));
     m_search_line_edit->setVisible(false);
     layout->addWidget(m_search_line_edit);
 
-    m_section_label = new QLabel(QStringLiteral("Files"), this);
+    m_section_label = new QLabel(QStringLiteral("Layers"), this);
     m_section_label->setProperty("role", QStringLiteral("sectionTitle"));
     layout->addWidget(m_section_label);
 
@@ -174,6 +184,8 @@ LayerSidebar::LayerSidebar(QWidget *parent)
     connect(m_search_button, &QPushButton::toggled, this, [this](bool checked) {
         setSearchExpanded(checked);
     });
+    connect(m_new_layer_button, &QPushButton::clicked, this, &LayerSidebar::createLayerRequested);
+    connect(m_export_layer_button, &QPushButton::clicked, this, &LayerSidebar::exportLayerRequested);
     connect(m_search_line_edit, &QLineEdit::textChanged, this, [this]() {
         applyFilter();
     });
@@ -407,7 +419,7 @@ void LayerSidebar::applyFilter()
     const QString query = m_search_line_edit->text().trimmed().toLower();
     const bool hasQuery = !query.isEmpty();
 
-    m_section_label->setText(hasQuery ? QStringLiteral("Search Results") : QStringLiteral("Files"));
+    m_section_label->setText(hasQuery ? QStringLiteral("Search Results") : QStringLiteral("Layers"));
 
     for (int layerIndex = 0; layerIndex < m_tree_widget->topLevelItemCount(); ++layerIndex)
     {

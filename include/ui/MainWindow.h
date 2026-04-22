@@ -1,11 +1,13 @@
 #pragma once
 
-#include "core/PrimitiveEditing.h"
 #include "core/GeometryScene.h"
+#include "core/PrimitiveEditing.h"
+#include "ui/GeometryViewer.h"
 
 #include <QMainWindow>
 #include <QPointF>
 #include <QStringList>
+#include <QVector>
 
 class QAction;
 class QActionGroup;
@@ -18,7 +20,6 @@ class QWidget;
 namespace PolyShow
 {
 
-class GeometryViewer;
 class InspectorPanel;
 class LayerSidebar;
 class LogPanel;
@@ -35,6 +36,12 @@ public:
     explicit MainWindow(QWidget *parent = nullptr);
 
 private slots:
+    /// Creates one empty editable layer.
+    void createLayer();
+
+    /// Exports the active layer to a `.ply` file.
+    void exportActiveLayer();
+
     /// Opens one or more `.ply` files chosen by the user.
     void openPlyFile();
 
@@ -77,6 +84,27 @@ private slots:
     /// Validates one real-time coordinate draft from the inspector.
     void onInspectorCoordinateDraftChanged(const PrimitiveCoordinateDraft &draft);
 
+    /// Activates browse mode in the workspace.
+    void setToolModeBrowse();
+
+    /// Activates point drawing mode in the workspace.
+    void setToolModeDrawPoint();
+
+    /// Activates polyline drawing mode in the workspace.
+    void setToolModeDrawPolyline();
+
+    /// Activates polygon drawing mode in the workspace.
+    void setToolModeDrawPolygon();
+
+    /// Adds one drawing vertex from the workspace.
+    void onDrawingPointRequested(const QPointF &scenePosition);
+
+    /// Commits the current drawing draft.
+    void finishDrawing();
+
+    /// Cancels the current drawing draft.
+    void cancelDrawing();
+
     /// Shows the About dialog.
     void showAboutDialog();
 
@@ -96,8 +124,14 @@ private:
     /// Synchronizes viewport buttons and selectors to scene state.
     void updateViewportControlState();
 
+    /// Synchronizes drawing tool buttons to the active workspace tool.
+    void updateDrawingToolState();
+
     /// Synchronizes a render mode to the full UI state.
     void setRenderMode(GeometryScene::RenderMode renderMode);
+
+    /// Synchronizes the active workspace tool to the full UI state.
+    void setWorkspaceToolMode(GeometryViewer::ToolMode toolMode);
 
     /// Opens files into the current document as additional layers.
     void openFiles(const QStringList &filePaths);
@@ -116,6 +150,24 @@ private:
 
     /// Clears the current coordinate preview suppression state.
     void clearCoordinatePreviewState();
+
+    /// Clears the current drawing draft and preview.
+    void clearDrawingDraft(bool showStatusMessage = false);
+
+    /// Rebuilds the scene drawing preview from the current draft.
+    void updateDrawingPreview();
+
+    /// Returns the current or last active layer index.
+    [[nodiscard]]
+    int currentLayerIndex() const;
+
+    /// Returns a valid target layer, creating one when the document is empty.
+    [[nodiscard]]
+    int ensureActiveLayer();
+
+    /// Returns the next default layer label.
+    [[nodiscard]]
+    QString nextLayerName() const;
 
     /// Normalizes one selection state against the current document.
     [[nodiscard]]
@@ -138,7 +190,15 @@ private:
     QWidget *m_viewport_controls_widget {nullptr};
     QComboBox *m_render_mode_combo_box {nullptr};
     PillButton *m_grid_toggle_button {nullptr};
+    PillButton *m_browse_mode_button {nullptr};
+    PillButton *m_draw_point_button {nullptr};
+    PillButton *m_draw_polyline_button {nullptr};
+    PillButton *m_draw_polygon_button {nullptr};
+    PillButton *m_finish_drawing_button {nullptr};
+    PillButton *m_cancel_drawing_button {nullptr};
 
+    QAction *m_new_layer_action {nullptr};
+    QAction *m_export_layer_action {nullptr};
     QAction *m_open_action {nullptr};
     QAction *m_exit_action {nullptr};
     QAction *m_fit_action {nullptr};
@@ -159,6 +219,9 @@ private:
     SelectionState m_selection_state;
     PrimitiveEditPreviewState m_edit_preview_state;
     bool m_has_logged_invalid_coordinate_draft {false};
+    GeometryViewer::ToolMode m_workspace_tool_mode {GeometryViewer::ToolMode::Browse};
+    int m_active_layer_index {-1};
+    QVector<Point2D> m_drawing_points;
 };
 
 } // namespace PolyShow

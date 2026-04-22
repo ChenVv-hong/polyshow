@@ -68,6 +68,12 @@ public:
     /// Replaces the active inspector preview suppression state.
     void setEditPreviewState(const PrimitiveEditPreviewState &previewState, bool rebuildScene = true);
 
+    /// Replaces the active drawing preview path.
+    void setDrawingPreview(PrimitiveKind primitiveKind, const QVector<Point2D> &points);
+
+    /// Clears the active drawing preview path.
+    void clearDrawingPreview();
+
 signals:
     /// Emitted after the geometry statistics change.
     void geometryChanged(int pointCount, int polylineCount, int polygonCount);
@@ -90,6 +96,9 @@ private:
     int m_polygon_count {0};
     SelectionState m_selection_state;
     PrimitiveEditPreviewState m_edit_preview_state;
+    bool m_has_drawing_preview {false};
+    PrimitiveKind m_drawing_preview_kind {PrimitiveKind::Point};
+    QVector<Point2D> m_drawing_preview_points;
 };
 
 } // namespace PolyShow

@@ -1,7 +1,8 @@
 #include "ui/MainWindow.h"
 
+#include "core/LayerEditing.h"
 #include "parsers/PlyParser.h"
-#include "ui/GeometryViewer.h"
+#include "parsers/PlySerializer.h"
 #include "ui/InspectorPanel.h"
 #include "ui/LayerSidebar.h"
 #include "ui/LogPanel.h"
@@ -11,6 +12,7 @@
 #include <QAction>
 #include <QActionGroup>
 #include <QComboBox>
+#include <QDir>
 #include <QFileDialog>
 #include <QFileInfo>
 #include <QHBoxLayout>
@@ -88,6 +90,11 @@ QString primitiveCustomName(const GeometryData &geometryData, PrimitiveKind kind
 
 bool layerHasVisiblePrimitives(const LayerData &layer)
 {
+    if (layer.primitives.isEmpty())
+    {
+        return true;
+    }
+
     for (const LayerPrimitiveData &primitive : layer.primitives)
     {
         if (primitive.visible)
@@ -398,6 +405,67 @@ bool styleFieldChanged(PrimitiveStyleField field, const PrimitiveEditValues &bef
     }
 }
 
+SelectionState layerSelectionState(int layerIndex)
+{
+    return SelectionState {SelectionKind::Layer, layerIndex, -1};
+}
+
+QString layerLogLabel(const DocumentData &documentData, int layerIndex)
+{
+    if (layerIndex < 0 || layerIndex >= documentData.layers.size())
+    {
+        return QStringLiteral("active layer");
+    }
+
+    const QString displayName = documentData.layers.at(layerIndex).display_name;
+    return displayName.isEmpty() ? QStringLiteral("Unnamed layer") : displayName;
+}
+
+PrimitiveKind primitiveKindForToolMode(GeometryViewer::ToolMode toolMode)
+{
+    switch (toolMode)
+    {
+    case GeometryViewer::ToolMode::DrawPoint:
+        return PrimitiveKind::Point;
+    case GeometryViewer::ToolMode::DrawPolyline:
+        return PrimitiveKind::Polyline;
+    case GeometryViewer::ToolMode::DrawPolygon:
+        return PrimitiveKind::Polygon;
+    default:
+        return PrimitiveKind::Point;
+    }
+}
+
+QString toolModeLabel(GeometryViewer::ToolMode toolMode)
+{
+    switch (toolMode)
+    {
+    case GeometryViewer::ToolMode::Browse:
+        return QStringLiteral("Browse");
+    case GeometryViewer::ToolMode::DrawPoint:
+        return QStringLiteral("Point");
+    case GeometryViewer::ToolMode::DrawPolyline:
+        return QStringLiteral("Polyline");
+    case GeometryViewer::ToolMode::DrawPolygon:
+        return QStringLiteral("Polygon");
+    default:
+        return QStringLiteral("Browse");
+    }
+}
+
+PrimitiveStyle drawingStyleForLayer(const LayerData &layer, PrimitiveKind kind)
+{
+    for (int primitiveIndex = layer.primitives.size() - 1; primitiveIndex >= 0; --primitiveIndex)
+    {
+        if (layer.primitives.at(primitiveIndex).reference.kind == kind)
+        {
+            return primitiveStyle(layer, primitiveIndex);
+        }
+    }
+
+    return {};
+}
+
 } // namespace
 
 MainWindow::MainWindow(QWidget *parent)
@@ -408,6 +476,66 @@ MainWindow::MainWindow(QWidget *parent)
     setupViewportControls();
     setupStatusBar();
     updateUiFromScene();
+}
+
+void MainWindow::createLayer()
+{
+    const QString layerName = nextLayerName();
+    m_document_data.layers.append(createEmptyLayer(layerName));
+    m_active_layer_index = m_document_data.layers.size() - 1;
+    m_selection_state = layerSelectionState(m_active_layer_index);
+    syncDocumentToViews(false);
+    m_log_panel->appendMessage(LogSeverity::Info, QStringLiteral("[info] Created layer %1").arg(layerName));
+    statusBar()->showMessage(QStringLiteral("Layer created"), 3000);
+}
+
+void MainWindow::exportActiveLayer()
+{
+    const int layerIndex = currentLayerIndex();
+    if (layerIndex < 0 || layerIndex >= m_document_data.layers.size())
+    {
+        QMessageBox::information(this, QStringLiteral("Export Layer"), QStringLiteral("Select or create a layer first."));
+        statusBar()->showMessage(QStringLiteral("No active layer"), 3000);
+        return;
+    }
+
+    const LayerData &layer = m_document_data.layers.at(layerIndex);
+    const QString defaultDirectory = layer.file_path.isEmpty()
+        ? QDir::currentPath()
+        : QFileInfo(layer.file_path).absolutePath();
+    QString defaultFileName = layer.display_name.isEmpty() ? QStringLiteral("layer_%1").arg(layerIndex + 1) : layer.display_name;
+    if (!defaultFileName.endsWith(QStringLiteral(".ply"), Qt::CaseInsensitive))
+    {
+        defaultFileName += QStringLiteral(".ply");
+    }
+
+    const QString filePath = QFileDialog::getSaveFileName(
+        this,
+        QStringLiteral("Export Layer"),
+        QDir(defaultDirectory).filePath(defaultFileName),
+        plyFileDialogFilter());
+    if (filePath.isEmpty())
+    {
+        return;
+    }
+
+    QString errorMessage;
+    if (!PlySerializer::writeLayerFile(layer, filePath, &errorMessage))
+    {
+        QMessageBox::critical(this, QStringLiteral("Export Failed"), errorMessage);
+        m_log_panel->appendMessage(LogSeverity::Error, QStringLiteral("[error] Failed to export %1: %2").arg(
+                                                        layerLogLabel(m_document_data, layerIndex), errorMessage));
+        statusBar()->showMessage(QStringLiteral("Layer export failed"), 3000);
+        return;
+    }
+
+    m_document_data.layers[layerIndex].file_path = filePath;
+    m_layer_sidebar->setDocumentData(m_document_data, true);
+    m_layer_sidebar->setSelectionState(m_selection_state);
+    m_log_panel->appendMessage(
+        LogSeverity::Info,
+        QStringLiteral("[info] Exported %1 to %2").arg(layerLogLabel(m_document_data, layerIndex), filePath));
+    statusBar()->showMessage(QStringLiteral("Layer exported"), 3000);
 }
 
 void MainWindow::openPlyFile()
@@ -424,6 +552,26 @@ void MainWindow::openPlyFile()
     }
 
     openFiles(filePaths);
+}
+
+void MainWindow::setToolModeBrowse()
+{
+    setWorkspaceToolMode(GeometryViewer::ToolMode::Browse);
+}
+
+void MainWindow::setToolModeDrawPoint()
+{
+    setWorkspaceToolMode(GeometryViewer::ToolMode::DrawPoint);
+}
+
+void MainWindow::setToolModeDrawPolyline()
+{
+    setWorkspaceToolMode(GeometryViewer::ToolMode::DrawPolyline);
+}
+
+void MainWindow::setToolModeDrawPolygon()
+{
+    setWorkspaceToolMode(GeometryViewer::ToolMode::DrawPolygon);
 }
 
 void MainWindow::setRenderModeSolid()
@@ -514,6 +662,10 @@ void MainWindow::onSelectionStateChanged(const SelectionState &selectionState)
     }
 
     m_selection_state = normalizedSelectionStateValue;
+    if (m_selection_state.kind == SelectionKind::Layer || m_selection_state.kind == SelectionKind::Primitive)
+    {
+        m_active_layer_index = m_selection_state.layer_index;
+    }
     m_scene->setEditPreviewState(m_edit_preview_state, false);
     m_scene->setSelectionState(m_selection_state);
     m_layer_sidebar->setSelectionState(m_selection_state);
@@ -700,17 +852,118 @@ void MainWindow::onInspectorCoordinateDraftChanged(const PrimitiveCoordinateDraf
     }
 }
 
+void MainWindow::onDrawingPointRequested(const QPointF &scenePosition)
+{
+    const int layerIndex = ensureActiveLayer();
+    if (layerIndex < 0 || layerIndex >= m_document_data.layers.size())
+    {
+        return;
+    }
+
+    if (m_workspace_tool_mode == GeometryViewer::ToolMode::DrawPoint)
+    {
+        const PrimitiveKind kind = primitiveKindForToolMode(m_workspace_tool_mode);
+        const PrimitiveWriteRequest request {
+            kind,
+            QVector<Point2D> {Point2D {scenePosition.x(), scenePosition.y()}},
+            drawingStyleForLayer(m_document_data.layers.at(layerIndex), kind)
+        };
+
+        int primitiveIndex = -1;
+        QString errorMessage;
+        if (!appendPrimitiveToLayer(m_document_data.layers[layerIndex], request, &primitiveIndex, &errorMessage))
+        {
+            m_log_panel->appendMessage(
+                LogSeverity::Error,
+                QStringLiteral("[error] Failed to add point to %1: %2")
+                    .arg(layerLogLabel(m_document_data, layerIndex), errorMessage));
+            statusBar()->showMessage(QStringLiteral("Point creation failed"), 3000);
+            return;
+        }
+
+        m_selection_state = primitiveSelectionState(layerIndex, primitiveIndex);
+        syncDocumentToViews(false);
+        m_log_panel->appendMessage(
+            LogSeverity::Info,
+            QStringLiteral("[info] Added point to %1 at (%2, %3)")
+                .arg(layerLogLabel(m_document_data, layerIndex))
+                .arg(formatNumber(scenePosition.x()))
+                .arg(formatNumber(scenePosition.y())));
+        statusBar()->showMessage(QStringLiteral("Point added"), 2000);
+        return;
+    }
+
+    m_drawing_points.append(Point2D {scenePosition.x(), scenePosition.y()});
+    updateDrawingPreview();
+    statusBar()->showMessage(
+        QStringLiteral("%1 drawing: %2 vertex/vertices")
+            .arg(toolModeLabel(m_workspace_tool_mode))
+            .arg(m_drawing_points.size()),
+        2000);
+}
+
+void MainWindow::finishDrawing()
+{
+    if (m_workspace_tool_mode == GeometryViewer::ToolMode::Browse
+        || m_workspace_tool_mode == GeometryViewer::ToolMode::DrawPoint)
+    {
+        return;
+    }
+
+    if (m_drawing_points.isEmpty())
+    {
+        statusBar()->showMessage(QStringLiteral("Add vertices before finishing"), 2000);
+        return;
+    }
+
+    const int layerIndex = ensureActiveLayer();
+    if (layerIndex < 0 || layerIndex >= m_document_data.layers.size())
+    {
+        return;
+    }
+
+    const PrimitiveKind kind = primitiveKindForToolMode(m_workspace_tool_mode);
+    const PrimitiveWriteRequest request {kind, m_drawing_points, drawingStyleForLayer(m_document_data.layers.at(layerIndex), kind)};
+
+    int primitiveIndex = -1;
+    QString errorMessage;
+    if (!appendPrimitiveToLayer(m_document_data.layers[layerIndex], request, &primitiveIndex, &errorMessage))
+    {
+        m_log_panel->appendMessage(
+            LogSeverity::Error,
+            QStringLiteral("[error] Failed to add %1 to %2: %3")
+                .arg(toolModeLabel(m_workspace_tool_mode).toLower(), layerLogLabel(m_document_data, layerIndex), errorMessage));
+        statusBar()->showMessage(QStringLiteral("Drawing commit failed"), 3000);
+        return;
+    }
+
+    clearDrawingDraft(false);
+    m_selection_state = primitiveSelectionState(layerIndex, primitiveIndex);
+    syncDocumentToViews(false);
+    m_log_panel->appendMessage(
+        LogSeverity::Info,
+        QStringLiteral("[info] Added %1 to %2")
+            .arg(toolModeLabel(m_workspace_tool_mode).toLower(), layerLogLabel(m_document_data, layerIndex)));
+    statusBar()->showMessage(QStringLiteral("Primitive added"), 2000);
+}
+
+void MainWindow::cancelDrawing()
+{
+    clearDrawingDraft(true);
+}
+
 void MainWindow::showAboutDialog()
 {
     QMessageBox::about(
         this,
         QStringLiteral("About PolyShow"),
         QStringLiteral("PolyShow MVP\n\n") + QStringLiteral("Features:\n")
-            + QStringLiteral("1. Open one or more PolyShow .ply files\n")
+            + QStringLiteral("1. Create, open, and export layers\n")
             + QStringLiteral("2. Display points, polylines, and polygons\n")
-            + QStringLiteral("3. Toggle layer and primitive visibility\n")
-            + QStringLiteral("4. Search and inspect opened geometry\n")
-            + QStringLiteral("5. Switch render mode (Solid/Wireframe/Points)"));
+            + QStringLiteral("3. Draw primitives directly in the workspace\n")
+            + QStringLiteral("4. Toggle layer and primitive visibility\n")
+            + QStringLiteral("5. Search and inspect opened geometry\n")
+            + QStringLiteral("6. Switch render mode (Solid/Wireframe/Points)"));
 }
 
 void MainWindow::setupUi()
@@ -790,9 +1043,13 @@ void MainWindow::setupUi()
     connect(m_geometry_viewer, &GeometryViewer::mousePositionChanged, this, &MainWindow::updateMousePosition);
     connect(m_geometry_viewer, &GeometryViewer::primitiveActivated, this, &MainWindow::onScenePrimitiveActivated);
     connect(m_geometry_viewer, &GeometryViewer::emptyAreaActivated, this, &MainWindow::onEmptySceneActivated);
+    connect(m_geometry_viewer, &GeometryViewer::drawingPointRequested, this, &MainWindow::onDrawingPointRequested);
+    connect(m_geometry_viewer, &GeometryViewer::drawingFinishedRequested, this, &MainWindow::finishDrawing);
     connect(m_layer_sidebar, &LayerSidebar::selectionChanged, this, &MainWindow::onSelectionStateChanged);
     connect(m_layer_sidebar, &LayerSidebar::layerVisibilityChanged, this, &MainWindow::onLayerVisibilityChanged);
     connect(m_layer_sidebar, &LayerSidebar::primitiveVisibilityChanged, this, &MainWindow::onPrimitiveVisibilityChanged);
+    connect(m_layer_sidebar, &LayerSidebar::createLayerRequested, this, &MainWindow::createLayer);
+    connect(m_layer_sidebar, &LayerSidebar::exportLayerRequested, this, &MainWindow::exportActiveLayer);
     connect(m_inspector_panel, &InspectorPanel::styleChangeRequested, this, &MainWindow::onInspectorStyleChangeRequested);
     connect(
         m_inspector_panel,
@@ -805,10 +1062,20 @@ void MainWindow::setupMenuBar()
 {
     auto *fileMenu = menuBar()->addMenu(QStringLiteral("File"));
 
+    m_new_layer_action = new QAction(QStringLiteral("New Layer"), this);
+    m_new_layer_action->setShortcut(QKeySequence(QStringLiteral("Ctrl+Shift+N")));
+    connect(m_new_layer_action, &QAction::triggered, this, &MainWindow::createLayer);
+    fileMenu->addAction(m_new_layer_action);
+
     m_open_action = new QAction(QStringLiteral("Open .ply..."), this);
     m_open_action->setShortcut(QKeySequence::Open);
     connect(m_open_action, &QAction::triggered, this, &MainWindow::openPlyFile);
     fileMenu->addAction(m_open_action);
+
+    m_export_layer_action = new QAction(QStringLiteral("Export Active Layer..."), this);
+    m_export_layer_action->setShortcut(QKeySequence(QStringLiteral("Ctrl+Shift+S")));
+    connect(m_export_layer_action, &QAction::triggered, this, &MainWindow::exportActiveLayer);
+    fileMenu->addAction(m_export_layer_action);
 
     fileMenu->addSeparator();
 
@@ -881,11 +1148,33 @@ void MainWindow::setupViewportControls()
     layout->setContentsMargins(0, 0, 0, 0);
     layout->setSpacing(8);
 
-    auto *panButton = new PillButton(QStringLiteral("Pan"), m_viewport_controls_widget);
-    panButton->setVariant(PillButton::Variant::Primary);
-    panButton->setCheckable(true);
-    panButton->setChecked(true);
-    layout->addWidget(panButton);
+    m_browse_mode_button = new PillButton(QStringLiteral("Browse"), m_viewport_controls_widget);
+    m_browse_mode_button->setCheckable(true);
+    layout->addWidget(m_browse_mode_button);
+    connect(m_browse_mode_button, &QPushButton::clicked, this, &MainWindow::setToolModeBrowse);
+
+    m_draw_point_button = new PillButton(QStringLiteral("Point"), m_viewport_controls_widget);
+    m_draw_point_button->setCheckable(true);
+    layout->addWidget(m_draw_point_button);
+    connect(m_draw_point_button, &QPushButton::clicked, this, &MainWindow::setToolModeDrawPoint);
+
+    m_draw_polyline_button = new PillButton(QStringLiteral("Polyline"), m_viewport_controls_widget);
+    m_draw_polyline_button->setCheckable(true);
+    layout->addWidget(m_draw_polyline_button);
+    connect(m_draw_polyline_button, &QPushButton::clicked, this, &MainWindow::setToolModeDrawPolyline);
+
+    m_draw_polygon_button = new PillButton(QStringLiteral("Polygon"), m_viewport_controls_widget);
+    m_draw_polygon_button->setCheckable(true);
+    layout->addWidget(m_draw_polygon_button);
+    connect(m_draw_polygon_button, &QPushButton::clicked, this, &MainWindow::setToolModeDrawPolygon);
+
+    m_finish_drawing_button = new PillButton(QStringLiteral("Finish"), m_viewport_controls_widget);
+    layout->addWidget(m_finish_drawing_button);
+    connect(m_finish_drawing_button, &QPushButton::clicked, this, &MainWindow::finishDrawing);
+
+    m_cancel_drawing_button = new PillButton(QStringLiteral("Cancel"), m_viewport_controls_widget);
+    layout->addWidget(m_cancel_drawing_button);
+    connect(m_cancel_drawing_button, &QPushButton::clicked, this, &MainWindow::cancelDrawing);
 
     auto *fitButton = new PillButton(QStringLiteral("Fit View"), m_viewport_controls_widget);
     layout->addWidget(fitButton);
@@ -925,6 +1214,7 @@ void MainWindow::setupViewportControls()
     layout->addWidget(m_render_mode_combo_box);
 
     updateViewportControlState();
+    updateDrawingToolState();
 }
 
 void MainWindow::updateViewportControlState()
@@ -961,6 +1251,40 @@ void MainWindow::updateViewportControlState()
     }
 }
 
+void MainWindow::updateDrawingToolState()
+{
+    const auto syncButton = [this](PillButton *button, bool checked) {
+        if (button == nullptr)
+        {
+            return;
+        }
+
+        const QSignalBlocker blocker(button);
+        button->setChecked(checked);
+        button->setVariant(checked ? PillButton::Variant::Primary : PillButton::Variant::Neutral);
+    };
+
+    syncButton(m_browse_mode_button, m_workspace_tool_mode == GeometryViewer::ToolMode::Browse);
+    syncButton(m_draw_point_button, m_workspace_tool_mode == GeometryViewer::ToolMode::DrawPoint);
+    syncButton(m_draw_polyline_button, m_workspace_tool_mode == GeometryViewer::ToolMode::DrawPolyline);
+    syncButton(m_draw_polygon_button, m_workspace_tool_mode == GeometryViewer::ToolMode::DrawPolygon);
+
+    const bool hasDraft = !m_drawing_points.isEmpty();
+    const bool canFinish = m_workspace_tool_mode == GeometryViewer::ToolMode::DrawPolyline
+        || m_workspace_tool_mode == GeometryViewer::ToolMode::DrawPolygon;
+    if (m_finish_drawing_button != nullptr)
+    {
+        m_finish_drawing_button->setEnabled(canFinish && hasDraft);
+        m_finish_drawing_button->setVariant(canFinish && hasDraft ? PillButton::Variant::Success : PillButton::Variant::Neutral);
+    }
+
+    if (m_cancel_drawing_button != nullptr)
+    {
+        m_cancel_drawing_button->setEnabled(hasDraft);
+        m_cancel_drawing_button->setVariant(hasDraft ? PillButton::Variant::Neutral : PillButton::Variant::Neutral);
+    }
+}
+
 void MainWindow::setRenderMode(GeometryScene::RenderMode renderMode)
 {
     m_scene->setRenderMode(renderMode);
@@ -983,6 +1307,37 @@ void MainWindow::setRenderMode(GeometryScene::RenderMode renderMode)
 
     checkedAction->setChecked(true);
     updateViewportControlState();
+}
+
+void MainWindow::setWorkspaceToolMode(GeometryViewer::ToolMode toolMode)
+{
+    if (m_workspace_tool_mode == toolMode)
+    {
+        updateDrawingToolState();
+        return;
+    }
+
+    if (toolMode != m_workspace_tool_mode)
+    {
+        clearDrawingDraft(false);
+    }
+
+    m_workspace_tool_mode = toolMode;
+    m_geometry_viewer->setToolMode(toolMode);
+    updateDrawingToolState();
+
+    if (toolMode == GeometryViewer::ToolMode::Browse)
+    {
+        statusBar()->showMessage(QStringLiteral("Browse mode"), 1500);
+        return;
+    }
+
+    statusBar()->showMessage(
+        toolMode == GeometryViewer::ToolMode::DrawPoint
+            ? QStringLiteral("Point mode: left click to add a point")
+            : QStringLiteral("%1 mode: left click to add vertices, Finish or right click to commit")
+                  .arg(toolModeLabel(toolMode)),
+        4000);
 }
 
 void MainWindow::openFiles(const QStringList &filePaths)
@@ -1022,6 +1377,7 @@ void MainWindow::openFiles(const QStringList &filePaths)
     }
 
     m_document_data = nextDocument;
+    m_active_layer_index = m_document_data.layers.isEmpty() ? -1 : (m_document_data.layers.size() - 1);
     m_selection_state = {};
     syncDocumentToViews(true);
 
@@ -1053,6 +1409,7 @@ void MainWindow::syncDocumentToViews(bool fitScene)
     m_layer_sidebar->setDocumentData(m_document_data, true);
     m_scene->setEditPreviewState(m_edit_preview_state, false);
     m_scene->setDocumentData(m_document_data);
+    updateDrawingPreview();
     onSelectionStateChanged(m_selection_state);
 
     if (fitScene)
@@ -1075,6 +1432,7 @@ void MainWindow::refreshViewsForVisibilityChange()
     m_layer_sidebar->setDocumentData(m_document_data, false);
     m_scene->setEditPreviewState(m_edit_preview_state, false);
     m_scene->setDocumentData(m_document_data);
+    updateDrawingPreview();
     reloadInspectorForSelectionChange();
     if (nextSelection != m_selection_state)
     {
@@ -1091,6 +1449,7 @@ void MainWindow::refreshSceneForPrimitiveEdit()
 {
     m_scene->setEditPreviewState(m_edit_preview_state, false);
     m_scene->setDocumentData(m_document_data);
+    updateDrawingPreview();
 }
 
 void MainWindow::clearCoordinatePreviewState()
@@ -1101,11 +1460,86 @@ void MainWindow::clearCoordinatePreviewState()
     m_inspector_panel->clearCoordinateError();
 }
 
+void MainWindow::clearDrawingDraft(bool showStatusMessage)
+{
+    if (m_drawing_points.isEmpty())
+    {
+        updateDrawingToolState();
+        return;
+    }
+
+    m_drawing_points.clear();
+    m_scene->clearDrawingPreview();
+    updateDrawingToolState();
+    if (showStatusMessage)
+    {
+        statusBar()->showMessage(QStringLiteral("Drawing canceled"), 2000);
+    }
+}
+
+void MainWindow::updateDrawingPreview()
+{
+    if (m_workspace_tool_mode == GeometryViewer::ToolMode::Browse
+        || m_workspace_tool_mode == GeometryViewer::ToolMode::DrawPoint
+        || m_drawing_points.isEmpty())
+    {
+        m_scene->clearDrawingPreview();
+        updateDrawingToolState();
+        return;
+    }
+
+    m_scene->setDrawingPreview(primitiveKindForToolMode(m_workspace_tool_mode), m_drawing_points);
+    updateDrawingToolState();
+}
+
+int MainWindow::currentLayerIndex() const
+{
+    if (m_selection_state.kind == SelectionKind::Layer || m_selection_state.kind == SelectionKind::Primitive)
+    {
+        if (m_selection_state.layer_index >= 0 && m_selection_state.layer_index < m_document_data.layers.size())
+        {
+            return m_selection_state.layer_index;
+        }
+    }
+
+    if (m_active_layer_index >= 0 && m_active_layer_index < m_document_data.layers.size())
+    {
+        return m_active_layer_index;
+    }
+
+    return -1;
+}
+
+int MainWindow::ensureActiveLayer()
+{
+    const int existingLayerIndex = currentLayerIndex();
+    if (existingLayerIndex >= 0)
+    {
+        return existingLayerIndex;
+    }
+
+    if (!m_document_data.layers.isEmpty())
+    {
+        m_active_layer_index = m_document_data.layers.size() - 1;
+        return m_active_layer_index;
+    }
+
+    createLayer();
+    return currentLayerIndex();
+}
+
+QString MainWindow::nextLayerName() const
+{
+    return QStringLiteral("Layer %1").arg(m_document_data.layers.size() + 1);
+}
+
 void MainWindow::updateUiFromScene()
 {
     setRenderMode(m_scene->renderMode());
+    m_geometry_viewer->setToolMode(m_workspace_tool_mode);
     onGeometryChanged(m_scene->pointCount(), m_scene->polylineCount(), m_scene->polygonCount());
     updateViewportControlState();
+    updateDrawingToolState();
     onSelectionStateChanged(m_selection_state);
 }
 

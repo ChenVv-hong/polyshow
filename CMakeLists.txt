@@ -16,8 +16,10 @@ find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets)
 set(POLYSHOW_HEADERS
     include/core/GeometryTypes.h
     include/core/PrimitiveEditing.h
+    include/core/LayerEditing.h
     include/core/GeometryScene.h
     include/parsers/PlyParser.h
+    include/parsers/PlySerializer.h
     include/style/AppStyle.h
     include/style/DarkStyle.h
     include/style/LightStyle.h
@@ -36,9 +38,11 @@ set(POLYSHOW_HEADERS
 
 set(POLYSHOW_SOURCES
     main.cpp
+    src/core/LayerEditing.cpp
     src/core/GeometryScene.cpp
     src/core/PrimitiveEditing.cpp
     src/parsers/PlyParser.cpp
+    src/parsers/PlySerializer.cpp
     resources/style/style.qrc
     src/style/AppStyle.cpp
     src/style/DarkStyle.cpp

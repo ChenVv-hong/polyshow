@@ -595,6 +595,29 @@ void MainWindow::updateMousePosition(const QPointF &scenePosition)
         QStringLiteral("X: %1  Y: %2").arg(scenePosition.x(), 0, 'f', 2).arg(scenePosition.y(), 0, 'f', 2));
 }
 
+void MainWindow::onWorkspaceHoverChanged(const QPointF &scenePosition)
+{
+    if (m_workspace_tool_mode == GeometryViewer::ToolMode::Browse)
+    {
+        return;
+    }
+
+    m_has_drawing_hover_point = true;
+    m_drawing_hover_point = Point2D {scenePosition.x(), scenePosition.y()};
+    updateDrawingPreview();
+}
+
+void MainWindow::onWorkspaceHoverExited()
+{
+    if (!m_has_drawing_hover_point)
+    {
+        return;
+    }
+
+    m_has_drawing_hover_point = false;
+    updateDrawingPreview();
+}
+
 void MainWindow::onGeometryChanged(int pointCount, int polylineCount, int polygonCount)
 {
     m_status_info_label->setText(
@@ -882,6 +905,7 @@ void MainWindow::onDrawingPointRequested(const QPointF &scenePosition)
         }
 
         m_selection_state = primitiveSelectionState(layerIndex, primitiveIndex);
+        m_has_drawing_hover_point = false;
         syncDocumentToViews(false);
         m_log_panel->appendMessage(
             LogSeverity::Info,
@@ -1041,6 +1065,8 @@ void MainWindow::setupUi()
 
     connect(m_scene, &GeometryScene::geometryChanged, this, &MainWindow::onGeometryChanged);
     connect(m_geometry_viewer, &GeometryViewer::mousePositionChanged, this, &MainWindow::updateMousePosition);
+    connect(m_geometry_viewer, &GeometryViewer::mousePositionChanged, this, &MainWindow::onWorkspaceHoverChanged);
+    connect(m_geometry_viewer, &GeometryViewer::workspaceHoverExited, this, &MainWindow::onWorkspaceHoverExited);
     connect(m_geometry_viewer, &GeometryViewer::primitiveActivated, this, &MainWindow::onScenePrimitiveActivated);
     connect(m_geometry_viewer, &GeometryViewer::emptyAreaActivated, this, &MainWindow::onEmptySceneActivated);
     connect(m_geometry_viewer, &GeometryViewer::drawingPointRequested, this, &MainWindow::onDrawingPointRequested);
@@ -1313,6 +1339,7 @@ void MainWindow::setWorkspaceToolMode(GeometryViewer::ToolMode toolMode)
 {
     if (m_workspace_tool_mode == toolMode)
     {
+        updateDrawingPreview();
         updateDrawingToolState();
         return;
     }
@@ -1323,7 +1350,12 @@ void MainWindow::setWorkspaceToolMode(GeometryViewer::ToolMode toolMode)
     }
 
     m_workspace_tool_mode = toolMode;
+    if (toolMode == GeometryViewer::ToolMode::Browse)
+    {
+        m_has_drawing_hover_point = false;
+    }
     m_geometry_viewer->setToolMode(toolMode);
+    updateDrawingPreview();
     updateDrawingToolState();
 
     if (toolMode == GeometryViewer::ToolMode::Browse)
@@ -1464,12 +1496,13 @@ void MainWindow::clearDrawingDraft(bool showStatusMessage)
 {
     if (m_drawing_points.isEmpty())
     {
+        updateDrawingPreview();
         updateDrawingToolState();
         return;
     }
 
     m_drawing_points.clear();
-    m_scene->clearDrawingPreview();
+    updateDrawingPreview();
     updateDrawingToolState();
     if (showStatusMessage)
     {
@@ -1479,16 +1512,30 @@ void MainWindow::clearDrawingDraft(bool showStatusMessage)
 
 void MainWindow::updateDrawingPreview()
 {
-    if (m_workspace_tool_mode == GeometryViewer::ToolMode::Browse
-        || m_workspace_tool_mode == GeometryViewer::ToolMode::DrawPoint
-        || m_drawing_points.isEmpty())
+    if (m_workspace_tool_mode == GeometryViewer::ToolMode::Browse)
     {
         m_scene->clearDrawingPreview();
         updateDrawingToolState();
         return;
     }
 
-    m_scene->setDrawingPreview(primitiveKindForToolMode(m_workspace_tool_mode), m_drawing_points);
+    QVector<Point2D> previewPoints = m_drawing_points;
+    if (m_has_drawing_hover_point)
+    {
+        if (previewPoints.isEmpty() || !pointsEqual(previewPoints.last(), m_drawing_hover_point))
+        {
+            previewPoints.append(m_drawing_hover_point);
+        }
+    }
+
+    if (previewPoints.isEmpty())
+    {
+        m_scene->clearDrawingPreview();
+        updateDrawingToolState();
+        return;
+    }
+
+    m_scene->setDrawingPreview(primitiveKindForToolMode(m_workspace_tool_mode), previewPoints);
     updateDrawingToolState();
 }
 

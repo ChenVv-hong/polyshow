@@ -57,6 +57,12 @@ private slots:
     /// Updates the mouse coordinate text in the status bar.
     void updateMousePosition(const QPointF &scenePosition);
 
+    /// Updates the hover-based drawing preview from the workspace cursor.
+    void onWorkspaceHoverChanged(const QPointF &scenePosition);
+
+    /// Clears the hover-based drawing preview when the cursor leaves the workspace.
+    void onWorkspaceHoverExited();
+
     /// Refreshes the displayed geometry statistics.
     void onGeometryChanged(int pointCount, int polylineCount, int polygonCount);
 
@@ -222,6 +228,8 @@ private:
     GeometryViewer::ToolMode m_workspace_tool_mode {GeometryViewer::ToolMode::Browse};
     int m_active_layer_index {-1};
     QVector<Point2D> m_drawing_points;
+    bool m_has_drawing_hover_point {false};
+    Point2D m_drawing_hover_point;
 };
 
 } // namespace PolyShow

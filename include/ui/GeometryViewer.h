@@ -4,6 +4,8 @@
 #include <QPoint>
 #include <QPointF>
 
+class QEvent;
+
 namespace PolyShow
 {
 
@@ -50,6 +52,9 @@ signals:
     /// Emitted when the mouse moves and a scene position is available.
     void mousePositionChanged(const QPointF &scenePosition);
 
+    /// Emitted when the mouse leaves the workspace viewport.
+    void workspaceHoverExited();
+
     /// Emitted when the user clicks one primitive in the scene.
     void primitiveActivated(int layerIndex, int primitiveIndex);
 
@@ -81,7 +86,17 @@ protected:
     /// Stops middle-button panning.
     void mouseReleaseEvent(QMouseEvent *event) override;
 
+    /// Clears hover-only state when the mouse leaves the viewport.
+    void leaveEvent(QEvent *event) override;
+
 private:
+    /// Returns whether one selectable primitive is under the viewport position.
+    [[nodiscard]]
+    bool hasSelectablePrimitiveAt(const QPoint &viewPosition) const;
+
+    /// Updates the workspace cursor for the current interaction state.
+    void updateInteractionCursor(const QPoint &viewPosition);
+
     /// Applies a view scale factor.
     void applyZoom(qreal factor);
 

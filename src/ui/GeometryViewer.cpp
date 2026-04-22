@@ -3,6 +3,7 @@
 #include "core/GeometryScene.h"
 #include "style/RenderTheme.h"
 
+#include <QCursor>
 #include <QFontMetrics>
 #include <QGraphicsItem>
 #include <QMouseEvent>
@@ -116,6 +117,8 @@ GeometryViewer::GeometryViewer(QWidget *parent)
     setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
     setFrameShape(QFrame::NoFrame);
     setBackgroundBrush(renderColors.canvas_background);
+    setMouseTracking(true);
+    viewport()->setMouseTracking(true);
 }
 
 void GeometryViewer::setToolMode(ToolMode toolMode)
@@ -126,6 +129,8 @@ void GeometryViewer::setToolMode(ToolMode toolMode)
     }
 
     m_tool_mode = toolMode;
+    const QPoint viewPosition = viewport()->mapFromGlobal(QCursor::pos());
+    updateInteractionCursor(viewPosition);
 }
 
 GeometryViewer::ToolMode GeometryViewer::toolMode() const
@@ -307,6 +312,7 @@ void GeometryViewer::mousePressEvent(QMouseEvent *event)
         if (event->button() == Qt::LeftButton)
         {
             emit drawingPointRequested(mapToScene(event->pos()));
+            updateInteractionCursor(event->pos());
             event->accept();
             return;
         }
@@ -315,6 +321,7 @@ void GeometryViewer::mousePressEvent(QMouseEvent *event)
             && (m_tool_mode == ToolMode::DrawPolyline || m_tool_mode == ToolMode::DrawPolygon))
         {
             emit drawingFinishedRequested();
+            updateInteractionCursor(event->pos());
             event->accept();
             return;
         }
@@ -335,12 +342,14 @@ void GeometryViewer::mousePressEvent(QMouseEvent *event)
             if (layerIndex.isValid() && primitiveIndex.isValid())
             {
                 emit primitiveActivated(layerIndex.toInt(), primitiveIndex.toInt());
+                updateInteractionCursor(event->pos());
                 event->accept();
                 return;
             }
         }
 
         emit emptyAreaActivated();
+        updateInteractionCursor(event->pos());
         event->accept();
         return;
     }
@@ -365,6 +374,8 @@ void GeometryViewer::mouseMoveEvent(QMouseEvent *event)
         return;
     }
 
+    updateInteractionCursor(event->pos());
+
     QGraphicsView::mouseMoveEvent(event);
 }
 
@@ -375,11 +386,19 @@ void GeometryViewer::mouseReleaseEvent(QMouseEvent *event)
     {
         m_is_panning = false;
         updateDragCursor(false);
+        updateInteractionCursor(event->pos());
         event->accept();
         return;
     }
 
     QGraphicsView::mouseReleaseEvent(event);
+}
+
+void GeometryViewer::leaveEvent(QEvent *event)
+{
+    viewport()->unsetCursor();
+    emit workspaceHoverExited();
+    QGraphicsView::leaveEvent(event);
 }
 
 /// Applies a scale transform to the view.
@@ -389,10 +408,54 @@ void GeometryViewer::applyZoom(qreal factor)
     viewport()->update();
 }
 
+bool GeometryViewer::hasSelectablePrimitiveAt(const QPoint &viewPosition) const
+{
+    const QList<QGraphicsItem *> sceneItems = items(viewPosition);
+    for (QGraphicsItem *item : sceneItems)
+    {
+        if (item == nullptr || item->data(kSelectionOverlayRole).toBool())
+        {
+            continue;
+        }
+
+        const QVariant layerIndex = item->data(kLayerIndexRole);
+        const QVariant primitiveIndex = item->data(kPrimitiveIndexRole);
+        if (layerIndex.isValid() && primitiveIndex.isValid())
+        {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+void GeometryViewer::updateInteractionCursor(const QPoint &viewPosition)
+{
+    if (!viewport()->rect().contains(viewPosition))
+    {
+        viewport()->unsetCursor();
+        return;
+    }
+
+    if (m_is_panning)
+    {
+        viewport()->setCursor(Qt::ClosedHandCursor);
+        return;
+    }
+
+    if (m_tool_mode != ToolMode::Browse)
+    {
+        viewport()->setCursor(Qt::CrossCursor);
+        return;
+    }
+
+    viewport()->setCursor(hasSelectablePrimitiveAt(viewPosition) ? Qt::PointingHandCursor : Qt::ArrowCursor);
+}
+
 /// Chooses the cursor shape for the current drag state.
 void GeometryViewer::updateDragCursor(bool active)
 {
-    setCursor(active ? Qt::ClosedHandCursor : Qt::ArrowCursor);
+    viewport()->setCursor(active ? Qt::ClosedHandCursor : Qt::ArrowCursor);
 }
 
 } // namespace PolyShow

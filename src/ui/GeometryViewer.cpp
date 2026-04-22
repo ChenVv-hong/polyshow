@@ -9,6 +9,7 @@
 #include <QMouseEvent>
 #include <QPainter>
 #include <QScrollBar>
+#include <QSvgRenderer>
 #include <QWheelEvent>
 
 #include <cmath>
@@ -25,10 +26,29 @@ constexpr int kMajorGridFactor = 5;
 constexpr int kScaleBarMargin = 16;
 constexpr int kScaleBarPadding = 8;
 constexpr int kScaleBarTickHeight = 10;
+constexpr int kHintCardMargin = 16;
+constexpr int kHintCardPadding = 14;
+constexpr int kHintCardCornerRadius = 10;
+constexpr int kHintCardMaxWidth = 260;
+constexpr int kHintCardMinimumWidth = 156;
+constexpr int kHintCardGap = 16;
+constexpr int kHintCardIconSize = 24;
+constexpr int kHintCardIconTextGap = 10;
+constexpr int kHintCardRowGap = 8;
+constexpr int kHintCardSectionGap = 10;
 constexpr qreal kFallbackFitHalfExtent = 250.0;
 constexpr int kLayerIndexRole = 1;
 constexpr int kPrimitiveIndexRole = 2;
 constexpr int kSelectionOverlayRole = 3;
+
+struct DrawingHintContent
+{
+    QString title;
+    QString primary_action;
+    QString secondary_action;
+    QString footer;
+    bool has_secondary_action {false};
+};
 
 /// Rounds a raw scale bar length down to a human-friendly 1/2/5 * 10^n increment.
 qreal niceScaleLength(qreal rawLength)
@@ -96,6 +116,78 @@ QString scaleLabelText(qreal sceneLength)
     return QString::number(sceneLength, 'g', 3);
 }
 
+QString mouseIconResourcePath(bool leftButton, ThemeMode themeMode)
+{
+    if (leftButton)
+    {
+        return themeMode == ThemeMode::Dark ? QStringLiteral(":/overlay/mouse_left_click_dark.svg")
+                                            : QStringLiteral(":/overlay/mouse_left_click_light.svg");
+    }
+
+    return themeMode == ThemeMode::Dark ? QStringLiteral(":/overlay/mouse_right_click_dark.svg")
+                                        : QStringLiteral(":/overlay/mouse_right_click_light.svg");
+}
+
+DrawingHintContent drawingHintContent(GeometryViewer::ToolMode toolMode)
+{
+    switch (toolMode)
+    {
+    case GeometryViewer::ToolMode::DrawPoint:
+        return DrawingHintContent {
+            QStringLiteral("Point Tool"),
+            QStringLiteral("Create point"),
+            QString(),
+            QStringLiteral("Choose another tool to stop drawing points."),
+            false};
+    case GeometryViewer::ToolMode::DrawPolyline:
+        return DrawingHintContent {
+            QStringLiteral("Polyline Tool"),
+            QStringLiteral("Add vertex"),
+            QStringLiteral("Finish polyline"),
+            QStringLiteral("Use Cancel in toolbar to discard draft."),
+            true};
+    case GeometryViewer::ToolMode::DrawPolygon:
+        return DrawingHintContent {
+            QStringLiteral("Polygon Tool"),
+            QStringLiteral("Add vertex"),
+            QStringLiteral("Finish polygon"),
+            QStringLiteral("Use Cancel in toolbar to discard draft."),
+            true};
+    case GeometryViewer::ToolMode::Browse:
+    default:
+        return {};
+    }
+}
+
+void drawHintActionRow(
+    QPainter *painter,
+    const QRect &rowRect,
+    const QString &iconPath,
+    const QString &actionLabel,
+    const QColor &textColor,
+    const QFont &textFont)
+{
+    if (painter == nullptr)
+    {
+        return;
+    }
+
+    const QRect iconRect(rowRect.left(), rowRect.top(), kHintCardIconSize, kHintCardIconSize);
+    QSvgRenderer renderer(iconPath);
+    renderer.render(painter, iconRect);
+
+    painter->setFont(textFont);
+    painter->setPen(textColor);
+    painter->drawText(
+        QRect(
+            iconRect.right() + 1 + kHintCardIconTextGap,
+            rowRect.top(),
+            rowRect.width() - kHintCardIconSize - kHintCardIconTextGap,
+            rowRect.height()),
+        Qt::AlignVCenter | Qt::AlignLeft,
+        actionLabel);
+}
+
 } // namespace
 
 /// Creates the viewer and configures the default interaction behavior.
@@ -131,6 +223,7 @@ void GeometryViewer::setToolMode(ToolMode toolMode)
     m_tool_mode = toolMode;
     const QPoint viewPosition = viewport()->mapFromGlobal(QCursor::pos());
     updateInteractionCursor(viewPosition);
+    viewport()->update();
 }
 
 GeometryViewer::ToolMode GeometryViewer::toolMode() const
@@ -251,7 +344,7 @@ void GeometryViewer::drawForeground(QPainter *painter, const QRectF &rect)
     const int overlayHeight = metrics.height() + kScaleBarTickHeight + kScaleBarPadding * 3;
 
     const QRect viewportRect = viewport()->rect();
-    const QRect overlayRect(
+    const QRect scaleBarRect(
         viewportRect.right() - overlayWidth - kScaleBarMargin + 1,
         viewportRect.bottom() - overlayHeight - kScaleBarMargin + 1,
         overlayWidth,
@@ -268,21 +361,21 @@ void GeometryViewer::drawForeground(QPainter *painter, const QRectF &rect)
 
     painter->setPen(borderColor);
     painter->setBrush(backgroundColor);
-    painter->drawRoundedRect(overlayRect, 8.0, 8.0);
+    painter->drawRoundedRect(scaleBarRect, 8.0, 8.0);
 
     painter->setPen(foregroundColor);
     painter->drawText(
         QRect(
-            overlayRect.left() + kScaleBarPadding,
-            overlayRect.top() + kScaleBarPadding,
-            overlayRect.width() - kScaleBarPadding * 2,
+            scaleBarRect.left() + kScaleBarPadding,
+            scaleBarRect.top() + kScaleBarPadding,
+            scaleBarRect.width() - kScaleBarPadding * 2,
             metrics.height()),
         Qt::AlignCenter,
         labelText);
 
-    const int barLeft = overlayRect.left() + (overlayRect.width() - barPixelLength) / 2;
+    const int barLeft = scaleBarRect.left() + (scaleBarRect.width() - barPixelLength) / 2;
     const int barRight = barLeft + barPixelLength;
-    const int barBaseline = overlayRect.bottom() - kScaleBarPadding - 2;
+    const int barBaseline = scaleBarRect.bottom() - kScaleBarPadding - 2;
     const int barTickTop = barBaseline - kScaleBarTickHeight;
 
     QPen scalePen(foregroundColor);
@@ -291,6 +384,138 @@ void GeometryViewer::drawForeground(QPainter *painter, const QRectF &rect)
     painter->drawLine(barLeft, barBaseline, barRight, barBaseline);
     painter->drawLine(barLeft, barTickTop, barLeft, barBaseline);
     painter->drawLine(barRight, barTickTop, barRight, barBaseline);
+
+    painter->restore();
+
+    if (m_tool_mode == ToolMode::Browse)
+    {
+        return;
+    }
+
+    const int maxHintWidth = std::min(kHintCardMaxWidth, scaleBarRect.left() - kHintCardGap - kHintCardMargin);
+    if (maxHintWidth < kHintCardMinimumWidth)
+    {
+        return;
+    }
+
+    const DrawingHintContent hintContent = drawingHintContent(m_tool_mode);
+    if (hintContent.title.isEmpty())
+    {
+        return;
+    }
+
+    const RenderColors &renderColors = RenderTheme::colors();
+    const ThemeMode themeMode = RenderTheme::activeTheme();
+
+    QFont titleFont = font();
+    titleFont.setBold(true);
+
+    QFont bodyFont = font();
+
+    QFont footerFont = font();
+    footerFont.setPointSizeF(std::max(footerFont.pointSizeF() - 1.0, 8.0));
+
+    const QFontMetrics titleMetrics(titleFont);
+    const QFontMetrics bodyMetrics(bodyFont);
+    const QFontMetrics footerMetrics(footerFont);
+
+    const int cardWidth = maxHintWidth;
+    const int contentWidth = cardWidth - kHintCardPadding * 2;
+
+    const QRect titleMeasureRect(0, 0, contentWidth, 200);
+    const QRect footerMeasureRect(0, 0, contentWidth, 400);
+    const QRect titleTextRect = titleMetrics.boundingRect(
+        titleMeasureRect,
+        Qt::AlignLeft | Qt::AlignTop | Qt::TextWordWrap,
+        hintContent.title);
+    const QRect footerTextRect = footerMetrics.boundingRect(
+        footerMeasureRect,
+        Qt::AlignLeft | Qt::AlignTop | Qt::TextWordWrap,
+        hintContent.footer);
+
+    const int actionRowHeight = std::max(bodyMetrics.height(), kHintCardIconSize);
+    const int actionCount = hintContent.has_secondary_action ? 2 : 1;
+    const int actionsHeight = actionRowHeight * actionCount + kHintCardRowGap * (actionCount - 1);
+    const int dividerGap = kHintCardSectionGap;
+    const int cardHeight = kHintCardPadding + titleTextRect.height() + kHintCardSectionGap + actionsHeight
+        + dividerGap + footerTextRect.height() + kHintCardPadding;
+
+    const QRect hintCardRect(
+        kHintCardMargin,
+        viewportRect.bottom() - cardHeight - kHintCardMargin + 1,
+        cardWidth,
+        cardHeight);
+
+    painter->save();
+    painter->resetTransform();
+    painter->setRenderHint(QPainter::Antialiasing, true);
+    painter->setPen(QPen(renderColors.overlay_panel_border));
+    painter->setBrush(renderColors.overlay_panel_background);
+    painter->drawRoundedRect(hintCardRect, kHintCardCornerRadius, kHintCardCornerRadius);
+
+    int cursorY = hintCardRect.top() + kHintCardPadding;
+
+    painter->setFont(titleFont);
+    painter->setPen(renderColors.overlay_title_text);
+    const QRect titleRect(
+        hintCardRect.left() + kHintCardPadding,
+        cursorY,
+        contentWidth,
+        titleTextRect.height());
+    painter->drawText(titleRect, Qt::AlignLeft | Qt::AlignTop | Qt::TextWordWrap, hintContent.title);
+    cursorY = titleRect.bottom() + 1 + kHintCardSectionGap;
+
+    const QRect primaryRowRect(
+        hintCardRect.left() + kHintCardPadding,
+        cursorY,
+        contentWidth,
+        actionRowHeight);
+    drawHintActionRow(
+        painter,
+        primaryRowRect,
+        mouseIconResourcePath(true, themeMode),
+        hintContent.primary_action,
+        renderColors.overlay_body_text,
+        bodyFont);
+    cursorY = primaryRowRect.bottom() + 1;
+
+    if (hintContent.has_secondary_action)
+    {
+        cursorY += kHintCardRowGap;
+        const QRect secondaryRowRect(
+            hintCardRect.left() + kHintCardPadding,
+            cursorY,
+            contentWidth,
+            actionRowHeight);
+        drawHintActionRow(
+            painter,
+            secondaryRowRect,
+            mouseIconResourcePath(false, themeMode),
+            hintContent.secondary_action,
+            renderColors.overlay_body_text,
+            bodyFont);
+        cursorY = secondaryRowRect.bottom() + 1;
+    }
+
+    cursorY += dividerGap / 2;
+    painter->setPen(QPen(renderColors.overlay_panel_border));
+    painter->drawLine(
+        hintCardRect.left() + kHintCardPadding,
+        cursorY,
+        hintCardRect.right() - kHintCardPadding,
+        cursorY);
+
+    cursorY += dividerGap / 2;
+    painter->setFont(footerFont);
+    painter->setPen(renderColors.overlay_muted_text);
+    painter->drawText(
+        QRect(
+            hintCardRect.left() + kHintCardPadding,
+            cursorY,
+            contentWidth,
+            footerTextRect.height()),
+        Qt::AlignLeft | Qt::AlignTop | Qt::TextWordWrap,
+        hintContent.footer);
 
     painter->restore();
 }

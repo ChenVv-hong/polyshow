@@ -15,6 +15,11 @@ struct RenderColors
     QColor axis_line;
     QColor selection_stroke;
     QColor selection_fill;
+    QColor overlay_panel_background;
+    QColor overlay_panel_border;
+    QColor overlay_title_text;
+    QColor overlay_body_text;
+    QColor overlay_muted_text;
     QColor log_error_text;
     QColor log_error_border;
     QColor log_warning_text;

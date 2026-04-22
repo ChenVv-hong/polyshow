@@ -11,7 +11,7 @@ set(CMAKE_AUTOUIC ON)
 set(CMAKE_PREFIX_PATH "D:/Qt/6.9.1/msvc2022_64")
 set(POLYSHOW_TARGET_NAME polyshow)
 
-find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets)
+find_package(Qt6 REQUIRED COMPONENTS Core Gui Svg Widgets)
 
 set(POLYSHOW_HEADERS
     include/core/GeometryTypes.h
@@ -43,6 +43,7 @@ set(POLYSHOW_SOURCES
     src/core/PrimitiveEditing.cpp
     src/parsers/PlyParser.cpp
     src/parsers/PlySerializer.cpp
+    resources/overlay/overlay.qrc
     resources/style/style.qrc
     src/style/AppStyle.cpp
     src/style/DarkStyle.cpp
@@ -72,16 +73,11 @@ target_link_libraries(
     PRIVATE
         Qt::Core
         Qt::Gui
+        Qt::Svg
         Qt::Widgets
 )
 
 if(WIN32 AND NOT DEFINED CMAKE_TOOLCHAIN_FILE)
-    set(DEBUG_SUFFIX)
-
-    if(MSVC AND CMAKE_BUILD_TYPE MATCHES "Debug")
-        set(DEBUG_SUFFIX "d")
-    endif()
-
     set(QT_INSTALL_PATH "${CMAKE_PREFIX_PATH}")
     if(NOT EXISTS "${QT_INSTALL_PATH}/bin")
         set(QT_INSTALL_PATH "${QT_INSTALL_PATH}/..")
@@ -90,7 +86,8 @@ if(WIN32 AND NOT DEFINED CMAKE_TOOLCHAIN_FILE)
         endif()
     endif()
 
-    if(EXISTS "${QT_INSTALL_PATH}/plugins/platforms/qwindows${DEBUG_SUFFIX}.dll")
+    if(EXISTS "${QT_INSTALL_PATH}/plugins/platforms/qwindows.dll"
+        OR EXISTS "${QT_INSTALL_PATH}/plugins/platforms/qwindowsd.dll")
         add_custom_command(
             TARGET ${POLYSHOW_TARGET_NAME}
             POST_BUILD
@@ -101,17 +98,17 @@ if(WIN32 AND NOT DEFINED CMAKE_TOOLCHAIN_FILE)
             TARGET ${POLYSHOW_TARGET_NAME}
             POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E copy
-                    "${QT_INSTALL_PATH}/plugins/platforms/qwindows${DEBUG_SUFFIX}.dll"
+                    "${QT_INSTALL_PATH}/plugins/platforms/qwindows$<$<CONFIG:Debug>:d>.dll"
                     "$<TARGET_FILE_DIR:${POLYSHOW_TARGET_NAME}>/plugins/platforms/"
         )
     endif()
 
-    foreach(QT_LIB Core Gui Widgets)
+    foreach(QT_LIB Core Gui Svg Widgets)
         add_custom_command(
             TARGET ${POLYSHOW_TARGET_NAME}
             POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E copy
-                    "${QT_INSTALL_PATH}/bin/Qt6${QT_LIB}${DEBUG_SUFFIX}.dll"
+                    "${QT_INSTALL_PATH}/bin/Qt6${QT_LIB}$<$<CONFIG:Debug>:d>.dll"
                     "$<TARGET_FILE_DIR:${POLYSHOW_TARGET_NAME}>"
         )
     endforeach()

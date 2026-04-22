@@ -48,10 +48,17 @@ QColor translucentFillColor(const QColor &color)
 }
 
 /// Returns whether the token is a supported style directive.
-bool isDirectiveToken(const QString &token)
+bool isStyleDirectiveToken(const QString &token)
 {
     return token == QStringLiteral("COLOR") || token == QStringLiteral("FILL") || token == QStringLiteral("WIDTH")
         || token == QStringLiteral("POINT_SIZE");
+}
+
+/// Returns whether the line starts with a supported primitive name directive.
+bool isNameDirectiveLine(const QString &line)
+{
+    return line.startsWith(QStringLiteral("NAME"))
+        && (line.size() == 4 || line.at(4).isSpace());
 }
 
 /// Parses and applies one style directive.
@@ -144,10 +151,32 @@ bool applyDirective(
     return false;
 }
 
+/// Parses and applies one primitive name directive.
+bool applyNameDirective(
+    const QString &line, QString &name, int lineNumber, bool shapeStarted, QString &errorMessage)
+{
+    if (shapeStarted)
+    {
+        errorMessage = lineError(lineNumber, QStringLiteral("NAME must appear before shape coordinates"));
+        return false;
+    }
+
+    const QString value = line.mid(4).trimmed();
+    if (value.isEmpty())
+    {
+        errorMessage = lineError(lineNumber, QStringLiteral("NAME requires a non-empty value"));
+        return false;
+    }
+
+    name = value;
+    return true;
+}
+
 /// Finalizes the current vertex block into a point, polyline, or polygon.
 bool finalizeShape(
     const QVector<Point2D> &vertices,
     const StyleConfig &style,
+    const QString &name,
     int lineNumber,
     GeometryData &data,
     QString &errorMessage)
@@ -160,7 +189,7 @@ bool finalizeShape(
     const PrimitiveStyle primitiveStyle = style.toPrimitiveStyle();
     if (vertices.size() == 1)
     {
-        data.points.append(PointShape2D {vertices.first(), primitiveStyle});
+        data.points.append(PointShape2D {vertices.first(), primitiveStyle, name});
         data.primitive_order.append(
             PrimitiveReference {PrimitiveKind::Point, static_cast<int>(data.points.size() - 1)});
         return true;
@@ -168,32 +197,18 @@ bool finalizeShape(
 
     // Distinguish open and closed shapes by comparing the first and last point.
     const bool isClosed = pointsEqual(vertices.first(), vertices.last());
-    const int uniqueCount = uniquePointCount(vertices, isClosed);
-    if (uniqueCount < 2)
-    {
-        errorMessage = lineError(lineNumber, QStringLiteral("Degenerate shape contains only repeated points"));
-        return false;
-    }
-
     if (isClosed)
     {
-        if (vertices.size() < 4)
+        if (vertices.size() < 3)
         {
-            errorMessage = lineError(
-                lineNumber, QStringLiteral("Closed shape needs at least 4 points including the repeated start point"));
+            errorMessage = lineError(lineNumber, QStringLiteral("Polygon needs at least 3 points"));
             return false;
         }
 
-        if (uniqueCount < 3)
-        {
-            errorMessage = lineError(lineNumber, QStringLiteral("Polygon needs at least 3 unique vertices"));
-            return false;
-        }
-
-        // Remove the duplicated closing point before storing the polygon vertices.
         Polygon2D polygon;
         polygon.style = primitiveStyle;
-        polygon.vertices = vertices.mid(0, vertices.size() - 1);
+        polygon.vertices = vertices;
+        polygon.name = name;
         data.polygons.append(polygon);
         data.primitive_order.append(
             PrimitiveReference {PrimitiveKind::Polygon, static_cast<int>(data.polygons.size() - 1)});
@@ -203,6 +218,7 @@ bool finalizeShape(
     Polyline2D polyline;
     polyline.style = primitiveStyle;
     polyline.vertices = vertices;
+    polyline.name = name;
     data.polylines.append(polyline);
     data.primitive_order.append(
         PrimitiveReference {PrimitiveKind::Polyline, static_cast<int>(data.polylines.size() - 1)});
@@ -228,6 +244,7 @@ bool PlyParser::parseFile(const QString &filePath, GeometryData &geometryData, Q
     GeometryData parsed;
     QVector<Point2D> currentVertices;
     StyleConfig currentStyle;
+    QString currentName;
     int lineNumber = 0;
     int currentShapeLine = 0;
 
@@ -249,7 +266,7 @@ bool PlyParser::parseFile(const QString &filePath, GeometryData &geometryData, Q
             const int shapeLine = currentShapeLine == 0 ? lineNumber : currentShapeLine;
 
             // Commit the current shape block when a block separator is reached.
-            if (!finalizeShape(currentVertices, currentStyle, shapeLine, parsed, finalizeError))
+            if (!finalizeShape(currentVertices, currentStyle, currentName, shapeLine, parsed, finalizeError))
             {
                 if (errorMessage != nullptr)
                 {
@@ -260,6 +277,7 @@ bool PlyParser::parseFile(const QString &filePath, GeometryData &geometryData, Q
 
             currentVertices.clear();
             currentShapeLine = 0;
+            currentName.clear();
             continue;
         }
 
@@ -270,7 +288,8 @@ bool PlyParser::parseFile(const QString &filePath, GeometryData &geometryData, Q
         }
 
         // Reject unknown word-like directives as early as possible.
-        if (!parts[0].isEmpty() && parts[0].at(0).isLetter() && !isDirectiveToken(parts[0]))
+        if (!parts[0].isEmpty() && parts[0].at(0).isLetter() && !isStyleDirectiveToken(parts[0])
+            && parts[0] != QStringLiteral("NAME"))
         {
             if (errorMessage != nullptr)
             {
@@ -279,12 +298,26 @@ bool PlyParser::parseFile(const QString &filePath, GeometryData &geometryData, Q
             return false;
         }
 
-        if (isDirectiveToken(parts[0]))
+        if (isStyleDirectiveToken(parts[0]))
         {
             QString directiveError;
 
             // Style directives affect the current parser state but do not emit geometry directly.
             if (!applyDirective(parts, currentStyle, lineNumber, !currentVertices.isEmpty(), directiveError))
+            {
+                if (errorMessage != nullptr)
+                {
+                    *errorMessage = directiveError;
+                }
+                return false;
+            }
+            continue;
+        }
+
+        if (isNameDirectiveLine(line))
+        {
+            QString directiveError;
+            if (!applyNameDirective(line, currentName, lineNumber, !currentVertices.isEmpty(), directiveError))
             {
                 if (errorMessage != nullptr)
                 {
@@ -325,7 +358,7 @@ bool PlyParser::parseFile(const QString &filePath, GeometryData &geometryData, Q
     // Flush the final shape block even when the file does not end with `NEXT`.
     QString finalizeError;
     const int shapeLine = currentShapeLine == 0 ? lineNumber : currentShapeLine;
-    if (!finalizeShape(currentVertices, currentStyle, shapeLine, parsed, finalizeError))
+    if (!finalizeShape(currentVertices, currentStyle, currentName, shapeLine, parsed, finalizeError))
     {
         if (errorMessage != nullptr)
         {

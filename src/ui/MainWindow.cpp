@@ -22,6 +22,7 @@
 #include <QSignalBlocker>
 #include <QSplitter>
 #include <QStatusBar>
+#include <QTabWidget>
 #include <QVBoxLayout>
 #include <QWidget>
 
@@ -37,29 +38,128 @@ QString plyFileDialogFilter()
     return QStringLiteral("PolyShow Files (*.ply);;All Files (*.*)");
 }
 
-/// Returns the visible label for one primitive entry.
-QString primitiveDisplayName(PrimitiveKind kind, int ordinal)
+/// Returns the display label for one runtime primitive category.
+QString primitiveCategoryLabel(PrimitiveKind kind, int vertexCount)
 {
     switch (kind)
     {
     case PrimitiveKind::Point:
-        return QStringLiteral("Point %1").arg(ordinal);
+        return QStringLiteral("Point");
     case PrimitiveKind::Polyline:
-        return QStringLiteral("Polyline %1").arg(ordinal);
+        return vertexCount == 2 ? QStringLiteral("Line") : QStringLiteral("Polyline");
     case PrimitiveKind::Polygon:
-        return QStringLiteral("Polygon %1").arg(ordinal);
+        return QStringLiteral("Polygon");
     default:
-        return QStringLiteral("Primitive %1").arg(ordinal);
+        return QStringLiteral("Primitive");
+    }
+}
+
+/// Returns the vertex count for one primitive reference.
+int primitiveVertexCount(const GeometryData &geometryData, PrimitiveKind kind, int index)
+{
+    switch (kind)
+    {
+    case PrimitiveKind::Point:
+        return 1;
+    case PrimitiveKind::Polyline:
+        return geometryData.polylines.value(index).vertices.size();
+    case PrimitiveKind::Polygon:
+        return geometryData.polygons.value(index).vertices.size();
+    default:
+        return 0;
+    }
+}
+
+/// Returns the optional custom name stored on one parsed primitive.
+QString primitiveCustomName(const GeometryData &geometryData, PrimitiveKind kind, int index)
+{
+    switch (kind)
+    {
+    case PrimitiveKind::Point:
+        return geometryData.points.value(index).name;
+    case PrimitiveKind::Polyline:
+        return geometryData.polylines.value(index).name;
+    case PrimitiveKind::Polygon:
+        return geometryData.polygons.value(index).name;
+    default:
+        return {};
+    }
+}
+
+bool layerHasVisiblePrimitives(const LayerData &layer)
+{
+    for (const LayerPrimitiveData &primitive : layer.primitives)
+    {
+        if (primitive.visible)
+        {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+void syncLayerVisibilitySummary(LayerData *layer)
+{
+    if (layer == nullptr)
+    {
+        return;
+    }
+
+    layer->visible = layerHasVisiblePrimitives(*layer);
+}
+
+/// Returns the default display label for one primitive without a custom name.
+QString nextPrimitiveDisplayName(
+    const GeometryData &geometryData,
+    PrimitiveKind kind,
+    int index,
+    int &pointOrdinal,
+    int &lineOrdinal,
+    int &polylineOrdinal,
+    int &polygonOrdinal)
+{
+    switch (kind)
+    {
+    case PrimitiveKind::Point:
+        ++pointOrdinal;
+        return QStringLiteral("%1 %2").arg(primitiveCategoryLabel(kind, 1)).arg(pointOrdinal);
+    case PrimitiveKind::Polyline:
+    {
+        const int vertexCount = primitiveVertexCount(geometryData, kind, index);
+        if (vertexCount == 2)
+        {
+            ++lineOrdinal;
+            return QStringLiteral("%1 %2").arg(primitiveCategoryLabel(kind, vertexCount)).arg(lineOrdinal);
+        }
+        ++polylineOrdinal;
+        return QStringLiteral("%1 %2").arg(primitiveCategoryLabel(kind, vertexCount)).arg(polylineOrdinal);
+    }
+    case PrimitiveKind::Polygon:
+        ++polygonOrdinal;
+        return QStringLiteral("%1 %2").arg(primitiveCategoryLabel(kind, primitiveVertexCount(geometryData, kind, index)))
+            .arg(polygonOrdinal);
+    default:
+        return QStringLiteral("Primitive");
     }
 }
 
 /// Appends one primitive entry to a layer list.
 void appendPrimitiveEntry(
-    QVector<LayerPrimitiveData> &primitives, PrimitiveKind kind, int index, int &ordinalCounter)
+    QVector<LayerPrimitiveData> &primitives,
+    const GeometryData &geometryData,
+    PrimitiveKind kind,
+    int index,
+    int &pointOrdinal,
+    int &lineOrdinal,
+    int &polylineOrdinal,
+    int &polygonOrdinal)
 {
-    ++ordinalCounter;
-    primitives.append(
-        LayerPrimitiveData {PrimitiveReference {kind, index}, primitiveDisplayName(kind, ordinalCounter), true});
+    const QString customName = primitiveCustomName(geometryData, kind, index);
+    const QString displayName = customName.isEmpty()
+        ? nextPrimitiveDisplayName(geometryData, kind, index, pointOrdinal, lineOrdinal, polylineOrdinal, polygonOrdinal)
+        : customName;
+    primitives.append(LayerPrimitiveData {PrimitiveReference {kind, index}, displayName, true});
 }
 
 /// Builds the runtime layer state for one successfully parsed file.
@@ -71,6 +171,7 @@ LayerData buildLayerData(const QString &filePath, const GeometryData &geometryDa
     layer.geometry = geometryData;
 
     int pointOrdinal = 0;
+    int lineOrdinal = 0;
     int polylineOrdinal = 0;
     int polygonOrdinal = 0;
 
@@ -81,35 +182,85 @@ LayerData buildLayerData(const QString &filePath, const GeometryData &geometryDa
             switch (reference.kind)
             {
             case PrimitiveKind::Point:
-                appendPrimitiveEntry(layer.primitives, reference.kind, reference.index, pointOrdinal);
+                appendPrimitiveEntry(
+                    layer.primitives,
+                    geometryData,
+                    reference.kind,
+                    reference.index,
+                    pointOrdinal,
+                    lineOrdinal,
+                    polylineOrdinal,
+                    polygonOrdinal);
                 break;
             case PrimitiveKind::Polyline:
-                appendPrimitiveEntry(layer.primitives, reference.kind, reference.index, polylineOrdinal);
+                appendPrimitiveEntry(
+                    layer.primitives,
+                    geometryData,
+                    reference.kind,
+                    reference.index,
+                    pointOrdinal,
+                    lineOrdinal,
+                    polylineOrdinal,
+                    polygonOrdinal);
                 break;
             case PrimitiveKind::Polygon:
-                appendPrimitiveEntry(layer.primitives, reference.kind, reference.index, polygonOrdinal);
+                appendPrimitiveEntry(
+                    layer.primitives,
+                    geometryData,
+                    reference.kind,
+                    reference.index,
+                    pointOrdinal,
+                    lineOrdinal,
+                    polylineOrdinal,
+                    polygonOrdinal);
                 break;
             }
         }
 
+        syncLayerVisibilitySummary(&layer);
         return layer;
     }
 
     for (int index = 0; index < geometryData.points.size(); ++index)
     {
-        appendPrimitiveEntry(layer.primitives, PrimitiveKind::Point, index, pointOrdinal);
+        appendPrimitiveEntry(
+            layer.primitives,
+            geometryData,
+            PrimitiveKind::Point,
+            index,
+            pointOrdinal,
+            lineOrdinal,
+            polylineOrdinal,
+            polygonOrdinal);
     }
 
     for (int index = 0; index < geometryData.polylines.size(); ++index)
     {
-        appendPrimitiveEntry(layer.primitives, PrimitiveKind::Polyline, index, polylineOrdinal);
+        appendPrimitiveEntry(
+            layer.primitives,
+            geometryData,
+            PrimitiveKind::Polyline,
+            index,
+            pointOrdinal,
+            lineOrdinal,
+            polylineOrdinal,
+            polygonOrdinal);
     }
 
     for (int index = 0; index < geometryData.polygons.size(); ++index)
     {
-        appendPrimitiveEntry(layer.primitives, PrimitiveKind::Polygon, index, polygonOrdinal);
+        appendPrimitiveEntry(
+            layer.primitives,
+            geometryData,
+            PrimitiveKind::Polygon,
+            index,
+            pointOrdinal,
+            lineOrdinal,
+            polylineOrdinal,
+            polygonOrdinal);
     }
 
+    syncLayerVisibilitySummary(&layer);
     return layer;
 }
 
@@ -128,19 +279,10 @@ SelectionState normalizedSelection(const DocumentData &documentData, const Selec
 
     if (selectionState.kind == SelectionKind::Layer)
     {
-        if (!documentData.layers.at(selectionState.layer_index).visible)
-        {
-            return {};
-        }
         return selectionState;
     }
 
     const LayerData &layer = documentData.layers.at(selectionState.layer_index);
-    if (!layer.visible)
-    {
-        return {};
-    }
-
     if (selectionState.primitive_index < 0 || selectionState.primitive_index >= layer.primitives.size())
     {
         return {};
@@ -270,25 +412,9 @@ MainWindow::MainWindow(QWidget *parent)
 
 void MainWindow::openPlyFile()
 {
-    const QString filePath = QFileDialog::getOpenFileName(
-        this,
-        QStringLiteral("Open PolyShow .ply File"),
-        QString(),
-        plyFileDialogFilter());
-
-    if (filePath.isEmpty())
-    {
-        return;
-    }
-
-    importFiles(QStringList {filePath}, true);
-}
-
-void MainWindow::importPlyFiles()
-{
     const QStringList filePaths = QFileDialog::getOpenFileNames(
         this,
-        QStringLiteral("Import PolyShow .ply Files"),
+        QStringLiteral("Open PolyShow .ply Files"),
         QString(),
         plyFileDialogFilter());
 
@@ -297,7 +423,7 @@ void MainWindow::importPlyFiles()
         return;
     }
 
-    importFiles(filePaths, false);
+    openFiles(filePaths);
 }
 
 void MainWindow::setRenderModeSolid()
@@ -334,7 +460,12 @@ void MainWindow::onLayerVisibilityChanged(int layerIndex, bool visible)
         return;
     }
 
-    m_document_data.layers[layerIndex].visible = visible;
+    LayerData &layer = m_document_data.layers[layerIndex];
+    for (LayerPrimitiveData &primitive : layer.primitives)
+    {
+        primitive.visible = visible;
+    }
+    syncLayerVisibilitySummary(&layer);
     refreshViewsForVisibilityChange();
 }
 
@@ -352,6 +483,7 @@ void MainWindow::onPrimitiveVisibilityChanged(int layerIndex, int primitiveIndex
     }
 
     layer.primitives[primitiveIndex].visible = visible;
+    syncLayerVisibilitySummary(&layer);
     refreshViewsForVisibilityChange();
 }
 
@@ -574,10 +706,10 @@ void MainWindow::showAboutDialog()
         this,
         QStringLiteral("About PolyShow"),
         QStringLiteral("PolyShow MVP\n\n") + QStringLiteral("Features:\n")
-            + QStringLiteral("1. Open or import PolyShow .ply files\n")
+            + QStringLiteral("1. Open one or more PolyShow .ply files\n")
             + QStringLiteral("2. Display points, polylines, and polygons\n")
             + QStringLiteral("3. Toggle layer and primitive visibility\n")
-            + QStringLiteral("4. Search and inspect imported geometry\n")
+            + QStringLiteral("4. Search and inspect opened geometry\n")
             + QStringLiteral("5. Switch render mode (Solid/Wireframe/Points)"));
 }
 
@@ -624,17 +756,23 @@ void MainWindow::setupUi()
     m_splitter->setStretchFactor(2, 0);
     m_splitter->setSizes({300, 700, 0});
 
-    m_log_panel_container = new PanelFrame(PanelFrame::Variant::Panel, this);
-    auto *logLayout = new QVBoxLayout(m_log_panel_container);
+    m_log_tab_container = new PanelFrame(PanelFrame::Variant::Panel, this);
+    auto *logLayout = new QVBoxLayout(m_log_tab_container);
     logLayout->setContentsMargins(0, 0, 0, 0);
     logLayout->addWidget(m_log_panel);
-    m_log_panel_container->setMinimumHeight(96);
+    m_log_tab_container->setMinimumHeight(96);
+
+    m_bottom_tab_widget = new QTabWidget(this);
+    m_bottom_tab_widget->setTabPosition(QTabWidget::South);
+    m_bottom_tab_widget->setDocumentMode(true);
+    m_bottom_tab_widget->setMovable(false);
+    m_bottom_tab_widget->addTab(m_log_tab_container, QStringLiteral("Log"));
 
     m_vertical_splitter = new QSplitter(Qt::Vertical, this);
     m_vertical_splitter->setChildrenCollapsible(false);
     m_vertical_splitter->setHandleWidth(8);
     m_vertical_splitter->addWidget(m_splitter);
-    m_vertical_splitter->addWidget(m_log_panel_container);
+    m_vertical_splitter->addWidget(m_bottom_tab_widget);
     m_vertical_splitter->setStretchFactor(0, 1);
     m_vertical_splitter->setStretchFactor(1, 0);
     m_vertical_splitter->setSizes({640, 140});
@@ -671,10 +809,6 @@ void MainWindow::setupMenuBar()
     m_open_action->setShortcut(QKeySequence::Open);
     connect(m_open_action, &QAction::triggered, this, &MainWindow::openPlyFile);
     fileMenu->addAction(m_open_action);
-
-    m_import_action = new QAction(QStringLiteral("Import .ply..."), this);
-    connect(m_import_action, &QAction::triggered, this, &MainWindow::importPlyFiles);
-    fileMenu->addAction(m_import_action);
 
     fileMenu->addSeparator();
 
@@ -851,11 +985,11 @@ void MainWindow::setRenderMode(GeometryScene::RenderMode renderMode)
     updateViewportControlState();
 }
 
-void MainWindow::importFiles(const QStringList &filePaths, bool replaceExisting)
+void MainWindow::openFiles(const QStringList &filePaths)
 {
-    DocumentData nextDocument = replaceExisting ? DocumentData {} : m_document_data;
+    DocumentData nextDocument = m_document_data;
     QStringList failureMessages;
-    int importedCount = 0;
+    int openedCount = 0;
 
     for (const QString &filePath : filePaths)
     {
@@ -871,19 +1005,19 @@ void MainWindow::importFiles(const QStringList &filePaths, bool replaceExisting)
         }
 
         nextDocument.layers.append(buildLayerData(filePath, geometryData));
-        ++importedCount;
+        ++openedCount;
         m_log_panel->appendMessage(
             LogSeverity::Info,
-            QStringLiteral("[info] %1 imported successfully").arg(QFileInfo(filePath).fileName()));
+            QStringLiteral("[info] %1 opened successfully").arg(QFileInfo(filePath).fileName()));
     }
 
-    if (importedCount == 0)
+    if (openedCount == 0)
     {
         const QString message = failureMessages.isEmpty()
-            ? QStringLiteral("No files were imported.")
+            ? QStringLiteral("No files were opened.")
             : failureMessages.join(QStringLiteral("\n\n"));
-        QMessageBox::critical(this, QStringLiteral("Import Failed"), message);
-        statusBar()->showMessage(QStringLiteral("Import failed"), 3000);
+        QMessageBox::critical(this, QStringLiteral("Open Failed"), message);
+        statusBar()->showMessage(QStringLiteral("Open failed"), 3000);
         return;
     }
 
@@ -893,25 +1027,22 @@ void MainWindow::importFiles(const QStringList &filePaths, bool replaceExisting)
 
     if (failureMessages.isEmpty())
     {
-        const QString successMessage = replaceExisting
-            ? QStringLiteral("File loaded")
-            : QStringLiteral("Imported %1 layer(s)").arg(importedCount);
-        statusBar()->showMessage(successMessage, 3000);
+        statusBar()->showMessage(QStringLiteral("Opened %1 file(s)").arg(openedCount), 3000);
         return;
     }
 
     m_log_panel->appendMessage(
         LogSeverity::Warning,
-        QStringLiteral("[warning] Imported %1 file(s), %2 failed").arg(importedCount).arg(failureMessages.size()));
+        QStringLiteral("[warning] Opened %1 file(s), %2 failed").arg(openedCount).arg(failureMessages.size()));
     QMessageBox::warning(
         this,
-        QStringLiteral("Import Completed with Errors"),
-        QStringLiteral("Imported %1 file(s). %2 file(s) failed.\n\n%3")
-            .arg(importedCount)
+        QStringLiteral("Open Completed with Errors"),
+        QStringLiteral("Opened %1 file(s). %2 file(s) failed.\n\n%3")
+            .arg(openedCount)
             .arg(failureMessages.size())
             .arg(failureMessages.join(QStringLiteral("\n\n"))));
     statusBar()->showMessage(
-        QStringLiteral("Imported %1 file(s), %2 failed").arg(importedCount).arg(failureMessages.size()),
+        QStringLiteral("Opened %1 file(s), %2 failed").arg(openedCount).arg(failureMessages.size()),
         4000);
 }
 
@@ -944,6 +1075,7 @@ void MainWindow::refreshViewsForVisibilityChange()
     m_layer_sidebar->setDocumentData(m_document_data, false);
     m_scene->setEditPreviewState(m_edit_preview_state, false);
     m_scene->setDocumentData(m_document_data);
+    reloadInspectorForSelectionChange();
     if (nextSelection != m_selection_state)
     {
         onSelectionStateChanged(nextSelection);

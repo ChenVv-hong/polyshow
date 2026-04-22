@@ -40,6 +40,12 @@ signals:
     void emptyAreaActivated();
 
 protected:
+    /// Draws the viewport-relative dynamic grid background.
+    void drawBackground(QPainter *painter, const QRectF &rect) override;
+
+    /// Draws the screen-space scale overlay.
+    void drawForeground(QPainter *painter, const QRectF &rect) override;
+
     /// Handles wheel-based zoom.
     void wheelEvent(QWheelEvent *event) override;
 

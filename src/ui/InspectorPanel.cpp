@@ -37,14 +37,14 @@ QString selectionBadgeText(SelectionKind kind)
 }
 
 /// Returns the label for one primitive kind.
-QString primitiveKindText(PrimitiveKind kind)
+QString primitiveKindText(PrimitiveKind kind, int vertexCount)
 {
     switch (kind)
     {
     case PrimitiveKind::Point:
         return QStringLiteral("Point");
     case PrimitiveKind::Polyline:
-        return QStringLiteral("Polyline");
+        return vertexCount == 2 ? QStringLiteral("Line") : QStringLiteral("Polyline");
     case PrimitiveKind::Polygon:
         return QStringLiteral("Polygon");
     default:
@@ -123,7 +123,7 @@ QString primitiveGeometryText(const LayerData &layer, int primitiveIndex)
     const QRectF bounds = pointsBounds(points);
 
     return QStringLiteral("Type        %1\nVertices    %2\nBounds      %3 x %4\nVisible     %5")
-        .arg(primitiveKindText(primitive.reference.kind))
+        .arg(primitiveKindText(primitive.reference.kind, points.size()))
         .arg(points.size())
         .arg(bounds.width(), 0, 'f', 2)
         .arg(bounds.height(), 0, 'f', 2)
@@ -383,7 +383,7 @@ void InspectorPanel::updateContent()
     {
         const LayerData &layer = m_document_data.layers.at(m_selection_state.layer_index);
         m_title_label->setText(layer.display_name);
-        m_meta_label->setText(QStringLiteral("File layer / imported source"));
+        m_meta_label->setText(QStringLiteral("File layer / opened source"));
         m_geometry_label->setText(QStringLiteral("Summary"));
         m_geometry_body_label->setText(layerSummaryText(layer));
         m_hint_label->setText(QStringLiteral("Select a primitive to edit its in-memory style and coordinates."));

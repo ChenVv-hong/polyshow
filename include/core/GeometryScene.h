@@ -82,9 +82,6 @@ private:
     /// Rebuilds all scene items from the stored state.
     void rebuildScene();
 
-    /// Rebuilds the background grid.
-    void rebuildGrid();
-
     DocumentData m_document_data;
     RenderMode m_render_mode {RenderMode::Solid};
     bool m_is_grid_visible {true};

@@ -9,6 +9,8 @@
 #include <QTreeWidgetItem>
 #include <QVBoxLayout>
 
+#include <algorithm>
+
 namespace PolyShow
 {
 
@@ -25,6 +27,77 @@ constexpr int kItemKindRole = Qt::UserRole + 1;
 constexpr int kLayerIndexRole = Qt::UserRole + 2;
 constexpr int kPrimitiveIndexRole = Qt::UserRole + 3;
 
+Qt::CheckState layerCheckState(const LayerData &layer)
+{
+    if (layer.primitives.isEmpty())
+    {
+        return Qt::Unchecked;
+    }
+
+    int visibleCount = 0;
+    for (const LayerPrimitiveData &primitive : layer.primitives)
+    {
+        if (primitive.visible)
+        {
+            ++visibleCount;
+        }
+    }
+
+    if (visibleCount == 0)
+    {
+        return Qt::Unchecked;
+    }
+
+    if (visibleCount == layer.primitives.size())
+    {
+        return Qt::Checked;
+    }
+
+    return Qt::PartiallyChecked;
+}
+
+Qt::CheckState layerCheckState(const QTreeWidgetItem *layerItem)
+{
+    if (layerItem == nullptr || layerItem->childCount() == 0)
+    {
+        return Qt::Unchecked;
+    }
+
+    int checkedCount = 0;
+    for (int childIndex = 0; childIndex < layerItem->childCount(); ++childIndex)
+    {
+        if (layerItem->child(childIndex)->checkState(0) == Qt::Checked)
+        {
+            ++checkedCount;
+        }
+    }
+
+    if (checkedCount == 0)
+    {
+        return Qt::Unchecked;
+    }
+
+    if (checkedCount == layerItem->childCount())
+    {
+        return Qt::Checked;
+    }
+
+    return Qt::PartiallyChecked;
+}
+
+void setLayerChildCheckStates(QTreeWidgetItem *layerItem, Qt::CheckState checkState)
+{
+    if (layerItem == nullptr)
+    {
+        return;
+    }
+
+    for (int childIndex = 0; childIndex < layerItem->childCount(); ++childIndex)
+    {
+        layerItem->child(childIndex)->setCheckState(0, checkState);
+    }
+}
+
 QString layerText(const LayerData &layer)
 {
     return QStringLiteral("%1   %2")
@@ -37,11 +110,6 @@ QString footerSummary(const DocumentData &documentData)
     int visiblePrimitiveCount = 0;
     for (const LayerData &layer : documentData.layers)
     {
-        if (!layer.visible)
-        {
-            continue;
-        }
-
         for (const LayerPrimitiveData &primitive : layer.primitives)
         {
             if (primitive.visible)
@@ -87,7 +155,7 @@ LayerSidebar::LayerSidebar(QWidget *parent)
     m_search_line_edit->setVisible(false);
     layout->addWidget(m_search_line_edit);
 
-    m_section_label = new QLabel(QStringLiteral("Imported Files"), this);
+    m_section_label = new QLabel(QStringLiteral("Files"), this);
     m_section_label->setProperty("role", QStringLiteral("sectionTitle"));
     layout->addWidget(m_section_label);
 
@@ -110,24 +178,41 @@ LayerSidebar::LayerSidebar(QWidget *parent)
         applyFilter();
     });
     connect(m_tree_widget, &QTreeWidget::itemChanged, this, [this](QTreeWidgetItem *item, int column) {
-        if (m_is_rebuilding_tree || m_is_syncing_selection || column != 0 || item == nullptr)
+        if (m_is_rebuilding_tree || m_is_syncing_visibility || m_is_syncing_selection || column != 0
+            || item == nullptr)
         {
             return;
         }
 
         const int itemKind = item->data(0, kItemKindRole).toInt();
         const int layerIndex = item->data(0, kLayerIndexRole).toInt();
-        const bool visible = item->checkState(0) == Qt::Checked;
 
         if (itemKind == ItemKindLayer)
         {
-            emit layerVisibilityChanged(layerIndex, visible);
+            const Qt::CheckState nextCheckState = item->checkState(0) == Qt::Unchecked ? Qt::Unchecked : Qt::Checked;
+
+            m_is_syncing_visibility = true;
+            item->setCheckState(0, nextCheckState);
+            setLayerChildCheckStates(item, nextCheckState);
+            m_is_syncing_visibility = false;
+
+            emit layerVisibilityChanged(layerIndex, nextCheckState == Qt::Checked);
             return;
         }
 
         if (itemKind == ItemKindPrimitive)
         {
+            const bool visible = item->checkState(0) == Qt::Checked;
             const int primitiveIndex = item->data(0, kPrimitiveIndexRole).toInt();
+
+            m_is_syncing_visibility = true;
+            QTreeWidgetItem *layerItem = item->parent();
+            if (layerItem != nullptr)
+            {
+                layerItem->setCheckState(0, layerCheckState(layerItem));
+            }
+            m_is_syncing_visibility = false;
+
             emit primitiveVisibilityChanged(layerIndex, primitiveIndex, visible);
         }
     });
@@ -172,6 +257,7 @@ void LayerSidebar::setDocumentData(const DocumentData &documentData, bool rebuil
         return;
     }
 
+    syncTreeCheckStates();
     updateFooter();
 }
 
@@ -258,7 +344,6 @@ void LayerSidebar::rebuildTree()
         layerItem->setText(0, layerText(layer));
         layerItem->setToolTip(0, layer.file_path);
         layerItem->setFlags(layerItem->flags() | Qt::ItemIsUserCheckable | Qt::ItemIsSelectable | Qt::ItemIsEnabled);
-        layerItem->setCheckState(0, layer.visible ? Qt::Checked : Qt::Unchecked);
         layerItem->setData(0, kItemKindRole, ItemKindLayer);
         layerItem->setData(0, kLayerIndexRole, layerIndex);
         layerItem->setData(0, kPrimitiveIndexRole, -1);
@@ -277,10 +362,44 @@ void LayerSidebar::rebuildTree()
             primitiveItem->setData(0, kPrimitiveIndexRole, primitiveIndex);
         }
 
+        layerItem->setCheckState(0, layerCheckState(layer));
         layerItem->setExpanded(true);
     }
 
     m_is_rebuilding_tree = false;
+}
+
+void LayerSidebar::syncTreeCheckStates()
+{
+    m_is_syncing_visibility = true;
+    const QSignalBlocker blocker(m_tree_widget);
+
+    const int layerCount = std::min(m_tree_widget->topLevelItemCount(), static_cast<int>(m_document_data.layers.size()));
+    for (int layerIndex = 0; layerIndex < layerCount; ++layerIndex)
+    {
+        const LayerData &layer = m_document_data.layers.at(layerIndex);
+        QTreeWidgetItem *layerItem = m_tree_widget->topLevelItem(layerIndex);
+        if (layerItem == nullptr)
+        {
+            continue;
+        }
+
+        const int primitiveCount = std::min(layerItem->childCount(), static_cast<int>(layer.primitives.size()));
+        for (int primitiveIndex = 0; primitiveIndex < primitiveCount; ++primitiveIndex)
+        {
+            QTreeWidgetItem *primitiveItem = layerItem->child(primitiveIndex);
+            if (primitiveItem == nullptr)
+            {
+                continue;
+            }
+
+            primitiveItem->setCheckState(0, layer.primitives.at(primitiveIndex).visible ? Qt::Checked : Qt::Unchecked);
+        }
+
+        layerItem->setCheckState(0, layerCheckState(layer));
+    }
+
+    m_is_syncing_visibility = false;
 }
 
 void LayerSidebar::applyFilter()
@@ -288,7 +407,7 @@ void LayerSidebar::applyFilter()
     const QString query = m_search_line_edit->text().trimmed().toLower();
     const bool hasQuery = !query.isEmpty();
 
-    m_section_label->setText(hasQuery ? QStringLiteral("Search Results") : QStringLiteral("Imported Files"));
+    m_section_label->setText(hasQuery ? QStringLiteral("Search Results") : QStringLiteral("Files"));
 
     for (int layerIndex = 0; layerIndex < m_tree_widget->topLevelItemCount(); ++layerIndex)
     {

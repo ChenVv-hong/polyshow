@@ -164,6 +164,28 @@ QListWidget::item {
     margin: 1px 0px;
 }
 
+QTabWidget::pane {
+    border: none;
+    background-color: transparent;
+}
+
+QTabBar::tab {
+    background-color: #3A3A3A;
+    color: #B8B8B8;
+    border: 1px solid #494949;
+    border-top: none;
+    border-bottom-left-radius: 8px;
+    border-bottom-right-radius: 8px;
+    padding: 6px 12px;
+    margin-right: 6px;
+}
+
+QTabBar::tab:selected {
+    background-color: #353535;
+    color: #DCEBFF;
+    border-color: #4E8CFF;
+}
+
 QScrollBar:vertical {
     background-color: transparent;
     width: 10px;

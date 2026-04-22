@@ -20,9 +20,8 @@
 namespace
 {
 
-// Keep a large default grid so small and medium scenes still have context.
-constexpr int kGridHalfSize = 2000;
-constexpr int kGridStep = 50;
+// Keep a large scene extent so panning can continue far away from the origin.
+constexpr qreal kSceneHalfExtent = 100000.0;
 constexpr int kLayerIndexRole = 1;
 constexpr int kPrimitiveIndexRole = 2;
 constexpr int kSelectionOverlayRole = 3;
@@ -87,19 +86,10 @@ PolyShow::SelectionState normalizeSelectionState(
 
     if (selectionState.kind == PolyShow::SelectionKind::Layer)
     {
-        if (!documentData.layers.at(selectionState.layer_index).visible)
-        {
-            return {};
-        }
         return selectionState;
     }
 
     const PolyShow::LayerData &layer = documentData.layers.at(selectionState.layer_index);
-    if (!layer.visible)
-    {
-        return {};
-    }
-
     if (selectionState.primitive_index < 0 || selectionState.primitive_index >= layer.primitives.size())
     {
         return {};
@@ -219,7 +209,7 @@ GeometryScene::GeometryScene(QObject *parent)
     : QGraphicsScene(parent)
 {
     // Set the scene rect up front so the viewer always has a coordinate reference.
-    setSceneRect(-kGridHalfSize, -kGridHalfSize, kGridHalfSize * 2, kGridHalfSize * 2);
+    setSceneRect(-kSceneHalfExtent, -kSceneHalfExtent, kSceneHalfExtent * 2.0, kSceneHalfExtent * 2.0);
     rebuildScene();
 }
 
@@ -288,7 +278,7 @@ void GeometryScene::setGridVisible(bool visible)
     }
 
     m_is_grid_visible = visible;
-    rebuildScene();
+    update();
 }
 
 /// Returns whether the grid is currently visible.
@@ -342,11 +332,6 @@ void GeometryScene::updateVisibleCounts()
 
     for (const LayerData &layer : std::as_const(m_document_data.layers))
     {
-        if (!layer.visible)
-        {
-            continue;
-        }
-
         const LayerVisibilityMask mask = buildLayerVisibilityMask(layer);
         for (const bool isVisible : std::as_const(mask.points))
         {
@@ -379,7 +364,6 @@ void GeometryScene::rebuildScene()
 {
     // Rebuild everything from scratch so render mode switches do not leave stale items behind.
     clear();
-    rebuildGrid();
     const RenderColors &renderColors = RenderTheme::colors();
     const bool suppressSelectedPrimitive = m_edit_preview_state.hide_selected_primitive
         && m_edit_preview_state.selection_state.kind == SelectionKind::Primitive;
@@ -402,11 +386,6 @@ void GeometryScene::rebuildScene()
     for (int layerIndex = 0; layerIndex < m_document_data.layers.size(); ++layerIndex)
     {
         const LayerData &layer = m_document_data.layers.at(layerIndex);
-        if (!layer.visible)
-        {
-            continue;
-        }
-
         const auto shouldSuppressPrimitive = [this, suppressSelectedPrimitive, layerIndex](int primitiveIndex) {
             return suppressSelectedPrimitive
                 && m_edit_preview_state.selection_state.layer_index == layerIndex
@@ -579,34 +558,6 @@ void GeometryScene::rebuildScene()
         overlay->setData(kSelectionOverlayRole, true);
         overlay->setAcceptedMouseButtons(Qt::NoButton);
         overlay->setZValue(10000.0);
-    }
-}
-
-/// Rebuilds the background grid and axis lines.
-void GeometryScene::rebuildGrid()
-{
-    if (!m_is_grid_visible)
-    {
-        return;
-    }
-
-    // Use a light grid so the geometry remains the visual focus.
-    const RenderColors &renderColors = RenderTheme::colors();
-    QPen gridPen(renderColors.grid_line);
-    gridPen.setWidthF(0.0);
-
-    // Use a slightly darker pen for the origin axes.
-    QPen axisPen(renderColors.axis_line);
-    axisPen.setWidthF(0.0);
-
-    for (int x = -kGridHalfSize; x <= kGridHalfSize; x += kGridStep)
-    {
-        addLine(x, -kGridHalfSize, x, kGridHalfSize, (x == 0) ? axisPen : gridPen);
-    }
-
-    for (int y = -kGridHalfSize; y <= kGridHalfSize; y += kGridStep)
-    {
-        addLine(-kGridHalfSize, y, kGridHalfSize, y, (y == 0) ? axisPen : gridPen);
     }
 }
 

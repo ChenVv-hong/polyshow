@@ -12,6 +12,7 @@ class QActionGroup;
 class QComboBox;
 class QLabel;
 class QSplitter;
+class QTabWidget;
 class QWidget;
 
 namespace PolyShow
@@ -34,11 +35,8 @@ public:
     explicit MainWindow(QWidget *parent = nullptr);
 
 private slots:
-    /// Opens and parses a `.ply` file chosen by the user.
+    /// Opens one or more `.ply` files chosen by the user.
     void openPlyFile();
-
-    /// Imports one or more `.ply` files as additional layers.
-    void importPlyFiles();
 
     /// Switches to solid render mode.
     void setRenderModeSolid();
@@ -101,8 +99,8 @@ private:
     /// Synchronizes a render mode to the full UI state.
     void setRenderMode(GeometryScene::RenderMode renderMode);
 
-    /// Imports files into the current document, optionally replacing it first.
-    void importFiles(const QStringList &filePaths, bool replaceExisting);
+    /// Opens files into the current document as additional layers.
+    void openFiles(const QStringList &filePaths);
 
     /// Pushes the current document state into the scene and side panel.
     void syncDocumentToViews(bool fitScene);
@@ -133,15 +131,15 @@ private:
     LogPanel *m_log_panel {nullptr};
     QSplitter *m_splitter {nullptr};
     QSplitter *m_vertical_splitter {nullptr};
+    QTabWidget *m_bottom_tab_widget {nullptr};
     PanelFrame *m_viewport_frame {nullptr};
     PanelFrame *m_inspector_container {nullptr};
-    PanelFrame *m_log_panel_container {nullptr};
+    PanelFrame *m_log_tab_container {nullptr};
     QWidget *m_viewport_controls_widget {nullptr};
     QComboBox *m_render_mode_combo_box {nullptr};
     PillButton *m_grid_toggle_button {nullptr};
 
     QAction *m_open_action {nullptr};
-    QAction *m_import_action {nullptr};
     QAction *m_exit_action {nullptr};
     QAction *m_fit_action {nullptr};
     QAction *m_zoom_in_action {nullptr};

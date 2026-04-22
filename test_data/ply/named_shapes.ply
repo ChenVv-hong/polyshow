@@ -1,0 +1,20 @@
+# Custom primitive names mixed with default numbering.
+NAME Origin marker
+COLOR #2259B4
+POINT_SIZE 5
+0 0
+NEXT
+
+COLOR #E66A2C
+WIDTH 3
+-160 -30
+120 50
+NEXT
+
+NAME Outer polygon
+COLOR #278A5B
+FILL #278A5B55
+20 -80
+140 -80
+180 20
+20 -80

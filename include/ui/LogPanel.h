@@ -3,7 +3,6 @@
 #include <QWidget>
 
 class QListWidget;
-class QPushButton;
 
 namespace PolyShow
 {
@@ -32,12 +31,7 @@ public:
     void clearMessages();
 
 private:
-    /// Toggles the log body visibility.
-    void setCollapsed(bool collapsed);
-
     QListWidget *m_list_widget {nullptr};
-    QPushButton *m_collapse_button {nullptr};
-    bool m_is_collapsed {false};
 };
 
 } // namespace PolyShow

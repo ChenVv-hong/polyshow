@@ -59,14 +59,27 @@ cmake --build build -j$(nproc)
 | 点数规则 | 结果 |
 |---------|------|
 | 一个点 | `point` |
-| 两个及以上点，且首尾不同 | `polyline` |
-| 四个及以上点，且首尾相同 | `polygon` |
+| 两个点 | `line` |
+| 三个及以上点，且首尾不同 | `polyline` |
+| 三个及以上点，且首尾相同 | `polygon` |
 
 补充说明：
 
-- `polygon` 必须至少有 3 个唯一顶点
 - 闭合多边形需要显式把起点再写一遍作为终点
-- 解析后最后一个重复闭合点不会重复存储
+- 重复点会按原样保留，不会因为图形退化而报错
+
+### 名称指令
+
+`NAME` 用于给当前图元设置显示名。它不是粘性的，只作用于当前图元块。
+
+| 指令 | 说明 |
+|------|------|
+| `NAME text...` | 给当前图元设置显示名称，可包含空格 |
+
+补充说明：
+
+- `NAME` 必须写在当前图元的坐标之前
+- 如果没有写 `NAME`，界面会按 `Point / Line / Polyline / Polygon` 自动编号
 
 ### 样式指令
 
@@ -187,13 +200,14 @@ NEXT
 - `style_sizes.ply`
 - `comments_and_blanks.ply`
 - `fill_none.ply`
+- `named_shapes.ply`
+- `invalid_degenerate_polygon.ply`（历史文件名保留，当前规则下会作为有效图形导入）
 
 ### 无效文件
 
 - `invalid_unknown_command.ply`
 - `invalid_bad_number.ply`
 - `invalid_mid_shape_style.ply`
-- `invalid_degenerate_polygon.ply`
 
 ## 迁移说明
 

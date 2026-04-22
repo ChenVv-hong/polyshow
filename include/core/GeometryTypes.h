@@ -96,6 +96,9 @@ struct PointShape2D
 
     /// Point render style.
     PrimitiveStyle style;
+
+    /// Optional user-defined display name.
+    QString name;
 };
 
 /// Open polyline primitive.
@@ -106,6 +109,9 @@ struct Polyline2D
 
     /// Polyline render style.
     PrimitiveStyle style;
+
+    /// Optional user-defined display name.
+    QString name;
 };
 
 /// Closed polygon primitive.
@@ -116,6 +122,9 @@ struct Polygon2D
 
     /// Polygon render style.
     PrimitiveStyle style;
+
+    /// Optional user-defined display name.
+    QString name;
 };
 
 /// Complete geometry payload produced by the parser.
@@ -155,7 +164,7 @@ struct LayerPrimitiveData
     bool visible {true};
 };
 
-/// One imported file and its visibility state.
+/// One imported file plus an aggregate visibility summary.
 struct LayerData
 {
     /// Source file path used to build the layer.
@@ -170,7 +179,7 @@ struct LayerData
     /// Flat primitive list in file order.
     QVector<LayerPrimitiveData> primitives;
 
-    /// Whether the full layer is currently visible.
+    /// Aggregate visibility summary. True when at least one primitive is visible.
     bool visible {true};
 };
 

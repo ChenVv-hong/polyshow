@@ -48,6 +48,9 @@ private:
     /// Rebuilds the tree widget content.
     void rebuildTree();
 
+    /// Synchronizes checkbox states from the stored document without rebuilding items.
+    void syncTreeCheckStates();
+
     /// Applies the current filter text to the tree.
     void applyFilter();
 
@@ -64,6 +67,7 @@ private:
     QTreeWidget *m_tree_widget {nullptr};
     bool m_is_search_expanded {false};
     bool m_is_rebuilding_tree {false};
+    bool m_is_syncing_visibility {false};
     bool m_is_syncing_selection {false};
 };
 

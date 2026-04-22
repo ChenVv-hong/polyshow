@@ -317,24 +317,12 @@ bool validatePrimitivePoints(PrimitiveKind kind, const QVector<Point2D> &points,
             return false;
         }
 
-        if (uniquePointCount(points) < 2)
-        {
-            assignError(errorMessage, QStringLiteral("Polyline primitives need at least two unique coordinates."));
-            return false;
-        }
-
         return true;
     }
 
     if (points.size() < 3)
     {
         assignError(errorMessage, QStringLiteral("Polygon primitives require at least three coordinates."));
-        return false;
-    }
-
-    if (uniquePointCount(points) < 3)
-    {
-        assignError(errorMessage, QStringLiteral("Polygon primitives need at least three unique coordinates."));
         return false;
     }
 

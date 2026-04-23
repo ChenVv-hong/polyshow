@@ -53,6 +53,14 @@ enum class PrimitiveKind
     Polygon
 };
 
+/// Identifies how one layer was created and whether IPC writes are allowed.
+enum class LayerType
+{
+    ExternalFileNormal,
+    InternalNormal,
+    InternalIpc
+};
+
 /// Identifies what kind of UI selection is active.
 enum class SelectionKind
 {
@@ -172,6 +180,9 @@ struct LayerData
 
     /// User-facing layer label.
     QString display_name;
+
+    /// Source classification for the layer.
+    LayerType layer_type {LayerType::InternalNormal};
 
     /// Parsed file geometry.
     GeometryData geometry;

@@ -12,19 +12,25 @@
 #include <QAction>
 #include <QActionGroup>
 #include <QComboBox>
+#include <QDialog>
+#include <QDialogButtonBox>
 #include <QDir>
 #include <QFileDialog>
 #include <QFileInfo>
+#include <QFormLayout>
 #include <QHBoxLayout>
 #include <QKeySequence>
 #include <QLabel>
+#include <QLineEdit>
 #include <QMenu>
 #include <QMenuBar>
 #include <QMessageBox>
+#include <QPushButton>
 #include <QSignalBlocker>
 #include <QSplitter>
 #include <QStatusBar>
 #include <QTabWidget>
+#include <QThread>
 #include <QVBoxLayout>
 #include <QWidget>
 
@@ -38,6 +44,54 @@ namespace
 QString plyFileDialogFilter()
 {
     return QStringLiteral("PolyShow Files (*.ply);;All Files (*.*)");
+}
+
+QString ipcNativeEndpoint()
+{
+#ifdef Q_OS_WIN
+    return QStringLiteral(R"(\\.\pipe\polyshow-ipc)");
+#else
+    return QStringLiteral("/tmp/polyshow-ipc.sock");
+#endif
+}
+
+QString normalizedLayerBaseName(const QString &name)
+{
+    const QString trimmedName = name.trimmed();
+    return trimmedName.isEmpty() ? QStringLiteral("Layer") : trimmedName;
+}
+
+QString uniqueLayerNameForDocument(const DocumentData &documentData, const QString &baseName)
+{
+    const QString normalizedBaseName = normalizedLayerBaseName(baseName);
+    if (findLayerByName(documentData, normalizedBaseName) == nullptr)
+    {
+        return normalizedBaseName;
+    }
+
+    for (int suffix = 2;; ++suffix)
+    {
+        const QString candidate = QStringLiteral("%1 (%2)").arg(normalizedBaseName).arg(suffix);
+        if (findLayerByName(documentData, candidate) == nullptr)
+        {
+            return candidate;
+        }
+    }
+}
+
+QString layerTypeLogText(LayerType layerType)
+{
+    switch (layerType)
+    {
+    case LayerType::ExternalFileNormal:
+        return QStringLiteral("file layer");
+    case LayerType::InternalNormal:
+        return QStringLiteral("internal layer");
+    case LayerType::InternalIpc:
+        return QStringLiteral("IPC layer");
+    default:
+        return QStringLiteral("layer");
+    }
 }
 
 /// Returns the display label for one runtime primitive category.
@@ -169,12 +223,88 @@ void appendPrimitiveEntry(
     primitives.append(LayerPrimitiveData {PrimitiveReference {kind, index}, displayName, true});
 }
 
-/// Builds the runtime layer state for one successfully parsed file.
-LayerData buildLayerData(const QString &filePath, const GeometryData &geometryData)
+bool promptForNewLayer(
+    QWidget *parent, const DocumentData &documentData, const QString &defaultLayerName, QString *layerName, LayerType *layerType)
 {
-    LayerData layer;
-    layer.file_path = filePath;
-    layer.display_name = QFileInfo(filePath).fileName();
+    if (layerName == nullptr || layerType == nullptr)
+    {
+        return false;
+    }
+
+    QDialog dialog(parent);
+    dialog.setWindowTitle(QStringLiteral("New Layer"));
+
+    auto *layout = new QVBoxLayout(&dialog);
+    layout->setContentsMargins(12, 12, 12, 12);
+    layout->setSpacing(10);
+
+    auto *formLayout = new QFormLayout();
+    formLayout->setContentsMargins(0, 0, 0, 0);
+    formLayout->setSpacing(8);
+
+    auto *nameEdit = new QLineEdit(defaultLayerName, &dialog);
+    formLayout->addRow(QStringLiteral("Layer Name"), nameEdit);
+
+    auto *typeComboBox = new QComboBox(&dialog);
+    typeComboBox->addItem(QStringLiteral("Internal Normal"), static_cast<int>(LayerType::InternalNormal));
+    typeComboBox->addItem(QStringLiteral("IPC Layer"), static_cast<int>(LayerType::InternalIpc));
+    formLayout->addRow(QStringLiteral("Layer Type"), typeComboBox);
+
+    layout->addLayout(formLayout);
+
+    auto *errorLabel = new QLabel(&dialog);
+    errorLabel->setProperty("role", QStringLiteral("validationError"));
+    errorLabel->setWordWrap(true);
+    errorLabel->setVisible(false);
+    layout->addWidget(errorLabel);
+
+    auto *buttonBox = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
+    layout->addWidget(buttonBox);
+
+    QObject::connect(buttonBox, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
+    QObject::connect(buttonBox, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+
+    auto *okButton = buttonBox->button(QDialogButtonBox::Ok);
+    const auto validate = [&documentData, errorLabel, nameEdit, okButton]() {
+        const QString candidateName = nameEdit->text().trimmed();
+
+        QString errorMessage;
+        if (candidateName.isEmpty())
+        {
+            errorMessage = QStringLiteral("Layer name is required.");
+        }
+        else if (findLayerByName(documentData, candidateName) != nullptr)
+        {
+            errorMessage = QStringLiteral("Layer name must be unique within the document.");
+        }
+
+        errorLabel->setText(errorMessage);
+        errorLabel->setVisible(!errorMessage.isEmpty());
+        if (okButton != nullptr)
+        {
+            okButton->setEnabled(errorMessage.isEmpty());
+        }
+    };
+
+    QObject::connect(nameEdit, &QLineEdit::textChanged, &dialog, validate);
+    validate();
+    nameEdit->selectAll();
+    nameEdit->setFocus(Qt::OtherFocusReason);
+
+    if (dialog.exec() != QDialog::Accepted)
+    {
+        return false;
+    }
+
+    *layerName = nameEdit->text().trimmed();
+    *layerType = static_cast<LayerType>(typeComboBox->currentData().toInt());
+    return true;
+}
+
+/// Builds the runtime layer state for one successfully parsed file.
+LayerData buildLayerData(const QString &filePath, const QString &layerName, const GeometryData &geometryData)
+{
+    LayerData layer = createEmptyLayer(layerName, LayerType::ExternalFileNormal, filePath);
     layer.geometry = geometryData;
 
     int pointOrdinal = 0;
@@ -471,6 +601,9 @@ PrimitiveStyle drawingStyleForLayer(const LayerData &layer, PrimitiveKind kind)
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
 {
+    qRegisterMetaType<IpcPrimitiveWriteMessage>("PolyShow::IpcPrimitiveWriteMessage");
+    qRegisterMetaType<IpcPrimitiveWriteResult>("PolyShow::IpcPrimitiveWriteResult");
+
     setupUi();
     setupMenuBar();
     setupViewportControls();
@@ -478,14 +611,27 @@ MainWindow::MainWindow(QWidget *parent)
     updateUiFromScene();
 }
 
+MainWindow::~MainWindow()
+{
+    shutdownIpcListener(false);
+}
+
 void MainWindow::createLayer()
 {
-    const QString layerName = nextLayerName();
-    m_document_data.layers.append(createEmptyLayer(layerName));
+    QString layerName;
+    LayerType layerType = LayerType::InternalNormal;
+    if (!promptForNewLayer(this, m_document_data, nextLayerName(), &layerName, &layerType))
+    {
+        return;
+    }
+
+    m_document_data.layers.append(createEmptyLayer(layerName, layerType));
     m_active_layer_index = m_document_data.layers.size() - 1;
     m_selection_state = layerSelectionState(m_active_layer_index);
     syncDocumentToViews(false);
-    m_log_panel->appendMessage(LogSeverity::Info, QStringLiteral("[info] Created layer %1").arg(layerName));
+    m_log_panel->appendMessage(
+        LogSeverity::Info,
+        QStringLiteral("[info] Created %1 %2").arg(layerTypeLogText(layerType), layerName));
     statusBar()->showMessage(QStringLiteral("Layer created"), 3000);
 }
 
@@ -990,6 +1136,125 @@ void MainWindow::showAboutDialog()
             + QStringLiteral("6. Switch render mode (Solid/Wireframe/Points)"));
 }
 
+void MainWindow::startIpcListener()
+{
+    if (m_is_ipc_listener_running)
+    {
+        return;
+    }
+
+    m_ipc_thread = new QThread(this);
+    m_ipc_listener_worker = new IpcListenerWorker();
+    m_ipc_listener_worker->moveToThread(m_ipc_thread);
+
+    connect(m_ipc_thread, &QThread::finished, m_ipc_listener_worker, &QObject::deleteLater);
+    connect(
+        m_ipc_listener_worker,
+        &IpcListenerWorker::primitiveWriteRequested,
+        this,
+        &MainWindow::onIpcPrimitiveWriteRequested);
+    connect(
+        m_ipc_listener_worker,
+        &IpcListenerWorker::protocolErrorLogged,
+        this,
+        &MainWindow::onIpcProtocolErrorLogged);
+    connect(this, &MainWindow::ipcWriteProcessed, m_ipc_listener_worker, &IpcListenerWorker::deliverWriteResult);
+
+    m_ipc_thread->start();
+
+    bool started = false;
+    QString errorMessage;
+    QString listeningAddress = ipcNativeEndpoint();
+    QMetaObject::invokeMethod(
+        m_ipc_listener_worker,
+        [this, &started, &errorMessage, &listeningAddress]() {
+            started = m_ipc_listener_worker->startListening(&errorMessage);
+            listeningAddress = m_ipc_listener_worker->listeningAddress();
+        },
+        Qt::BlockingQueuedConnection);
+
+    if (!started)
+    {
+        shutdownIpcListener(false);
+        m_log_panel->appendMessage(
+            LogSeverity::Error,
+            QStringLiteral("[error] Failed to start IPC listener on %1: %2").arg(listeningAddress, errorMessage));
+        statusBar()->showMessage(QStringLiteral("IPC listener failed to start"), 3000);
+        return;
+    }
+
+    m_ipc_listening_address = listeningAddress;
+    m_is_ipc_listener_running = true;
+    updateIpcActionState();
+    m_log_panel->appendMessage(
+        LogSeverity::Info,
+        QStringLiteral("[info] IPC listener started on %1").arg(m_ipc_listening_address));
+    statusBar()->showMessage(QStringLiteral("IPC listener started on %1").arg(m_ipc_listening_address), 3000);
+}
+
+void MainWindow::stopIpcListener()
+{
+    shutdownIpcListener(true);
+}
+
+void MainWindow::onIpcPrimitiveWriteRequested(const IpcPrimitiveWriteMessage &message)
+{
+    IpcPrimitiveWriteResult result;
+    result.sequence = message.sequence;
+    result.request_id = message.request_id;
+    result.layer_name = message.layer_name;
+    result.primitive_name = message.request.name;
+
+    QString resultMessage;
+    bool replaced = false;
+    if (!writePrimitiveToNamedIpcLayer(m_document_data, message.layer_name, message.request, &resultMessage, &replaced))
+    {
+        result.ok = false;
+        result.message = resultMessage;
+        emit ipcWriteProcessed(result);
+
+        m_log_panel->appendMessage(
+            LogSeverity::Error,
+            QStringLiteral("[error] Failed IPC write to %1: %2").arg(message.layer_name, resultMessage));
+        statusBar()->showMessage(QStringLiteral("IPC write failed"), 3000);
+        return;
+    }
+
+    result.ok = true;
+    result.message = resultMessage;
+    result.result = replaced ? QStringLiteral("replaced") : QStringLiteral("appended");
+
+    syncDocumentToViews(false);
+    emit ipcWriteProcessed(result);
+
+    if (message.request.name.isEmpty())
+    {
+        m_log_panel->appendMessage(
+            LogSeverity::Info,
+            QStringLiteral("[info] Appended IPC primitive to %1").arg(message.layer_name));
+    }
+    else if (replaced)
+    {
+        m_log_panel->appendMessage(
+            LogSeverity::Warning,
+            QStringLiteral("[warning] Replaced IPC primitive %1 in %2").arg(message.request.name, message.layer_name));
+    }
+    else
+    {
+        m_log_panel->appendMessage(
+            LogSeverity::Info,
+            QStringLiteral("[info] Appended IPC primitive %1 to %2").arg(message.request.name, message.layer_name));
+    }
+
+    statusBar()->showMessage(QStringLiteral("IPC write applied to %1").arg(message.layer_name), 3000);
+}
+
+void MainWindow::onIpcProtocolErrorLogged(const QString &message)
+{
+    m_log_panel->appendMessage(LogSeverity::Error, message);
+    statusBar()->showMessage(QStringLiteral("IPC request rejected"), 3000);
+}
+
 void MainWindow::setupUi()
 {
     setWindowTitle(QStringLiteral("PolyShow"));
@@ -1152,10 +1417,22 @@ void MainWindow::setupMenuBar()
     m_render_mode_action_group->addAction(m_points_mode_action);
     renderMenu->addAction(m_points_mode_action);
 
+    auto *ipcMenu = menuBar()->addMenu(QStringLiteral("IPC"));
+
+    m_start_ipc_listener_action = new QAction(QStringLiteral("Start IPC Listener"), this);
+    connect(m_start_ipc_listener_action, &QAction::triggered, this, &MainWindow::startIpcListener);
+    ipcMenu->addAction(m_start_ipc_listener_action);
+
+    m_stop_ipc_listener_action = new QAction(QStringLiteral("Stop IPC Listener"), this);
+    connect(m_stop_ipc_listener_action, &QAction::triggered, this, &MainWindow::stopIpcListener);
+    ipcMenu->addAction(m_stop_ipc_listener_action);
+
     auto *helpMenu = menuBar()->addMenu(QStringLiteral("Help"));
     m_about_action = new QAction(QStringLiteral("About"), this);
     connect(m_about_action, &QAction::triggered, this, &MainWindow::showAboutDialog);
     helpMenu->addAction(m_about_action);
+
+    updateIpcActionState();
 }
 
 void MainWindow::setupStatusBar()
@@ -1391,11 +1668,21 @@ void MainWindow::openFiles(const QStringList &filePaths)
             continue;
         }
 
-        nextDocument.layers.append(buildLayerData(filePath, geometryData));
+        const QString importedName = normalizedLayerBaseName(QFileInfo(filePath).fileName());
+        const QString uniqueLayerName = uniqueLayerNameForDocument(nextDocument, importedName);
+        if (uniqueLayerName != importedName)
+        {
+            m_log_panel->appendMessage(
+                LogSeverity::Warning,
+                QStringLiteral("[warning] Renamed imported layer %1 to %2 to keep layer names unique")
+                    .arg(importedName, uniqueLayerName));
+        }
+
+        nextDocument.layers.append(buildLayerData(filePath, uniqueLayerName, geometryData));
         ++openedCount;
         m_log_panel->appendMessage(
             LogSeverity::Info,
-            QStringLiteral("[info] %1 opened successfully").arg(QFileInfo(filePath).fileName()));
+            QStringLiteral("[info] %1 opened successfully").arg(uniqueLayerName));
     }
 
     if (openedCount == 0)
@@ -1577,7 +1864,69 @@ int MainWindow::ensureActiveLayer()
 
 QString MainWindow::nextLayerName() const
 {
-    return QStringLiteral("Layer %1").arg(m_document_data.layers.size() + 1);
+    for (int index = 1;; ++index)
+    {
+        const QString candidate = QStringLiteral("Layer %1").arg(index);
+        if (findLayerByName(m_document_data, candidate) == nullptr)
+        {
+            return candidate;
+        }
+    }
+}
+
+void MainWindow::updateIpcActionState()
+{
+    if (m_start_ipc_listener_action != nullptr)
+    {
+        m_start_ipc_listener_action->setEnabled(!m_is_ipc_listener_running);
+    }
+
+    if (m_stop_ipc_listener_action != nullptr)
+    {
+        m_stop_ipc_listener_action->setEnabled(m_is_ipc_listener_running);
+    }
+}
+
+void MainWindow::shutdownIpcListener(bool showUserFeedback)
+{
+    if (m_ipc_thread == nullptr || m_ipc_listener_worker == nullptr)
+    {
+        m_is_ipc_listener_running = false;
+        m_ipc_listening_address.clear();
+        updateIpcActionState();
+        return;
+    }
+
+    QThread *thread = m_ipc_thread;
+    IpcListenerWorker *worker = m_ipc_listener_worker;
+    const bool wasRunning = m_is_ipc_listener_running;
+
+    QMetaObject::invokeMethod(
+        worker,
+        [worker]() {
+            worker->stopListening();
+        },
+        Qt::BlockingQueuedConnection);
+
+    thread->quit();
+    thread->wait();
+
+    m_ipc_listener_worker = nullptr;
+    m_ipc_thread = nullptr;
+    m_is_ipc_listener_running = false;
+    updateIpcActionState();
+
+    thread->deleteLater();
+
+    if (showUserFeedback && wasRunning)
+    {
+        m_log_panel->appendMessage(
+            LogSeverity::Info,
+            QStringLiteral("[info] IPC listener stopped on %1").arg(m_ipc_listening_address));
+        statusBar()->showMessage(QStringLiteral("IPC listener stopped"), 3000);
+    }
+
+    m_ipc_listening_address.clear();
 }
 
 void MainWindow::updateUiFromScene()

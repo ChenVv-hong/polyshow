@@ -130,6 +130,21 @@ QString primitiveGeometryText(const LayerData &layer, int primitiveIndex)
         .arg(primitive.visible ? QStringLiteral("true") : QStringLiteral("false"));
 }
 
+QString layerMetaText(const LayerData &layer)
+{
+    switch (layer.layer_type)
+    {
+    case LayerType::ExternalFileNormal:
+        return QStringLiteral("File layer / opened source");
+    case LayerType::InternalNormal:
+        return QStringLiteral("Internal layer / created in app");
+    case LayerType::InternalIpc:
+        return QStringLiteral("IPC layer / created in app and writable by external IPC");
+    default:
+        return QStringLiteral("Layer");
+    }
+}
+
 /// Creates a section label for the inspector layout.
 QLabel *createSectionTitle(const QString &text, QWidget *parent)
 {
@@ -383,7 +398,7 @@ void InspectorPanel::updateContent()
     {
         const LayerData &layer = m_document_data.layers.at(m_selection_state.layer_index);
         m_title_label->setText(layer.display_name);
-        m_meta_label->setText(QStringLiteral("File layer / opened source"));
+        m_meta_label->setText(layerMetaText(layer));
         m_geometry_label->setText(QStringLiteral("Summary"));
         m_geometry_body_label->setText(layerSummaryText(layer));
         m_hint_label->setText(QStringLiteral("Select a primitive to edit its in-memory style and coordinates."));

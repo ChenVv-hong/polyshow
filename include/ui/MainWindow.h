@@ -3,6 +3,7 @@
 #include "core/GeometryScene.h"
 #include "core/PrimitiveEditing.h"
 #include "ui/GeometryViewer.h"
+#include "ui/IpcListenerWorker.h"
 
 #include <QMainWindow>
 #include <QPointF>
@@ -15,6 +16,7 @@ class QComboBox;
 class QLabel;
 class QSplitter;
 class QTabWidget;
+class QThread;
 class QWidget;
 
 namespace PolyShow
@@ -34,6 +36,13 @@ class MainWindow final : public QMainWindow
 public:
     /// Creates the main window and initializes the UI.
     explicit MainWindow(QWidget *parent = nullptr);
+
+    /// Stops any worker thread resources before the window is destroyed.
+    ~MainWindow() override;
+
+signals:
+    /// Forwards one GUI-thread IPC write result back to the worker thread.
+    void ipcWriteProcessed(const PolyShow::IpcPrimitiveWriteResult &result);
 
 private slots:
     /// Creates one empty editable layer.
@@ -114,6 +123,18 @@ private slots:
     /// Shows the About dialog.
     void showAboutDialog();
 
+    /// Starts the IPC listener worker and enables the Stop action.
+    void startIpcListener();
+
+    /// Stops the IPC listener worker and enables the Start action.
+    void stopIpcListener();
+
+    /// Applies one validated IPC write request on the GUI thread.
+    void onIpcPrimitiveWriteRequested(const IpcPrimitiveWriteMessage &message);
+
+    /// Mirrors worker-thread protocol errors into the shared log panel.
+    void onIpcProtocolErrorLogged(const QString &message);
+
 private:
     /// Builds the core widgets and layout tree.
     void setupUi();
@@ -175,6 +196,12 @@ private:
     [[nodiscard]]
     QString nextLayerName() const;
 
+    /// Synchronizes the IPC menu actions to the current worker lifecycle state.
+    void updateIpcActionState();
+
+    /// Stops the IPC worker thread and optionally logs the user-facing result.
+    void shutdownIpcListener(bool showUserFeedback);
+
     /// Normalizes one selection state against the current document.
     [[nodiscard]]
     SelectionState normalizedSelectionState(const SelectionState &selectionState) const;
@@ -217,6 +244,8 @@ private:
     QAction *m_wireframe_mode_action {nullptr};
     QAction *m_points_mode_action {nullptr};
     QActionGroup *m_render_mode_action_group {nullptr};
+    QAction *m_start_ipc_listener_action {nullptr};
+    QAction *m_stop_ipc_listener_action {nullptr};
 
     QLabel *m_status_info_label {nullptr};
     QLabel *m_status_mouse_label {nullptr};
@@ -230,6 +259,10 @@ private:
     QVector<Point2D> m_drawing_points;
     bool m_has_drawing_hover_point {false};
     Point2D m_drawing_hover_point;
+    QThread *m_ipc_thread {nullptr};
+    IpcListenerWorker *m_ipc_listener_worker {nullptr};
+    bool m_is_ipc_listener_running {false};
+    QString m_ipc_listening_address;
 };
 
 } // namespace PolyShow

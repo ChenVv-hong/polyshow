@@ -100,9 +100,54 @@ void setLayerChildCheckStates(QTreeWidgetItem *layerItem, Qt::CheckState checkSt
 
 QString layerText(const LayerData &layer)
 {
-    return QStringLiteral("%1   %2")
+    QString typeSuffix;
+    switch (layer.layer_type)
+    {
+    case LayerType::ExternalFileNormal:
+        typeSuffix = QStringLiteral("(File)");
+        break;
+    case LayerType::InternalNormal:
+        typeSuffix = QStringLiteral("(Internal)");
+        break;
+    case LayerType::InternalIpc:
+        typeSuffix = QStringLiteral("(IPC)");
+        break;
+    default:
+        typeSuffix = QStringLiteral("(Layer)");
+        break;
+    }
+
+    return QStringLiteral("%1 %2   %3")
         .arg(layer.display_name.isEmpty() ? QStringLiteral("Unnamed layer") : layer.display_name)
+        .arg(typeSuffix)
         .arg(layer.primitives.size());
+}
+
+QString layerToolTip(const LayerData &layer)
+{
+    QString sourceText;
+    switch (layer.layer_type)
+    {
+    case LayerType::ExternalFileNormal:
+        sourceText = QStringLiteral("File layer");
+        break;
+    case LayerType::InternalNormal:
+        sourceText = QStringLiteral("Internal layer");
+        break;
+    case LayerType::InternalIpc:
+        sourceText = QStringLiteral("IPC layer");
+        break;
+    default:
+        sourceText = QStringLiteral("Layer");
+        break;
+    }
+
+    if (layer.file_path.isEmpty())
+    {
+        return sourceText;
+    }
+
+    return QStringLiteral("%1\n%2").arg(sourceText, layer.file_path);
 }
 
 QString footerSummary(const DocumentData &documentData)
@@ -354,7 +399,7 @@ void LayerSidebar::rebuildTree()
 
         auto *layerItem = new QTreeWidgetItem(m_tree_widget);
         layerItem->setText(0, layerText(layer));
-        layerItem->setToolTip(0, layer.file_path);
+        layerItem->setToolTip(0, layerToolTip(layer));
         layerItem->setFlags(layerItem->flags() | Qt::ItemIsUserCheckable | Qt::ItemIsSelectable | Qt::ItemIsEnabled);
         layerItem->setData(0, kItemKindRole, ItemKindLayer);
         layerItem->setData(0, kLayerIndexRole, layerIndex);

@@ -11,7 +11,7 @@ set(CMAKE_AUTOUIC ON)
 set(CMAKE_PREFIX_PATH "D:/Qt/6.9.1/msvc2022_64")
 set(POLYSHOW_TARGET_NAME polyshow)
 
-find_package(Qt6 REQUIRED COMPONENTS Core Gui Svg Widgets)
+find_package(Qt6 REQUIRED COMPONENTS Core Gui Network Svg Widgets)
 
 set(POLYSHOW_HEADERS
     include/core/GeometryTypes.h
@@ -28,6 +28,7 @@ set(POLYSHOW_HEADERS
     include/ui/GeometryViewer.h
     include/ui/ColorField.h
     include/ui/InspectorPanel.h
+    include/ui/IpcListenerWorker.h
     include/ui/LayerSidebar.h
     include/ui/LogPanel.h
     include/ui/PropertyPanel.h
@@ -52,6 +53,7 @@ set(POLYSHOW_SOURCES
     src/ui/ColorField.cpp
     src/ui/GeometryViewer.cpp
     src/ui/InspectorPanel.cpp
+    src/ui/IpcListenerWorker.cpp
     src/ui/LayerSidebar.cpp
     src/ui/LogPanel.cpp
     src/ui/PropertyPanel.cpp
@@ -60,19 +62,32 @@ set(POLYSHOW_SOURCES
     src/ui/PillButton.cpp
 )
 
+set(POLYSHOW_IPC_SENDER_TARGET polyshow_ipc_sender)
+set(POLYSHOW_IPC_SENDER_SOURCES
+    PolyShowIpcSenderMain.cpp
+)
+
 add_executable(
     ${POLYSHOW_TARGET_NAME}
     ${POLYSHOW_HEADERS}
     ${POLYSHOW_SOURCES}
 )
 
+add_executable(
+    ${POLYSHOW_IPC_SENDER_TARGET}
+    ${POLYSHOW_IPC_SENDER_SOURCES}
+    PolyShowIpcClient.h
+)
+
 target_include_directories(${POLYSHOW_TARGET_NAME} PRIVATE include)
+target_include_directories(${POLYSHOW_IPC_SENDER_TARGET} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
 target_link_libraries(
     ${POLYSHOW_TARGET_NAME}
     PRIVATE
         Qt::Core
         Qt::Gui
+        Qt::Network
         Qt::Svg
         Qt::Widgets
 )
@@ -103,7 +118,7 @@ if(WIN32 AND NOT DEFINED CMAKE_TOOLCHAIN_FILE)
         )
     endif()
 
-    foreach(QT_LIB Core Gui Svg Widgets)
+    foreach(QT_LIB Core Gui Network Svg Widgets)
         add_custom_command(
             TARGET ${POLYSHOW_TARGET_NAME}
             POST_BUILD

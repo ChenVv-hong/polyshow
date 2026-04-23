@@ -10,6 +10,11 @@ namespace PolyShow
 namespace
 {
 
+struct OrderedPrimitiveDescriptor
+{
+    PrimitiveWriteRequest request;
+};
+
 QString primitiveCategoryLabel(PrimitiveKind kind, int vertexCount)
 {
     switch (kind)
@@ -93,15 +98,126 @@ QString generatedDisplayName(const LayerData &layer, PrimitiveKind kind, int ver
     }
 }
 
+QString storedPrimitiveName(const LayerData &layer, int primitiveIndex)
+{
+    if (primitiveIndex < 0 || primitiveIndex >= layer.primitives.size())
+    {
+        return {};
+    }
+
+    const LayerPrimitiveData &primitive = layer.primitives.at(primitiveIndex);
+    switch (primitive.reference.kind)
+    {
+    case PrimitiveKind::Point:
+        return layer.geometry.points.value(primitive.reference.index).name;
+    case PrimitiveKind::Polyline:
+        return layer.geometry.polylines.value(primitive.reference.index).name;
+    case PrimitiveKind::Polygon:
+        return layer.geometry.polygons.value(primitive.reference.index).name;
+    default:
+        return {};
+    }
+}
+
+bool layerHasVisiblePrimitives(const LayerData &layer)
+{
+    if (layer.primitives.isEmpty())
+    {
+        return true;
+    }
+
+    for (const LayerPrimitiveData &primitive : layer.primitives)
+    {
+        if (primitive.visible)
+        {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+bool readPrimitiveDescriptor(const LayerData &layer, int primitiveIndex, OrderedPrimitiveDescriptor *descriptor)
+{
+    if (descriptor == nullptr || primitiveIndex < 0 || primitiveIndex >= layer.primitives.size())
+    {
+        return false;
+    }
+
+    PrimitiveEditValues editValues;
+    if (!readPrimitiveEditValues(layer, primitiveIndex, &editValues))
+    {
+        return false;
+    }
+
+    const LayerPrimitiveData &primitive = layer.primitives.at(primitiveIndex);
+    descriptor->request.kind = primitive.reference.kind;
+    descriptor->request.points = editValues.points;
+    descriptor->request.style = editValues.style;
+    descriptor->request.name = storedPrimitiveName(layer, primitiveIndex);
+    descriptor->request.visible = primitive.visible;
+    return true;
+}
+
+bool rebuildLayerFromOrderedDescriptors(
+    LayerData &layer, const QVector<OrderedPrimitiveDescriptor> &descriptors, QString *errorMessage)
+{
+    LayerData rebuiltLayer = createEmptyLayer(layer.display_name, layer.layer_type, layer.file_path);
+
+    for (const OrderedPrimitiveDescriptor &descriptor : descriptors)
+    {
+        QString appendError;
+        if (!appendPrimitiveToLayer(rebuiltLayer, descriptor.request, nullptr, &appendError))
+        {
+            if (errorMessage != nullptr)
+            {
+                *errorMessage = appendError;
+            }
+            return false;
+        }
+    }
+
+    rebuiltLayer.visible = layerHasVisiblePrimitives(rebuiltLayer);
+    layer = std::move(rebuiltLayer);
+    return true;
+}
+
 } // namespace
 
-LayerData createEmptyLayer(const QString &displayName, const QString &filePath)
+LayerData createEmptyLayer(const QString &displayName, LayerType layerType, const QString &filePath)
 {
     LayerData layer;
     layer.file_path = filePath;
     layer.display_name = displayName;
+    layer.layer_type = layerType;
     layer.visible = true;
     return layer;
+}
+
+LayerData *findLayerByName(DocumentData &documentData, const QString &layerName)
+{
+    for (LayerData &layer : documentData.layers)
+    {
+        if (layer.display_name == layerName)
+        {
+            return &layer;
+        }
+    }
+
+    return nullptr;
+}
+
+const LayerData *findLayerByName(const DocumentData &documentData, const QString &layerName)
+{
+    for (const LayerData &layer : documentData.layers)
+    {
+        if (layer.display_name == layerName)
+        {
+            return &layer;
+        }
+    }
+
+    return nullptr;
 }
 
 bool appendPrimitiveToLayer(LayerData &layer, const PrimitiveWriteRequest &request, int *primitiveIndex, QString *errorMessage)
@@ -154,6 +270,128 @@ bool appendPrimitiveToLayer(LayerData &layer, const PrimitiveWriteRequest &reque
     }
 
     return true;
+}
+
+bool replaceOrAppendNamedPrimitive(
+    LayerData &layer, const PrimitiveWriteRequest &request, QString *resultMessage, bool *replaced)
+{
+    if (replaced != nullptr)
+    {
+        *replaced = false;
+    }
+
+    if (request.name.isEmpty())
+    {
+        QString errorMessage;
+        if (!appendPrimitiveToLayer(layer, request, nullptr, &errorMessage))
+        {
+            if (resultMessage != nullptr)
+            {
+                *resultMessage = errorMessage;
+            }
+            return false;
+        }
+
+        if (resultMessage != nullptr)
+        {
+            *resultMessage = QStringLiteral("appended primitive");
+        }
+        return true;
+    }
+
+    int matchedPrimitiveIndex = -1;
+    for (int primitiveIndex = 0; primitiveIndex < layer.primitives.size(); ++primitiveIndex)
+    {
+        if (storedPrimitiveName(layer, primitiveIndex) == request.name)
+        {
+            matchedPrimitiveIndex = primitiveIndex;
+            break;
+        }
+    }
+
+    if (matchedPrimitiveIndex < 0)
+    {
+        QString errorMessage;
+        if (!appendPrimitiveToLayer(layer, request, nullptr, &errorMessage))
+        {
+            if (resultMessage != nullptr)
+            {
+                *resultMessage = errorMessage;
+            }
+            return false;
+        }
+
+        if (resultMessage != nullptr)
+        {
+            *resultMessage = QStringLiteral("appended primitive");
+        }
+        return true;
+    }
+
+    QVector<OrderedPrimitiveDescriptor> descriptors;
+    descriptors.reserve(layer.primitives.size());
+    for (int primitiveIndex = 0; primitiveIndex < layer.primitives.size(); ++primitiveIndex)
+    {
+        OrderedPrimitiveDescriptor descriptor;
+        if (!readPrimitiveDescriptor(layer, primitiveIndex, &descriptor))
+        {
+            if (resultMessage != nullptr)
+            {
+                *resultMessage = QStringLiteral("Failed to rebuild ordered primitive descriptors.");
+            }
+            return false;
+        }
+        descriptors.append(descriptor);
+    }
+
+    PrimitiveWriteRequest replacementRequest = request;
+    replacementRequest.visible = layer.primitives.at(matchedPrimitiveIndex).visible;
+    descriptors[matchedPrimitiveIndex].request = replacementRequest;
+
+    if (!rebuildLayerFromOrderedDescriptors(layer, descriptors, resultMessage))
+    {
+        return false;
+    }
+
+    if (replaced != nullptr)
+    {
+        *replaced = true;
+    }
+
+    if (resultMessage != nullptr)
+    {
+        *resultMessage = QStringLiteral("replaced primitive");
+    }
+    return true;
+}
+
+bool writePrimitiveToNamedIpcLayer(
+    DocumentData &documentData,
+    const QString &layerName,
+    const PrimitiveWriteRequest &request,
+    QString *resultMessage,
+    bool *replaced)
+{
+    LayerData *layer = findLayerByName(documentData, layerName);
+    if (layer == nullptr)
+    {
+        if (resultMessage != nullptr)
+        {
+            *resultMessage = QStringLiteral("Target layer \"%1\" does not exist.").arg(layerName);
+        }
+        return false;
+    }
+
+    if (layer->layer_type != LayerType::InternalIpc)
+    {
+        if (resultMessage != nullptr)
+        {
+            *resultMessage = QStringLiteral("Target layer \"%1\" is not an IPC layer.").arg(layerName);
+        }
+        return false;
+    }
+
+    return replaceOrAppendNamedPrimitive(*layer, request, resultMessage, replaced);
 }
 
 } // namespace PolyShow

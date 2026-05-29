@@ -2,7 +2,9 @@
 
 #include "core/PrimitiveEditing.h"
 #include "ui/ColorField.h"
-#include "ui/PanelFrame.h"
+#include "ui/EditorPanelHeader.h"
+#include "ui/InspectorSection.h"
+#include "ui/MaterialIconLabel.h"
 
 #include <QCheckBox>
 #include <QFont>
@@ -145,11 +147,40 @@ QString layerMetaText(const LayerData &layer)
     }
 }
 
+QString layerIconName(const LayerData &layer)
+{
+    switch (layer.layer_type)
+    {
+    case LayerType::InternalIpc:
+        return QStringLiteral("settings_input_component");
+    case LayerType::ExternalFileNormal:
+    case LayerType::InternalNormal:
+    default:
+        return QStringLiteral("folder");
+    }
+}
+
+QString primitiveIconName(PrimitiveKind kind, int vertexCount)
+{
+    switch (kind)
+    {
+    case PrimitiveKind::Point:
+        return QStringLiteral("radio_button_checked");
+    case PrimitiveKind::Polyline:
+        return vertexCount == 2 ? QStringLiteral("show_chart") : QStringLiteral("timeline");
+    case PrimitiveKind::Polygon:
+        return QStringLiteral("pentagon");
+    default:
+        return QStringLiteral("deployed_code");
+    }
+}
+
 /// Creates a section label for the inspector layout.
 QLabel *createSectionTitle(const QString &text, QWidget *parent)
 {
     auto *label = new QLabel(text, parent);
     label->setProperty("role", QStringLiteral("sectionTitle"));
+    label->setObjectName(QStringLiteral("controlLabel"));
     return label;
 }
 
@@ -181,6 +212,7 @@ QWidget *createFieldSection(
     QWidget *parent, const QString &title, QWidget *editor, QLabel **errorLabel = nullptr)
 {
     auto *section = new QWidget(parent);
+    section->setObjectName(QStringLiteral("fieldSection"));
     auto *layout = new QVBoxLayout(section);
     layout->setContentsMargins(0, 0, 0, 0);
     layout->setSpacing(4);
@@ -203,52 +235,68 @@ QWidget *createFieldSection(
 InspectorPanel::InspectorPanel(QWidget *parent)
     : QWidget(parent)
 {
+    setObjectName(QStringLiteral("inspector"));
+    setAttribute(Qt::WA_StyledBackground, true);
+
     auto *layout = new QVBoxLayout(this);
     layout->setContentsMargins(0, 0, 0, 0);
-    layout->setSpacing(12);
+    layout->setSpacing(0);
 
-    auto *headerLayout = new QHBoxLayout();
-    headerLayout->setContentsMargins(0, 0, 0, 0);
-    headerLayout->setSpacing(8);
-
-    auto *panelTitle = new QLabel(QStringLiteral("Inspector"), this);
-    panelTitle->setProperty("role", QStringLiteral("panelTitle"));
-    headerLayout->addWidget(panelTitle);
-    headerLayout->addStretch();
-
-    m_badge_label = new QLabel(this);
+    auto *header = new EditorPanelHeader(QStringLiteral("tune"), QStringLiteral("Properties"), this);
+    m_badge_label = new QLabel(header);
     m_badge_label->setObjectName(QStringLiteral("inspectorBadge"));
-    headerLayout->addWidget(m_badge_label);
-    layout->addLayout(headerLayout);
+    header->actionsLayout()->addWidget(m_badge_label);
+    layout->addWidget(header);
 
-    auto *card = new PanelFrame(PanelFrame::Variant::Card, this);
-    auto *cardLayout = new QVBoxLayout(card);
-    cardLayout->setContentsMargins(12, 12, 12, 12);
-    cardLayout->setSpacing(10);
+    auto *objectRow = new QWidget(this);
+    objectRow->setObjectName(QStringLiteral("inspectorObjectRow"));
+    objectRow->setAttribute(Qt::WA_StyledBackground, true);
+    objectRow->setFixedHeight(34);
+    auto *objectLayout = new QHBoxLayout(objectRow);
+    objectLayout->setContentsMargins(10, 0, 10, 0);
+    objectLayout->setSpacing(7);
 
-    m_title_label = new QLabel(card);
-    m_title_label->setProperty("role", QStringLiteral("panelTitle"));
-    cardLayout->addWidget(m_title_label);
+    m_object_icon_label = new MaterialIconLabel(QStringLiteral("deployed_code"), objectRow);
+    objectLayout->addWidget(m_object_icon_label);
 
-    m_meta_label = new QLabel(card);
+    m_title_label = new QLabel(objectRow);
+    m_title_label->setObjectName(QStringLiteral("inspectorObjectTitle"));
+    objectLayout->addWidget(m_title_label, 1);
+    layout->addWidget(objectRow);
+
+    auto *body = new QWidget(this);
+    body->setObjectName(QStringLiteral("inspectorBody"));
+    body->setAttribute(Qt::WA_StyledBackground, true);
+    auto *bodyLayout = new QVBoxLayout(body);
+    bodyLayout->setContentsMargins(6, 6, 6, 6);
+    bodyLayout->setSpacing(6);
+
+    m_meta_label = new QLabel(body);
+    m_meta_label->setObjectName(QStringLiteral("inspectorMeta"));
     m_meta_label->setWordWrap(true);
-    cardLayout->addWidget(m_meta_label);
+    bodyLayout->addWidget(m_meta_label);
 
-    m_geometry_label = createSectionTitle(QStringLiteral("Geometry"), card);
-    cardLayout->addWidget(m_geometry_label);
+    m_geometry_section = new InspectorSection(QStringLiteral("Geometry"), body);
+    bodyLayout->addWidget(m_geometry_section);
 
-    m_geometry_body_label = new QLabel(card);
+    m_geometry_body_label = new QLabel(m_geometry_section);
+    m_geometry_body_label->setObjectName(QStringLiteral("inspectorReadonly"));
     m_geometry_body_label->setProperty("role", QStringLiteral("mono"));
     m_geometry_body_label->setTextFormat(Qt::PlainText);
     m_geometry_body_label->setWordWrap(true);
-    cardLayout->addWidget(m_geometry_body_label);
+    m_geometry_section->contentLayout()->addWidget(m_geometry_body_label);
 
-    m_editor_widget = new QWidget(card);
+    m_style_section = new InspectorSection(QStringLiteral("Style"), body);
+    bodyLayout->addWidget(m_style_section);
+
+    m_editor_widget = new QWidget(m_style_section);
+    m_editor_widget->setObjectName(QStringLiteral("inspectorEditor"));
     auto *editorLayout = new QVBoxLayout(m_editor_widget);
     editorLayout->setContentsMargins(0, 0, 0, 0);
     editorLayout->setSpacing(8);
 
     m_editor_help_label = new QLabel(m_editor_widget);
+    m_editor_help_label->setObjectName(QStringLiteral("inspectorHint"));
     m_editor_help_label->setWordWrap(true);
     editorLayout->addWidget(m_editor_help_label);
 
@@ -282,22 +330,28 @@ InspectorPanel::InspectorPanel(QWidget *parent)
     editorLayout->addWidget(
         createFieldSection(m_editor_widget, QStringLiteral("Point Size"), m_point_size_line_edit, &m_point_size_error_label));
 
-    m_coordinates_text_edit = new QPlainTextEdit(m_editor_widget);
+    m_style_section->contentLayout()->addWidget(m_editor_widget);
+
+    m_coordinates_section = new InspectorSection(QStringLiteral("Coordinates"), body);
+    bodyLayout->addWidget(m_coordinates_section);
+
+    m_coordinates_text_edit = new QPlainTextEdit(m_coordinates_section);
+    m_coordinates_text_edit->setObjectName(QStringLiteral("coordinatesEditor"));
     m_coordinates_text_edit->setPlaceholderText(QStringLiteral("x y"));
-    m_coordinates_text_edit->setMinimumHeight(132);
+    m_coordinates_text_edit->setMinimumHeight(72);
     m_coordinates_text_edit->setProperty("role", QStringLiteral("mono"));
     m_coordinates_text_edit->setFont(QFont(QStringLiteral("IBM Plex Mono"), 10));
-    editorLayout->addWidget(
-        createFieldSection(m_editor_widget, QStringLiteral("Coordinates"), m_coordinates_text_edit, &m_coordinates_error_label));
+    m_coordinates_section->contentLayout()->addWidget(m_coordinates_text_edit);
+    m_coordinates_error_label = createErrorLabel(m_coordinates_section);
+    m_coordinates_section->contentLayout()->addWidget(m_coordinates_error_label);
 
-    cardLayout->addWidget(m_editor_widget);
-
-    m_hint_label = new QLabel(card);
+    m_hint_label = new QLabel(body);
+    m_hint_label->setObjectName(QStringLiteral("inspectorHint"));
     m_hint_label->setWordWrap(true);
-    cardLayout->addWidget(m_hint_label);
+    bodyLayout->addWidget(m_hint_label);
 
-    cardLayout->addStretch();
-    layout->addWidget(card);
+    bodyLayout->addStretch();
+    layout->addWidget(body, 1);
 
     connect(m_stroke_color_field, &ColorField::colorTextCommitted, this, [this](const QString &) {
         if (!m_is_loading_form)
@@ -391,15 +445,18 @@ void InspectorPanel::updateContent()
     m_validation_errors.clear();
     m_badge_label->setText(selectionBadgeText(m_selection_state.kind));
     m_editor_widget->setVisible(false);
+    m_style_section->setVisible(false);
+    m_coordinates_section->setVisible(false);
 
     if (m_selection_state.kind == SelectionKind::Layer
         && m_selection_state.layer_index >= 0
         && m_selection_state.layer_index < m_document_data.layers.size())
     {
         const LayerData &layer = m_document_data.layers.at(m_selection_state.layer_index);
+        m_object_icon_label->setIconName(layerIconName(layer));
         m_title_label->setText(layer.display_name);
         m_meta_label->setText(layerMetaText(layer));
-        m_geometry_label->setText(QStringLiteral("Summary"));
+        m_geometry_section->setTitle(QStringLiteral("Summary"));
         m_geometry_body_label->setText(layerSummaryText(layer));
         m_hint_label->setText(QStringLiteral("Select a primitive to edit its in-memory style and coordinates."));
         updateFieldErrors();
@@ -410,23 +467,28 @@ void InspectorPanel::updateContent()
     {
         const LayerData &layer = m_document_data.layers.at(m_selection_state.layer_index);
         const LayerPrimitiveData &primitive = layer.primitives.at(m_selection_state.primitive_index);
+        const QVector<Point2D> points = primitivePoints(layer, m_selection_state.primitive_index);
+        m_object_icon_label->setIconName(primitiveIconName(primitive.reference.kind, points.size()));
         m_title_label->setText(primitive.display_name);
         m_meta_label->setText(QStringLiteral("Primitive / selected in %1").arg(layer.display_name));
-        m_geometry_label->setText(QStringLiteral("Geometry"));
+        m_geometry_section->setTitle(QStringLiteral("Geometry"));
         m_geometry_body_label->setText(primitiveGeometryText(layer, m_selection_state.primitive_index));
         m_editor_help_label->setText(
             QStringLiteral("Style fields submit on Enter or when focus leaves. Coordinates update in real time."));
         m_hint_label->setText(QStringLiteral("Invalid coordinates keep the text, turn the border red, and hide the preview."));
         m_editor_widget->setVisible(true);
+        m_style_section->setVisible(true);
+        m_coordinates_section->setVisible(true);
         updateVisibleEditorFields(primitive.reference.kind);
         loadPrimitiveEditor(layer, m_selection_state.primitive_index);
         updateFieldErrors();
         return;
     }
 
+    m_object_icon_label->setIconName(QStringLiteral("info"));
     m_title_label->setText(QStringLiteral("No selection"));
     m_meta_label->setText(QStringLiteral("Select a layer or primitive to inspect its details."));
-    m_geometry_label->setText(QStringLiteral("Geometry"));
+    m_geometry_section->setTitle(QStringLiteral("Geometry"));
     m_geometry_body_label->setText(QStringLiteral("Nothing selected."));
     m_hint_label->setText(QStringLiteral("Primitive editing becomes available after you select one shape."));
     updateFieldErrors();

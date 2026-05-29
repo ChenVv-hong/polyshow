@@ -1,5 +1,9 @@
 #include "ui/LayerSidebar.h"
 
+#include "ui/EditorPanelHeader.h"
+#include "ui/IconButton.h"
+#include "ui/MaterialIcon.h"
+
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QLineEdit>
@@ -150,6 +154,40 @@ QString layerToolTip(const LayerData &layer)
     return QStringLiteral("%1\n%2").arg(sourceText, layer.file_path);
 }
 
+QString layerIconName(const LayerData &layer)
+{
+    switch (layer.layer_type)
+    {
+    case LayerType::InternalIpc:
+        return QStringLiteral("settings_input_component");
+    case LayerType::ExternalFileNormal:
+    case LayerType::InternalNormal:
+    default:
+        return QStringLiteral("folder");
+    }
+}
+
+QString primitiveIconName(const LayerData &layer, int primitiveIndex)
+{
+    const LayerPrimitiveData &primitive = layer.primitives.at(primitiveIndex);
+    switch (primitive.reference.kind)
+    {
+    case PrimitiveKind::Point:
+        return QStringLiteral("radio_button_checked");
+    case PrimitiveKind::Polyline:
+        if (primitive.reference.index >= 0 && primitive.reference.index < layer.geometry.polylines.size()
+            && layer.geometry.polylines.at(primitive.reference.index).vertices.size() == 2)
+        {
+            return QStringLiteral("show_chart");
+        }
+        return QStringLiteral("timeline");
+    case PrimitiveKind::Polygon:
+        return QStringLiteral("pentagon");
+    default:
+        return QStringLiteral("deployed_code");
+    }
+}
+
 QString footerSummary(const DocumentData &documentData)
 {
     int visiblePrimitiveCount = 0;
@@ -174,47 +212,49 @@ QString footerSummary(const DocumentData &documentData)
 LayerSidebar::LayerSidebar(QWidget *parent)
     : QWidget(parent)
 {
+    setObjectName(QStringLiteral("outliner"));
+    setAttribute(Qt::WA_StyledBackground, true);
+
     auto *layout = new QVBoxLayout(this);
     layout->setContentsMargins(0, 0, 0, 0);
-    layout->setSpacing(10);
+    layout->setSpacing(0);
 
-    auto *headerLayout = new QHBoxLayout();
-    headerLayout->setContentsMargins(0, 0, 0, 0);
-    headerLayout->setSpacing(8);
+    auto *header = new EditorPanelHeader(QStringLiteral("account_tree"), QStringLiteral("Outliner"), this);
 
-    auto *titleLabel = new QLabel(QStringLiteral("Layers"), this);
-    titleLabel->setProperty("role", QStringLiteral("panelTitle"));
-    headerLayout->addWidget(titleLabel);
-    headerLayout->addStretch();
-
-    m_new_layer_button = new QPushButton(QStringLiteral("New"), this);
+    m_new_layer_button = new IconButton(QStringLiteral("add"), QString(), header);
+    m_new_layer_button->setObjectName(QStringLiteral("iconButton"));
     m_new_layer_button->setCursor(Qt::PointingHandCursor);
     m_new_layer_button->setToolTip(QStringLiteral("Create Layer"));
-    headerLayout->addWidget(m_new_layer_button);
+    header->actionsLayout()->addWidget(m_new_layer_button);
 
-    m_export_layer_button = new QPushButton(QStringLiteral("Export"), this);
+    m_export_layer_button = new IconButton(QStringLiteral("ios_share"), QString(), header);
+    m_export_layer_button->setObjectName(QStringLiteral("iconButton"));
     m_export_layer_button->setCursor(Qt::PointingHandCursor);
     m_export_layer_button->setToolTip(QStringLiteral("Export Active Layer"));
-    headerLayout->addWidget(m_export_layer_button);
+    header->actionsLayout()->addWidget(m_export_layer_button);
 
-    m_search_button = new QPushButton(QStringLiteral("S"), this);
+    m_search_button = new IconButton(QStringLiteral("search"), QString(), header);
+    m_search_button->setObjectName(QStringLiteral("iconButton"));
     m_search_button->setCheckable(true);
     m_search_button->setCursor(Qt::PointingHandCursor);
-    m_search_button->setFixedSize(28, 28);
     m_search_button->setToolTip(QStringLiteral("Search"));
-    headerLayout->addWidget(m_search_button);
-    layout->addLayout(headerLayout);
+    header->actionsLayout()->addWidget(m_search_button);
+    layout->addWidget(header);
 
     m_search_line_edit = new QLineEdit(this);
+    m_search_line_edit->setObjectName(QStringLiteral("outlinerSearchInput"));
     m_search_line_edit->setPlaceholderText(QStringLiteral("Filter layers and primitives"));
     m_search_line_edit->setVisible(false);
     layout->addWidget(m_search_line_edit);
 
     m_section_label = new QLabel(QStringLiteral("Layers"), this);
     m_section_label->setProperty("role", QStringLiteral("sectionTitle"));
+    m_section_label->setObjectName(QStringLiteral("outlinerSectionLabel"));
+    m_section_label->setVisible(false);
     layout->addWidget(m_section_label);
 
     m_tree_widget = new QTreeWidget(this);
+    m_tree_widget->setObjectName(QStringLiteral("outlinerTree"));
     m_tree_widget->setColumnCount(1);
     m_tree_widget->setHeaderHidden(true);
     m_tree_widget->setRootIsDecorated(true);
@@ -223,7 +263,9 @@ LayerSidebar::LayerSidebar(QWidget *parent)
     layout->addWidget(m_tree_widget, 1);
 
     m_footer_label = new QLabel(this);
+    m_footer_label->setObjectName(QStringLiteral("outlinerSummary"));
     m_footer_label->setProperty("role", QStringLiteral("mono"));
+    m_footer_label->setFixedHeight(26);
     layout->addWidget(m_footer_label);
 
     connect(m_search_button, &QPushButton::toggled, this, [this](bool checked) {
@@ -399,6 +441,7 @@ void LayerSidebar::rebuildTree()
 
         auto *layerItem = new QTreeWidgetItem(m_tree_widget);
         layerItem->setText(0, layerText(layer));
+        layerItem->setIcon(0, MaterialIcon::icon(layerIconName(layer)));
         layerItem->setToolTip(0, layerToolTip(layer));
         layerItem->setFlags(layerItem->flags() | Qt::ItemIsUserCheckable | Qt::ItemIsSelectable | Qt::ItemIsEnabled);
         layerItem->setData(0, kItemKindRole, ItemKindLayer);
@@ -411,6 +454,7 @@ void LayerSidebar::rebuildTree()
 
             auto *primitiveItem = new QTreeWidgetItem(layerItem);
             primitiveItem->setText(0, primitive.display_name);
+            primitiveItem->setIcon(0, MaterialIcon::icon(primitiveIconName(layer, primitiveIndex)));
             primitiveItem->setFlags(
                 primitiveItem->flags() | Qt::ItemIsUserCheckable | Qt::ItemIsSelectable | Qt::ItemIsEnabled);
             primitiveItem->setCheckState(0, primitive.visible ? Qt::Checked : Qt::Unchecked);

@@ -71,6 +71,8 @@ void refreshValidationStyle(QWidget *widget)
 ColorField::ColorField(QWidget *parent)
     : QWidget(parent)
 {
+    setObjectName(QStringLiteral("colorField"));
+
     auto *layout = new QVBoxLayout(this);
     layout->setContentsMargins(0, 0, 0, 0);
     layout->setSpacing(4);
@@ -80,17 +82,20 @@ ColorField::ColorField(QWidget *parent)
     rowLayout->setSpacing(8);
 
     m_swatch_button = new ColorSwatchButton(this);
+    m_swatch_button->setObjectName(QStringLiteral("colorSwatch"));
     m_swatch_button->setProperty("colorSwatch", true);
     m_swatch_button->setCursor(Qt::PointingHandCursor);
     m_swatch_button->setToolTip(QStringLiteral("Pick a color"));
     rowLayout->addWidget(m_swatch_button);
 
     m_line_edit = new QLineEdit(this);
+    m_line_edit->setObjectName(QStringLiteral("colorTextField"));
     rowLayout->addWidget(m_line_edit, 1);
 
     layout->addLayout(rowLayout);
 
     m_error_label = new QLabel(this);
+    m_error_label->setObjectName(QStringLiteral("fieldError"));
     m_error_label->setProperty("role", QStringLiteral("validationError"));
     m_error_label->setWordWrap(true);
     m_error_label->setVisible(false);

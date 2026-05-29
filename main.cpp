@@ -10,7 +10,7 @@ int main(int argc, char *argv[])
     QApplication application(argc, argv);
     application.setApplicationName(QStringLiteral("PolyShow"));
     application.setOrganizationName(QStringLiteral("PolyShow"));
-    // PolyShow::AppStyle::install(application, PolyShow::ThemeMode::Dark);
+    PolyShow::AppStyle::install(application, PolyShow::ThemeMode::Dark);
 
     // Create the main window and start the event loop.
     PolyShow::MainWindow mainWindow;

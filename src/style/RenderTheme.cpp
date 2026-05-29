@@ -11,44 +11,44 @@ ThemeMode g_active_theme = ThemeMode::Light;
 RenderColors makeLightColors()
 {
     return RenderColors {
-        QColor(QStringLiteral("#FFFFFF")),
-        QColor(QStringLiteral("#E6E6E6")),
-        QColor(QStringLiteral("#B7B7B7")),
-        QColor(QStringLiteral("#3D7BFF")),
-        QColor(QStringLiteral("#3D7BFF22")),
         QColor(QStringLiteral("#F8FAFC")),
-        QColor(QStringLiteral("#D7DEE8")),
-        QColor(QStringLiteral("#1F2937")),
-        QColor(QStringLiteral("#334155")),
-        QColor(QStringLiteral("#64748B")),
-        QColor(QStringLiteral("#8B1E1E")),
-        QColor(QStringLiteral("#E2A0A0")),
+        QColor(QStringLiteral("#E1E7EF")),
+        QColor(QStringLiteral("#AAB7C6")),
+        QColor(QStringLiteral("#2D74FF")),
+        QColor(QStringLiteral("#2D74FF22")),
+        QColor(QStringLiteral("#F4F6F9EE")),
+        QColor(QStringLiteral("#D3DAE3")),
+        QColor(QStringLiteral("#20242A")),
+        QColor(QStringLiteral("#394453")),
+        QColor(QStringLiteral("#5E6875")),
+        QColor(QStringLiteral("#B24A4A")),
+        QColor(QStringLiteral("#FCE7E7")),
         QColor(QStringLiteral("#8A5A14")),
-        QColor(QStringLiteral("#F1D28A")),
-        QColor(QStringLiteral("#1D4E89")),
-        QColor(QStringLiteral("#A8C9F5"))
+        QColor(QStringLiteral("#FFF4D8")),
+        QColor(QStringLiteral("#15408F")),
+        QColor(QStringLiteral("#E3F0FF"))
     };
 }
 
 RenderColors makeDarkColors()
 {
     return RenderColors {
-        QColor(QStringLiteral("#2B2B2B")),
-        QColor(QStringLiteral("#3A3A3A")),
-        QColor(QStringLiteral("#505050")),
-        QColor(QStringLiteral("#4E8CFF")),
-        QColor(QStringLiteral("#4E8CFF33")),
-        QColor(QStringLiteral("#303746")),
+        QColor(QStringLiteral("#1F2228")),
+        QColor(QStringLiteral("#343943")),
         QColor(QStringLiteral("#556070")),
-        QColor(QStringLiteral("#F3F6FB")),
-        QColor(QStringLiteral("#D8E2F0")),
-        QColor(QStringLiteral("#AAB9CC")),
-        QColor(QStringLiteral("#F3A0A0")),
-        QColor(QStringLiteral("#7A2C2C")),
-        QColor(QStringLiteral("#E7C170")),
-        QColor(QStringLiteral("#6E5520")),
-        QColor(QStringLiteral("#A9D1FF")),
-        QColor(QStringLiteral("#254A73"))
+        QColor(QStringLiteral("#63A7FF")),
+        QColor(QStringLiteral("#63A7FF28")),
+        QColor(QStringLiteral("#303746EE")),
+        QColor(QStringLiteral("#45484F")),
+        QColor(QStringLiteral("#E9EAEC")),
+        QColor(QStringLiteral("#AEB4BC")),
+        QColor(QStringLiteral("#7E858F")),
+        QColor(QStringLiteral("#ED8A8A")),
+        QColor(QStringLiteral("#4A2A2A")),
+        QColor(QStringLiteral("#E7BF67")),
+        QColor(QStringLiteral("#4A3C22")),
+        QColor(QStringLiteral("#63A7FF")),
+        QColor(QStringLiteral("#25384E"))
     };
 }
 

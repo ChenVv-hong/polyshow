@@ -13,9 +13,10 @@
 class QAction;
 class QActionGroup;
 class QComboBox;
+class QHBoxLayout;
 class QLabel;
+class QMenu;
 class QSplitter;
-class QTabWidget;
 class QThread;
 class QWidget;
 
@@ -142,6 +143,9 @@ private:
     /// Creates the menu bar and menu actions.
     void setupMenuBar();
 
+    /// Creates the custom HTML-inspired top bar from existing menu actions.
+    void setupTopBar();
+
     /// Initializes the status bar widgets.
     void setupStatusBar();
 
@@ -216,7 +220,8 @@ private:
     LogPanel *m_log_panel {nullptr};
     QSplitter *m_splitter {nullptr};
     QSplitter *m_vertical_splitter {nullptr};
-    QTabWidget *m_bottom_tab_widget {nullptr};
+    QWidget *m_topbar_widget {nullptr};
+    QHBoxLayout *m_topbar_layout {nullptr};
     PanelFrame *m_viewport_frame {nullptr};
     PanelFrame *m_inspector_container {nullptr};
     PanelFrame *m_log_tab_container {nullptr};
@@ -239,6 +244,12 @@ private:
     QAction *m_zoom_out_action {nullptr};
     QAction *m_reset_view_action {nullptr};
     QAction *m_about_action {nullptr};
+
+    QMenu *m_file_menu {nullptr};
+    QMenu *m_view_menu {nullptr};
+    QMenu *m_render_menu {nullptr};
+    QMenu *m_ipc_menu {nullptr};
+    QMenu *m_help_menu {nullptr};
 
     QAction *m_solid_mode_action {nullptr};
     QAction *m_wireframe_mode_action {nullptr};

@@ -27,10 +27,15 @@ set(POLYSHOW_HEADERS
     include/style/ThemeMode.h
     include/ui/GeometryViewer.h
     include/ui/ColorField.h
+    include/ui/EditorPanelHeader.h
+    include/ui/IconButton.h
     include/ui/InspectorPanel.h
+    include/ui/InspectorSection.h
     include/ui/IpcListenerWorker.h
     include/ui/LayerSidebar.h
     include/ui/LogPanel.h
+    include/ui/MaterialIcon.h
+    include/ui/MaterialIconLabel.h
     include/ui/PropertyPanel.h
     include/ui/MainWindow.h
     include/ui/PanelFrame.h
@@ -44,6 +49,8 @@ set(POLYSHOW_SOURCES
     src/core/PrimitiveEditing.cpp
     src/parsers/PlyParser.cpp
     src/parsers/PlySerializer.cpp
+    resources/fonts/fonts.qrc
+    resources/icons/icons.qrc
     resources/overlay/overlay.qrc
     resources/style/style.qrc
     src/style/AppStyle.cpp
@@ -51,11 +58,16 @@ set(POLYSHOW_SOURCES
     src/style/LightStyle.cpp
     src/style/RenderTheme.cpp
     src/ui/ColorField.cpp
+    src/ui/EditorPanelHeader.cpp
     src/ui/GeometryViewer.cpp
+    src/ui/IconButton.cpp
     src/ui/InspectorPanel.cpp
+    src/ui/InspectorSection.cpp
     src/ui/IpcListenerWorker.cpp
     src/ui/LayerSidebar.cpp
     src/ui/LogPanel.cpp
+    src/ui/MaterialIcon.cpp
+    src/ui/MaterialIconLabel.cpp
     src/ui/PropertyPanel.cpp
     src/ui/MainWindow.cpp
     src/ui/PanelFrame.cpp

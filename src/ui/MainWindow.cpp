@@ -3,9 +3,12 @@
 #include "core/LayerEditing.h"
 #include "parsers/PlyParser.h"
 #include "parsers/PlySerializer.h"
+#include "ui/IconButton.h"
 #include "ui/InspectorPanel.h"
 #include "ui/LayerSidebar.h"
 #include "ui/LogPanel.h"
+#include "ui/MaterialIcon.h"
+#include "ui/MaterialIconLabel.h"
 #include "ui/PanelFrame.h"
 #include "ui/PillButton.h"
 
@@ -19,18 +22,20 @@
 #include <QFileInfo>
 #include <QFormLayout>
 #include <QHBoxLayout>
+#include <QIcon>
 #include <QKeySequence>
 #include <QLabel>
 #include <QLineEdit>
 #include <QMenu>
 #include <QMenuBar>
 #include <QMessageBox>
+#include <QPixmap>
 #include <QPushButton>
 #include <QSignalBlocker>
 #include <QSplitter>
 #include <QStatusBar>
-#include <QTabWidget>
 #include <QThread>
+#include <QToolButton>
 #include <QVBoxLayout>
 #include <QWidget>
 
@@ -606,6 +611,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     setupUi();
     setupMenuBar();
+    setupTopBar();
     setupViewportControls();
     setupStatusBar();
     updateUiFromScene();
@@ -1259,9 +1265,11 @@ void MainWindow::setupUi()
 {
     setWindowTitle(QStringLiteral("PolyShow"));
     resize(1280, 800);
+    setObjectName(QStringLiteral("mainWindow"));
 
     m_scene = new GeometryScene(this);
     m_geometry_viewer = new GeometryViewer(this);
+    m_geometry_viewer->setObjectName(QStringLiteral("geometryViewport"));
     m_geometry_viewer->setScene(m_scene);
 
     m_layer_sidebar = new LayerSidebar(this);
@@ -1269,62 +1277,78 @@ void MainWindow::setupUi()
     m_log_panel = new LogPanel(this);
 
     auto *leftContainer = new PanelFrame(PanelFrame::Variant::Panel, this);
+    leftContainer->setObjectName(QStringLiteral("outlinerPanel"));
+    leftContainer->setMinimumWidth(260);
     auto *leftLayout = new QVBoxLayout(leftContainer);
-    leftLayout->setContentsMargins(12, 12, 12, 12);
+    leftLayout->setContentsMargins(0, 0, 0, 0);
+    leftLayout->setSpacing(0);
     leftLayout->addWidget(m_layer_sidebar);
 
     m_viewport_frame = new PanelFrame(PanelFrame::Variant::Canvas, this);
+    m_viewport_frame->setObjectName(QStringLiteral("viewportPanel"));
     auto *viewportLayout = new QVBoxLayout(m_viewport_frame);
-    viewportLayout->setContentsMargins(12, 12, 12, 12);
-    viewportLayout->setSpacing(10);
+    viewportLayout->setContentsMargins(0, 0, 0, 0);
+    viewportLayout->setSpacing(0);
     m_viewport_controls_widget = new QWidget(m_viewport_frame);
+    m_viewport_controls_widget->setObjectName(QStringLiteral("viewportToolbar"));
+    m_viewport_controls_widget->setAttribute(Qt::WA_StyledBackground, true);
+    m_viewport_controls_widget->setFixedHeight(40);
     viewportLayout->addWidget(m_viewport_controls_widget);
     viewportLayout->addWidget(m_geometry_viewer, 1);
 
     m_inspector_container = new PanelFrame(PanelFrame::Variant::Panel, this);
+    m_inspector_container->setObjectName(QStringLiteral("inspectorPanel"));
+    m_inspector_container->setMinimumWidth(260);
     auto *inspectorLayout = new QVBoxLayout(m_inspector_container);
-    inspectorLayout->setContentsMargins(12, 12, 12, 12);
+    inspectorLayout->setContentsMargins(0, 0, 0, 0);
+    inspectorLayout->setSpacing(0);
     inspectorLayout->addWidget(m_inspector_panel);
     m_inspector_container->setVisible(false);
 
     m_splitter = new QSplitter(Qt::Horizontal, this);
+    m_splitter->setObjectName(QStringLiteral("mainSplit"));
     m_splitter->setChildrenCollapsible(false);
-    m_splitter->setHandleWidth(8);
+    m_splitter->setHandleWidth(1);
     m_splitter->addWidget(leftContainer);
     m_splitter->addWidget(m_viewport_frame);
     m_splitter->addWidget(m_inspector_container);
     m_splitter->setStretchFactor(0, 0);
     m_splitter->setStretchFactor(1, 1);
     m_splitter->setStretchFactor(2, 0);
-    m_splitter->setSizes({300, 700, 0});
+    m_splitter->setSizes({304, 672, 0});
 
     m_log_tab_container = new PanelFrame(PanelFrame::Variant::Panel, this);
+    m_log_tab_container->setObjectName(QStringLiteral("logPanelFrame"));
     auto *logLayout = new QVBoxLayout(m_log_tab_container);
     logLayout->setContentsMargins(0, 0, 0, 0);
+    logLayout->setSpacing(0);
     logLayout->addWidget(m_log_panel);
-    m_log_tab_container->setMinimumHeight(96);
-
-    m_bottom_tab_widget = new QTabWidget(this);
-    m_bottom_tab_widget->setTabPosition(QTabWidget::South);
-    m_bottom_tab_widget->setDocumentMode(true);
-    m_bottom_tab_widget->setMovable(false);
-    m_bottom_tab_widget->addTab(m_log_tab_container, QStringLiteral("Log"));
+    m_log_tab_container->setMinimumHeight(104);
 
     m_vertical_splitter = new QSplitter(Qt::Vertical, this);
+    m_vertical_splitter->setObjectName(QStringLiteral("workspaceSplit"));
     m_vertical_splitter->setChildrenCollapsible(false);
-    m_vertical_splitter->setHandleWidth(8);
+    m_vertical_splitter->setHandleWidth(1);
     m_vertical_splitter->addWidget(m_splitter);
-    m_vertical_splitter->addWidget(m_bottom_tab_widget);
+    m_vertical_splitter->addWidget(m_log_tab_container);
     m_vertical_splitter->setStretchFactor(0, 1);
     m_vertical_splitter->setStretchFactor(1, 0);
-    m_vertical_splitter->setSizes({640, 140});
+    m_vertical_splitter->setSizes({640, 132});
 
     auto *centralWidget = new QWidget(this);
     centralWidget->setObjectName(QStringLiteral("workspaceRoot"));
     centralWidget->setAttribute(Qt::WA_StyledBackground, true);
     auto *layout = new QVBoxLayout(centralWidget);
-    layout->setContentsMargins(12, 12, 12, 12);
-    layout->setSpacing(12);
+    layout->setContentsMargins(0, 0, 0, 0);
+    layout->setSpacing(0);
+    m_topbar_widget = new QWidget(centralWidget);
+    m_topbar_widget->setObjectName(QStringLiteral("topbar"));
+    m_topbar_widget->setAttribute(Qt::WA_StyledBackground, true);
+    m_topbar_widget->setFixedHeight(34);
+    m_topbar_layout = new QHBoxLayout(m_topbar_widget);
+    m_topbar_layout->setContentsMargins(12, 0, 12, 0);
+    m_topbar_layout->setSpacing(12);
+    layout->addWidget(m_topbar_widget);
     layout->addWidget(m_vertical_splitter, 1);
     setCentralWidget(centralWidget);
 
@@ -1351,94 +1375,193 @@ void MainWindow::setupUi()
 
 void MainWindow::setupMenuBar()
 {
-    auto *fileMenu = menuBar()->addMenu(QStringLiteral("File"));
+    menuBar()->setVisible(false);
+
+    m_file_menu = menuBar()->addMenu(QStringLiteral("File"));
 
     m_new_layer_action = new QAction(QStringLiteral("New Layer"), this);
+    m_new_layer_action->setIcon(MaterialIcon::icon(QStringLiteral("add")));
     m_new_layer_action->setShortcut(QKeySequence(QStringLiteral("Ctrl+Shift+N")));
     connect(m_new_layer_action, &QAction::triggered, this, &MainWindow::createLayer);
-    fileMenu->addAction(m_new_layer_action);
+    m_file_menu->addAction(m_new_layer_action);
 
     m_open_action = new QAction(QStringLiteral("Open .ply..."), this);
+    m_open_action->setIcon(MaterialIcon::icon(QStringLiteral("folder_open")));
     m_open_action->setShortcut(QKeySequence::Open);
     connect(m_open_action, &QAction::triggered, this, &MainWindow::openPlyFile);
-    fileMenu->addAction(m_open_action);
+    m_file_menu->addAction(m_open_action);
 
     m_export_layer_action = new QAction(QStringLiteral("Export Active Layer..."), this);
+    m_export_layer_action->setIcon(MaterialIcon::icon(QStringLiteral("ios_share")));
     m_export_layer_action->setShortcut(QKeySequence(QStringLiteral("Ctrl+Shift+S")));
     connect(m_export_layer_action, &QAction::triggered, this, &MainWindow::exportActiveLayer);
-    fileMenu->addAction(m_export_layer_action);
+    m_file_menu->addAction(m_export_layer_action);
 
-    fileMenu->addSeparator();
+    m_file_menu->addSeparator();
 
     m_exit_action = new QAction(QStringLiteral("Exit"), this);
+    m_exit_action->setIcon(MaterialIcon::icon(QStringLiteral("logout")));
     m_exit_action->setShortcut(QKeySequence::Quit);
     connect(m_exit_action, &QAction::triggered, this, &QMainWindow::close);
-    fileMenu->addAction(m_exit_action);
+    m_file_menu->addAction(m_exit_action);
 
-    auto *viewMenu = menuBar()->addMenu(QStringLiteral("View"));
+    m_view_menu = menuBar()->addMenu(QStringLiteral("View"));
 
     m_fit_action = new QAction(QStringLiteral("Fit to View"), this);
+    m_fit_action->setIcon(MaterialIcon::icon(QStringLiteral("fit_screen")));
     connect(m_fit_action, &QAction::triggered, m_geometry_viewer, &GeometryViewer::fitScene);
-    viewMenu->addAction(m_fit_action);
+    m_view_menu->addAction(m_fit_action);
 
     m_zoom_in_action = new QAction(QStringLiteral("Zoom In"), this);
+    m_zoom_in_action->setIcon(MaterialIcon::icon(QStringLiteral("zoom_in")));
     m_zoom_in_action->setShortcut(QKeySequence::ZoomIn);
     connect(m_zoom_in_action, &QAction::triggered, m_geometry_viewer, &GeometryViewer::zoomIn);
-    viewMenu->addAction(m_zoom_in_action);
+    m_view_menu->addAction(m_zoom_in_action);
 
     m_zoom_out_action = new QAction(QStringLiteral("Zoom Out"), this);
+    m_zoom_out_action->setIcon(MaterialIcon::icon(QStringLiteral("zoom_out")));
     m_zoom_out_action->setShortcut(QKeySequence::ZoomOut);
     connect(m_zoom_out_action, &QAction::triggered, m_geometry_viewer, &GeometryViewer::zoomOut);
-    viewMenu->addAction(m_zoom_out_action);
+    m_view_menu->addAction(m_zoom_out_action);
 
     m_reset_view_action = new QAction(QStringLiteral("Reset View"), this);
+    m_reset_view_action->setIcon(MaterialIcon::icon(QStringLiteral("center_focus_strong")));
     connect(m_reset_view_action, &QAction::triggered, m_geometry_viewer, &GeometryViewer::resetViewTransform);
-    viewMenu->addAction(m_reset_view_action);
+    m_view_menu->addAction(m_reset_view_action);
 
-    auto *renderMenu = menuBar()->addMenu(QStringLiteral("Render"));
+    m_render_menu = menuBar()->addMenu(QStringLiteral("Render"));
     m_render_mode_action_group = new QActionGroup(this);
     m_render_mode_action_group->setExclusive(true);
 
     m_solid_mode_action = new QAction(QStringLiteral("Solid"), this);
+    m_solid_mode_action->setIcon(MaterialIcon::icon(QStringLiteral("deployed_code")));
     m_solid_mode_action->setCheckable(true);
     connect(m_solid_mode_action, &QAction::triggered, this, &MainWindow::setRenderModeSolid);
     m_render_mode_action_group->addAction(m_solid_mode_action);
-    renderMenu->addAction(m_solid_mode_action);
+    m_render_menu->addAction(m_solid_mode_action);
 
     m_wireframe_mode_action = new QAction(QStringLiteral("Wireframe"), this);
+    m_wireframe_mode_action->setIcon(MaterialIcon::icon(QStringLiteral("timeline")));
     m_wireframe_mode_action->setCheckable(true);
     connect(m_wireframe_mode_action, &QAction::triggered, this, &MainWindow::setRenderModeWireframe);
     m_render_mode_action_group->addAction(m_wireframe_mode_action);
-    renderMenu->addAction(m_wireframe_mode_action);
+    m_render_menu->addAction(m_wireframe_mode_action);
 
     m_points_mode_action = new QAction(QStringLiteral("Points"), this);
+    m_points_mode_action->setIcon(MaterialIcon::icon(QStringLiteral("scatter_plot")));
     m_points_mode_action->setCheckable(true);
     connect(m_points_mode_action, &QAction::triggered, this, &MainWindow::setRenderModePoints);
     m_render_mode_action_group->addAction(m_points_mode_action);
-    renderMenu->addAction(m_points_mode_action);
+    m_render_menu->addAction(m_points_mode_action);
 
-    auto *ipcMenu = menuBar()->addMenu(QStringLiteral("IPC"));
+    m_ipc_menu = menuBar()->addMenu(QStringLiteral("IPC"));
 
     m_start_ipc_listener_action = new QAction(QStringLiteral("Start IPC Listener"), this);
+    m_start_ipc_listener_action->setIcon(MaterialIcon::icon(QStringLiteral("play_arrow")));
     connect(m_start_ipc_listener_action, &QAction::triggered, this, &MainWindow::startIpcListener);
-    ipcMenu->addAction(m_start_ipc_listener_action);
+    m_ipc_menu->addAction(m_start_ipc_listener_action);
 
     m_stop_ipc_listener_action = new QAction(QStringLiteral("Stop IPC Listener"), this);
+    m_stop_ipc_listener_action->setIcon(MaterialIcon::icon(QStringLiteral("stop")));
     connect(m_stop_ipc_listener_action, &QAction::triggered, this, &MainWindow::stopIpcListener);
-    ipcMenu->addAction(m_stop_ipc_listener_action);
+    m_ipc_menu->addAction(m_stop_ipc_listener_action);
 
-    auto *helpMenu = menuBar()->addMenu(QStringLiteral("Help"));
+    m_help_menu = menuBar()->addMenu(QStringLiteral("Help"));
     m_about_action = new QAction(QStringLiteral("About"), this);
+    m_about_action->setIcon(MaterialIcon::icon(QStringLiteral("info")));
     connect(m_about_action, &QAction::triggered, this, &MainWindow::showAboutDialog);
-    helpMenu->addAction(m_about_action);
+    m_help_menu->addAction(m_about_action);
+
+    addActions(
+        {m_new_layer_action,
+         m_open_action,
+         m_export_layer_action,
+         m_exit_action,
+         m_zoom_in_action,
+         m_zoom_out_action});
 
     updateIpcActionState();
 }
 
+void MainWindow::setupTopBar()
+{
+    if (m_topbar_layout == nullptr)
+    {
+        return;
+    }
+
+    auto *brand = new QWidget(m_topbar_widget);
+    brand->setObjectName(QStringLiteral("brand"));
+    brand->setAttribute(Qt::WA_StyledBackground, true);
+    auto *brandLayout = new QHBoxLayout(brand);
+    brandLayout->setContentsMargins(8, 0, 8, 0);
+    brandLayout->setSpacing(6);
+
+    auto *logoLabel = new QLabel(brand);
+    logoLabel->setObjectName(QStringLiteral("brandLogo"));
+    logoLabel->setPixmap(QIcon(QStringLiteral(":/icons/polyshow-logo.svg")).pixmap(18, 18));
+    brandLayout->addWidget(logoLabel);
+
+    auto *brandText = new QLabel(QStringLiteral("PolyShow"), brand);
+    brandText->setObjectName(QStringLiteral("brandText"));
+    brandLayout->addWidget(brandText);
+    m_topbar_layout->addWidget(brand);
+
+    auto *menuStrip = new QWidget(m_topbar_widget);
+    menuStrip->setObjectName(QStringLiteral("menuStrip"));
+    auto *menuLayout = new QHBoxLayout(menuStrip);
+    menuLayout->setContentsMargins(0, 0, 0, 0);
+    menuLayout->setSpacing(14);
+
+    const auto addMenuButton = [menuStrip, menuLayout](const QString &text, QMenu *menu) {
+        auto *button = new QToolButton(menuStrip);
+        button->setObjectName(QStringLiteral("menuButton"));
+        button->setText(text);
+        button->setPopupMode(QToolButton::InstantPopup);
+        button->setToolButtonStyle(Qt::ToolButtonTextOnly);
+        button->setMenu(menu);
+        button->setCursor(Qt::PointingHandCursor);
+        menuLayout->addWidget(button);
+    };
+
+    addMenuButton(QStringLiteral("File"), m_file_menu);
+    addMenuButton(QStringLiteral("View"), m_view_menu);
+    addMenuButton(QStringLiteral("Render"), m_render_menu);
+    addMenuButton(QStringLiteral("IPC"), m_ipc_menu);
+    addMenuButton(QStringLiteral("Help"), m_help_menu);
+    m_topbar_layout->addWidget(menuStrip);
+    m_topbar_layout->addStretch();
+
+    auto *tabs = new QWidget(m_topbar_widget);
+    tabs->setObjectName(QStringLiteral("workspaceTabs"));
+    auto *tabsLayout = new QHBoxLayout(tabs);
+    tabsLayout->setContentsMargins(0, 0, 0, 0);
+    tabsLayout->setSpacing(4);
+
+    const QStringList tabNames {QStringLiteral("Modeling"), QStringLiteral("Inspect"), QStringLiteral("IPC")};
+    for (int index = 0; index < tabNames.size(); ++index)
+    {
+        auto *tab = new QPushButton(tabNames.at(index), tabs);
+        tab->setObjectName(index == 0 ? QStringLiteral("activeWorkspaceTab") : QStringLiteral("workspaceTab"));
+        tab->setCursor(Qt::PointingHandCursor);
+        tab->setFlat(true);
+        tabsLayout->addWidget(tab);
+    }
+
+    m_topbar_layout->addWidget(tabs);
+}
+
 void MainWindow::setupStatusBar()
 {
+    statusBar()->setObjectName(QStringLiteral("statusbar"));
+    statusBar()->setAttribute(Qt::WA_StyledBackground, true);
+    statusBar()->setFixedHeight(26);
+    statusBar()->setSizeGripEnabled(false);
+
     m_status_info_label = new QLabel(QStringLiteral("Points: 0  Polylines: 0  Polygons: 0"), this);
+    m_status_info_label->setObjectName(QStringLiteral("statusInfo"));
     m_status_mouse_label = new QLabel(QStringLiteral("X: 0.00  Y: 0.00"), this);
+    m_status_mouse_label->setObjectName(QStringLiteral("statusMouse"));
 
     statusBar()->addPermanentWidget(m_status_info_label);
     statusBar()->addPermanentWidget(m_status_mouse_label);
@@ -1448,56 +1571,67 @@ void MainWindow::setupStatusBar()
 void MainWindow::setupViewportControls()
 {
     auto *layout = new QHBoxLayout(m_viewport_controls_widget);
-    layout->setContentsMargins(0, 0, 0, 0);
-    layout->setSpacing(8);
+    layout->setContentsMargins(6, 0, 6, 0);
+    layout->setSpacing(4);
 
     m_browse_mode_button = new PillButton(QStringLiteral("Browse"), m_viewport_controls_widget);
+    m_browse_mode_button->setIconName(QStringLiteral("near_me"));
     m_browse_mode_button->setCheckable(true);
     layout->addWidget(m_browse_mode_button);
     connect(m_browse_mode_button, &QPushButton::clicked, this, &MainWindow::setToolModeBrowse);
 
     m_draw_point_button = new PillButton(QStringLiteral("Point"), m_viewport_controls_widget);
+    m_draw_point_button->setIconName(QStringLiteral("radio_button_checked"));
     m_draw_point_button->setCheckable(true);
     layout->addWidget(m_draw_point_button);
     connect(m_draw_point_button, &QPushButton::clicked, this, &MainWindow::setToolModeDrawPoint);
 
-    m_draw_polyline_button = new PillButton(QStringLiteral("Polyline"), m_viewport_controls_widget);
+    m_draw_polyline_button = new PillButton(QStringLiteral("Line"), m_viewport_controls_widget);
+    m_draw_polyline_button->setIconName(QStringLiteral("timeline"));
     m_draw_polyline_button->setCheckable(true);
     layout->addWidget(m_draw_polyline_button);
     connect(m_draw_polyline_button, &QPushButton::clicked, this, &MainWindow::setToolModeDrawPolyline);
 
-    m_draw_polygon_button = new PillButton(QStringLiteral("Polygon"), m_viewport_controls_widget);
+    m_draw_polygon_button = new PillButton(QStringLiteral("Poly"), m_viewport_controls_widget);
+    m_draw_polygon_button->setIconName(QStringLiteral("pentagon"));
     m_draw_polygon_button->setCheckable(true);
     layout->addWidget(m_draw_polygon_button);
     connect(m_draw_polygon_button, &QPushButton::clicked, this, &MainWindow::setToolModeDrawPolygon);
 
-    m_finish_drawing_button = new PillButton(QStringLiteral("Finish"), m_viewport_controls_widget);
+    m_finish_drawing_button = new PillButton(QStringLiteral("Done"), m_viewport_controls_widget);
+    m_finish_drawing_button->setIconName(QStringLiteral("done"));
     layout->addWidget(m_finish_drawing_button);
     connect(m_finish_drawing_button, &QPushButton::clicked, this, &MainWindow::finishDrawing);
 
     m_cancel_drawing_button = new PillButton(QStringLiteral("Cancel"), m_viewport_controls_widget);
+    m_cancel_drawing_button->setIconName(QStringLiteral("close"));
     layout->addWidget(m_cancel_drawing_button);
     connect(m_cancel_drawing_button, &QPushButton::clicked, this, &MainWindow::cancelDrawing);
 
     auto *fitButton = new PillButton(QStringLiteral("Fit View"), m_viewport_controls_widget);
+    fitButton->setIconName(QStringLiteral("fit_screen"));
     layout->addWidget(fitButton);
     connect(fitButton, &QPushButton::clicked, m_fit_action, &QAction::trigger);
 
     auto *zoomOutButton = new PillButton(QStringLiteral("Zoom -"), m_viewport_controls_widget);
+    zoomOutButton->setIconName(QStringLiteral("zoom_out"));
     layout->addWidget(zoomOutButton);
     connect(zoomOutButton, &QPushButton::clicked, m_zoom_out_action, &QAction::trigger);
 
     auto *zoomInButton = new PillButton(QStringLiteral("Zoom +"), m_viewport_controls_widget);
+    zoomInButton->setIconName(QStringLiteral("zoom_in"));
     layout->addWidget(zoomInButton);
     connect(zoomInButton, &QPushButton::clicked, m_zoom_in_action, &QAction::trigger);
 
     auto *resetButton = new PillButton(QStringLiteral("Reset"), m_viewport_controls_widget);
+    resetButton->setIconName(QStringLiteral("center_focus_strong"));
     layout->addWidget(resetButton);
     connect(resetButton, &QPushButton::clicked, m_reset_view_action, &QAction::trigger);
 
     layout->addStretch();
 
     m_grid_toggle_button = new PillButton(QStringLiteral("Grid On"), m_viewport_controls_widget);
+    m_grid_toggle_button->setIconName(QStringLiteral("grid_on"));
     m_grid_toggle_button->setCheckable(true);
     layout->addWidget(m_grid_toggle_button);
     connect(m_grid_toggle_button, &QPushButton::clicked, this, [this](bool checked) {
@@ -1506,9 +1640,10 @@ void MainWindow::setupViewportControls()
     });
 
     m_render_mode_combo_box = new QComboBox(m_viewport_controls_widget);
-    m_render_mode_combo_box->addItem(QStringLiteral("Solid"));
-    m_render_mode_combo_box->addItem(QStringLiteral("Wireframe"));
-    m_render_mode_combo_box->addItem(QStringLiteral("Points"));
+    m_render_mode_combo_box->setObjectName(QStringLiteral("renderModeCombo"));
+    m_render_mode_combo_box->addItem(MaterialIcon::icon(QStringLiteral("deployed_code")), QStringLiteral("Solid"));
+    m_render_mode_combo_box->addItem(MaterialIcon::icon(QStringLiteral("timeline")), QStringLiteral("Wireframe"));
+    m_render_mode_combo_box->addItem(MaterialIcon::icon(QStringLiteral("scatter_plot")), QStringLiteral("Points"));
     connect(
         m_render_mode_combo_box,
         qOverload<int>(&QComboBox::currentIndexChanged),

@@ -26,6 +26,9 @@ public:
     /// Applies one visual variant to the button.
     void setVariant(Variant variant);
 
+    /// Adds or replaces the Material Symbols Rounded icon shown in the button.
+    void setIconName(const QString &iconName);
+
 private:
     /// Maps the enum to the stylesheet property string.
     static QString variantName(Variant variant);

@@ -98,10 +98,11 @@ PolyShow follows a Blender-inspired dark spatial editor style documented in `DES
 Important principles:
 
 - Treat the center geometry viewport as the dominant editor region.
+- Keep main editor areas flush with shared borders; avoid card-like gutters between outliner, viewport, inspector, and log.
 - Keep global commands in the menu bar.
 - Keep viewport-specific controls inside the viewport panel.
 - Use the left sidebar as a compact layer/primitive structure tree.
-- Use the right inspector only for contextual selection details.
+- Use the right inspector only for contextual selection details, grouped into sections with a distinct header background and a distinct content background while staying visually attached as one section. In V2, keep inspector sidebar, section header, and section content surfaces visually distinct; the subtle border wraps the whole section, and content indentation stays very compact.
 - Hide the inspector when nothing is selected.
 - Use the bottom log for persistent operation history.
 - Use the status bar for transient messages, counts, and cursor coordinates.
@@ -109,13 +110,17 @@ Important principles:
 
 ## UI Implementation Rules
 
+- When matching the HTML reference in `html/`, treat `html/index.html`, `html/styles.css`, and `html/app.js` as the visual source for structure, spacing, colors, and state-specific surfaces while preserving the Qt application's existing runtime behavior.
+- Keep QSS in standalone resource files under `resources/style/`; avoid adding inline `setStyleSheet()` strings in C++ except for unavoidable one-off diagnostics that must not be committed.
+- Prefer stable `objectName` selectors for QSS. Set meaningful object names on new structural widgets, controls, rows, sections, and state surfaces before styling them.
+- Extract repeated HTML-matched UI structures into reusable Qt widgets instead of duplicating layout code in `MainWindow` or panel classes.
 - Use existing project UI components before creating new widget patterns.
 - `PanelFrame` is the standard panel/card/canvas container.
 - `PillButton` is the standard compact tool/action button.
 - `ColorField` is the standard color input pattern.
 - Keep colors centralized through light/dark style resources and `RenderTheme`.
 - Support both light and dark theme tokens when adding styled widgets.
-- Prefer Google Material Symbols Rounded for UI icons in both design and program implementation.
+- Prefer Google Material Symbols Rounded for UI icons in both design and program implementation, loaded from application resources when used by Qt code.
 - Use checkboxes for binary visibility and combo boxes for option sets with three or more values.
 - Icon-only controls must have a tooltip.
 - Do not add decorative UI that does not help navigation, inspection, editing, or feedback.

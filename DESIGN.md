@@ -74,6 +74,7 @@ Rules:
 
 - The viewport must receive the largest continuous space.
 - Side panels should support the viewport, not compete with it.
+- Main editor areas should touch through shared 1px borders, like Blender editor areas. Do not create card-like gutters between the outliner, viewport, inspector, and log.
 - Viewport controls live inside the viewport panel because they operate on the editor region.
 - Empty state should enlarge the viewport by hiding the inspector.
 
@@ -144,11 +145,18 @@ States:
 
 Rules:
 
-- Group related fields with compact section labels.
+- Group related fields as one inspector section container with a distinct header background and a distinct content background.
+- Labels such as `Geometry`, `Style`, and `Coordinates` should sit in the section header area, while the fields sit in the content area beneath it.
+- The header and content backgrounds may differ, but they must remain visually attached as one section.
+- In the V2 prototype, the inspector sidebar surface uses `#303236`, section headers use `#282A2E`, and section content areas use `#26282E`.
+- Draw the subtle `#45484F` border around the whole section container so it wraps both the header and the content together.
+- Keep inspector content indentation very compact. Rows and field groups should read as Blender-style controls, not as nested subpanels.
 - Keep editable fields in predictable order: identity, geometry, style, coordinates, hints.
 - Validation errors stay near the field that caused them.
 - Invalid coordinates should visibly mark the text edit and suppress misleading previews.
-- Avoid nested decorative cards; one card inside the inspector is enough.
+- Avoid isolated section titles that look detached from their content.
+- Avoid making inspector group headers look like detached floating labels.
+- Avoid nested decorative cards; use functional panel boundaries only.
 
 ## Menus and Dialogs
 
@@ -271,6 +279,10 @@ When a custom SVG icon is genuinely required:
 
 ## Component Rules
 
+- When the Qt implementation is being matched to the HTML reference in `html/`, use the HTML files as the visual contract for shell layout, spacing, color tokens, panel states, and icon choices. Preserve the existing Qt runtime logic unless the task explicitly asks for behavior changes.
+- Keep style declarations in `resources/style/darkstyle.qss` and `resources/style/lightstyle.qss`; new C++ widgets should expose object names, properties, and reusable structure for QSS to target instead of carrying inline stylesheet strings.
+- QSS selectors should prefer stable `objectName` selectors for app-specific surfaces and controls. Type selectors are acceptable for shared Qt primitives only when they intentionally apply across the app.
+- Repeated HTML structures should become reusable widgets such as panel headers, icon controls, or inspector sections before being reused in multiple panels.
 - `PanelFrame` is the standard panel, card, and canvas container.
 - `PillButton` is the standard viewport/tool action button.
 - `ColorField` is the standard color editor pattern.

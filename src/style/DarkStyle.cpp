@@ -31,18 +31,18 @@ DarkStyle::DarkStyle()
 QPalette DarkStyle::palette()
 {
     QPalette palette;
-    palette.setColor(QPalette::Window, QColor(QStringLiteral("#2B2B2B")));
-    palette.setColor(QPalette::WindowText, QColor(QStringLiteral("#E4E4E4")));
-    palette.setColor(QPalette::Base, QColor(QStringLiteral("#353535")));
-    palette.setColor(QPalette::AlternateBase, QColor(QStringLiteral("#2F2F2F")));
-    palette.setColor(QPalette::ToolTipBase, QColor(QStringLiteral("#3B3B3B")));
-    palette.setColor(QPalette::ToolTipText, QColor(QStringLiteral("#F2F2F2")));
-    palette.setColor(QPalette::Text, QColor(QStringLiteral("#E4E4E4")));
-    palette.setColor(QPalette::Button, QColor(QStringLiteral("#353535")));
-    palette.setColor(QPalette::ButtonText, QColor(QStringLiteral("#E4E4E4")));
-    palette.setColor(QPalette::Highlight, QColor(QStringLiteral("#3D7BFF")));
+    palette.setColor(QPalette::Window, QColor(QStringLiteral("#202124")));
+    palette.setColor(QPalette::WindowText, QColor(QStringLiteral("#E9EAEC")));
+    palette.setColor(QPalette::Base, QColor(QStringLiteral("#303236")));
+    palette.setColor(QPalette::AlternateBase, QColor(QStringLiteral("#282A2E")));
+    palette.setColor(QPalette::ToolTipBase, QColor(QStringLiteral("#303236")));
+    palette.setColor(QPalette::ToolTipText, QColor(QStringLiteral("#E9EAEC")));
+    palette.setColor(QPalette::Text, QColor(QStringLiteral("#E9EAEC")));
+    palette.setColor(QPalette::Button, QColor(QStringLiteral("#282A2E")));
+    palette.setColor(QPalette::ButtonText, QColor(QStringLiteral("#E9EAEC")));
+    palette.setColor(QPalette::Highlight, QColor(QStringLiteral("#63A7FF")));
     palette.setColor(QPalette::HighlightedText, QColor(QStringLiteral("#FFFFFF")));
-    palette.setColor(QPalette::PlaceholderText, QColor(QStringLiteral("#9A9A9A")));
+    palette.setColor(QPalette::PlaceholderText, QColor(QStringLiteral("#7E858F")));
     palette.setColor(QPalette::BrightText, QColor(QStringLiteral("#FFFFFF")));
     return palette;
 }

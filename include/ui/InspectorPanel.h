@@ -15,6 +15,8 @@ namespace PolyShow
 {
 
 class ColorField;
+class InspectorSection;
+class MaterialIconLabel;
 
 /// Displays selection details and field-level primitive editing controls.
 class InspectorPanel final : public QWidget
@@ -84,9 +86,12 @@ private:
     PrimitiveEditValidationErrors m_validation_errors;
     bool m_is_loading_form {false};
     QLabel *m_badge_label {nullptr};
+    MaterialIconLabel *m_object_icon_label {nullptr};
     QLabel *m_title_label {nullptr};
     QLabel *m_meta_label {nullptr};
-    QLabel *m_geometry_label {nullptr};
+    InspectorSection *m_geometry_section {nullptr};
+    InspectorSection *m_style_section {nullptr};
+    InspectorSection *m_coordinates_section {nullptr};
     QLabel *m_geometry_body_label {nullptr};
     QLabel *m_hint_label {nullptr};
     QLabel *m_editor_help_label {nullptr};

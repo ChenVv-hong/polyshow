@@ -5,12 +5,25 @@
 #include "style/RenderTheme.h"
 
 #include <QApplication>
+#include <QFontDatabase>
 
 namespace PolyShow
 {
 
+namespace
+{
+
+void loadApplicationFonts()
+{
+    QFontDatabase::addApplicationFont(QStringLiteral(":/fonts/MaterialSymbolsRounded-Regular.ttf"));
+}
+
+} // namespace
+
 void AppStyle::install(QApplication &application, ThemeMode themeMode)
 {
+    loadApplicationFonts();
+
     switch (themeMode)
     {
     case ThemeMode::Dark:

@@ -1,0 +1,2404 @@
+{
+  "version": "2.10",
+  "children": [
+    {
+      "type": "frame",
+      "id": "CUR01",
+      "x": -430,
+      "y": -187,
+      "name": "PolyShow - Current UI - No Selection",
+      "width": 1280,
+      "height": 800,
+      "fill": "#F5F5F5",
+      "layout": "vertical",
+      "children": [
+        {
+          "type": "frame",
+          "id": "CUR02",
+          "name": "QMenuBar",
+          "width": "fill_container",
+          "height": 30,
+          "fill": "#FFFFFF",
+          "layout": "horizontal",
+          "gap": 20,
+          "padding": [
+            0,
+            16
+          ],
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "text",
+              "id": "CUR03",
+              "name": "MenuFile",
+              "fill": "#202020",
+              "content": "File",
+              "fontFamily": "Segoe UI",
+              "fontSize": 12,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "CUR04",
+              "name": "MenuView",
+              "fill": "#202020",
+              "content": "View",
+              "fontFamily": "Segoe UI",
+              "fontSize": 12,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "CUR05",
+              "name": "MenuRender",
+              "fill": "#202020",
+              "content": "Render",
+              "fontFamily": "Segoe UI",
+              "fontSize": 12,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "CUR06",
+              "name": "MenuIPC",
+              "fill": "#202020",
+              "content": "IPC",
+              "fontFamily": "Segoe UI",
+              "fontSize": 12,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "CUR07",
+              "name": "MenuHelp",
+              "fill": "#202020",
+              "content": "Help",
+              "fontFamily": "Segoe UI",
+              "fontSize": 12,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "CUR08",
+          "name": "workspaceRoot",
+          "width": "fill_container",
+          "height": 738,
+          "fill": "#F5F5F5",
+          "layout": "vertical",
+          "gap": 8,
+          "padding": 12,
+          "children": [
+            {
+              "type": "frame",
+              "id": "CUR09",
+              "name": "VerticalSplitterTop",
+              "width": "fill_container",
+              "height": 568,
+              "layout": "horizontal",
+              "gap": 0,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "CUR10",
+                  "name": "Left PanelFrame - Layers",
+                  "width": 300,
+                  "height": "fill_container",
+                  "fill": "#FFFFFF",
+                  "cornerRadius": 12,
+                  "stroke": {
+                    "align": "inside",
+                    "thickness": 1,
+                    "fill": "#D3D3D3"
+                  },
+                  "layout": "vertical",
+                  "gap": 10,
+                  "padding": 12,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "CUR11",
+                      "name": "LayerHeader",
+                      "width": "fill_container",
+                      "height": 30,
+                      "layout": "horizontal",
+                      "gap": 8,
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "CUR12",
+                          "name": "LayersTitle",
+                          "fill": "#202020",
+                          "content": "Layers",
+                          "fontFamily": "Segoe UI",
+                          "fontSize": 15,
+                          "fontWeight": "700"
+                        },
+                        {
+                          "type": "frame",
+                          "id": "CUR13",
+                          "name": "LayerHeaderSpacer",
+                          "width": "fill_container",
+                          "height": 1
+                        },
+                        {
+                          "type": "frame",
+                          "id": "CUR14",
+                          "name": "NewLayerButton",
+                          "width": 48,
+                          "height": 28,
+                          "fill": "#EFEFEF",
+                          "cornerRadius": 8,
+                          "stroke": {
+                            "align": "inside",
+                            "thickness": 1,
+                            "fill": "#C8C8C8"
+                          },
+                          "layout": "vertical",
+                          "alignItems": "center",
+                          "justifyContent": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "CUR15",
+                              "name": "NewLayerButtonText",
+                              "fill": "#202020",
+                              "content": "New",
+                              "fontFamily": "Segoe UI",
+                              "fontSize": 12
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "CUR16",
+                          "name": "ExportLayerButton",
+                          "width": 62,
+                          "height": 28,
+                          "fill": "#EFEFEF",
+                          "cornerRadius": 8,
+                          "stroke": {
+                            "align": "inside",
+                            "thickness": 1,
+                            "fill": "#C8C8C8"
+                          },
+                          "layout": "vertical",
+                          "alignItems": "center",
+                          "justifyContent": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "CUR17",
+                              "name": "ExportLayerButtonText",
+                              "fill": "#202020",
+                              "content": "Export",
+                              "fontFamily": "Segoe UI",
+                              "fontSize": 12
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "CUR18",
+                          "name": "SearchToggle",
+                          "width": 28,
+                          "height": 28,
+                          "fill": "#EFEFEF",
+                          "cornerRadius": 8,
+                          "stroke": {
+                            "align": "inside",
+                            "thickness": 1,
+                            "fill": "#C8C8C8"
+                          },
+                          "layout": "vertical",
+                          "alignItems": "center",
+                          "justifyContent": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "CUR19",
+                              "name": "SearchToggleText",
+                              "fill": "#202020",
+                              "content": "S",
+                              "fontFamily": "Segoe UI",
+                              "fontSize": 12
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "CUR20",
+                      "name": "LayerSectionTitle",
+                      "fill": "#6E6E6E",
+                      "content": "Layers",
+                      "fontFamily": "Segoe UI",
+                      "fontSize": 11,
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "CUR21",
+                      "name": "LayerTreeEmpty",
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "fill": "#FFFFFF",
+                      "cornerRadius": 10,
+                      "stroke": {
+                        "align": "inside",
+                        "thickness": 1,
+                        "fill": "#D3D3D3"
+                      },
+                      "layout": "vertical",
+                      "alignItems": "center",
+                      "justifyContent": "center",
+                      "padding": 16,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "CUR22",
+                          "name": "EmptyLayerTreeHint",
+                          "fill": "#6E6E6E",
+                          "content": "No layers loaded",
+                          "fontFamily": "Segoe UI",
+                          "fontSize": 12
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "CUR23",
+                      "name": "LayerFooter",
+                      "fill": "#202020",
+                      "content": "0 layers  /  0 visible primitives",
+                      "fontFamily": "Consolas",
+                      "fontSize": 12
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "CUR24",
+                  "name": "HorizontalSplitterHandle",
+                  "width": 8,
+                  "height": "fill_container",
+                  "fill": "#D3D3D3"
+                },
+                {
+                  "type": "frame",
+                  "id": "CUR25",
+                  "name": "Viewport PanelFrame - Canvas",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "#FFFFFF",
+                  "cornerRadius": 12,
+                  "stroke": {
+                    "align": "inside",
+                    "thickness": 1,
+                    "fill": "#D3D3D3"
+                  },
+                  "layout": "vertical",
+                  "gap": 10,
+                  "padding": 12,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "CUR26",
+                      "name": "ViewportControls",
+                      "width": "fill_container",
+                      "height": 34,
+                      "layout": "horizontal",
+                      "gap": 8,
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "CUR27",
+                          "name": "BrowsePrimary",
+                          "width": 72,
+                          "height": 30,
+                          "fill": "#E4EEFF",
+                          "cornerRadius": 8,
+                          "stroke": {
+                            "align": "inside",
+                            "thickness": 1,
+                            "fill": "#2D74FF"
+                          },
+                          "layout": "vertical",
+                          "alignItems": "center",
+                          "justifyContent": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "CUR28",
+                              "fill": "#15408F",
+                              "content": "Browse",
+                              "fontFamily": "Segoe UI",
+                              "fontSize": 12
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "CUR29",
+                          "name": "PointButton",
+                          "width": 58,
+                          "height": 30,
+                          "fill": "#EFEFEF",
+                          "cornerRadius": 8,
+                          "stroke": {
+                            "align": "inside",
+                            "thickness": 1,
+                            "fill": "#C8C8C8"
+                          },
+                          "layout": "vertical",
+                          "alignItems": "center",
+                          "justifyContent": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "CUR30",
+                              "fill": "#202020",
+                              "content": "Point",
+                              "fontFamily": "Segoe UI",
+                              "fontSize": 12
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "CUR31",
+                          "name": "PolylineButton",
+                          "width": 78,
+                          "height": 30,
+                          "fill": "#EFEFEF",
+                          "cornerRadius": 8,
+                          "stroke": {
+                            "align": "inside",
+                            "thickness": 1,
+                            "fill": "#C8C8C8"
+                          },
+                          "layout": "vertical",
+                          "alignItems": "center",
+                          "justifyContent": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "CUR32",
+                              "fill": "#202020",
+                              "content": "Polyline",
+                              "fontFamily": "Segoe UI",
+                              "fontSize": 12
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "CUR33",
+                          "name": "PolygonButton",
+                          "width": 74,
+                          "height": 30,
+                          "fill": "#EFEFEF",
+                          "cornerRadius": 8,
+                          "stroke": {
+                            "align": "inside",
+                            "thickness": 1,
+                            "fill": "#C8C8C8"
+                          },
+                          "layout": "vertical",
+                          "alignItems": "center",
+                          "justifyContent": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "CUR34",
+                              "fill": "#202020",
+                              "content": "Polygon",
+                              "fontFamily": "Segoe UI",
+                              "fontSize": 12
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "CUR35",
+                          "name": "FinishButtonDisabled",
+                          "width": 60,
+                          "height": 30,
+                          "fill": "#EFEFEF",
+                          "cornerRadius": 8,
+                          "stroke": {
+                            "align": "inside",
+                            "thickness": 1,
+                            "fill": "#C8C8C8"
+                          },
+                          "layout": "vertical",
+                          "alignItems": "center",
+                          "justifyContent": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "CUR36",
+                              "fill": "#8A8A8A",
+                              "content": "Finish",
+                              "fontFamily": "Segoe UI",
+                              "fontSize": 12
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "CUR37",
+                          "name": "CancelButtonDisabled",
+                          "width": 62,
+                          "height": 30,
+                          "fill": "#EFEFEF",
+                          "cornerRadius": 8,
+                          "stroke": {
+                            "align": "inside",
+                            "thickness": 1,
+                            "fill": "#C8C8C8"
+                          },
+                          "layout": "vertical",
+                          "alignItems": "center",
+                          "justifyContent": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "CUR38",
+                              "fill": "#8A8A8A",
+                              "content": "Cancel",
+                              "fontFamily": "Segoe UI",
+                              "fontSize": 12
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "CUR39",
+                          "name": "FitViewButton",
+                          "width": 70,
+                          "height": 30,
+                          "fill": "#EFEFEF",
+                          "cornerRadius": 8,
+                          "stroke": {
+                            "align": "inside",
+                            "thickness": 1,
+                            "fill": "#C8C8C8"
+                          },
+                          "layout": "vertical",
+                          "alignItems": "center",
+                          "justifyContent": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "CUR40",
+                              "fill": "#202020",
+                              "content": "Fit View",
+                              "fontFamily": "Segoe UI",
+                              "fontSize": 12
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "CUR41",
+                          "name": "ZoomOutButton",
+                          "width": 62,
+                          "height": 30,
+                          "fill": "#EFEFEF",
+                          "cornerRadius": 8,
+                          "stroke": {
+                            "align": "inside",
+                            "thickness": 1,
+                            "fill": "#C8C8C8"
+                          },
+                          "layout": "vertical",
+                          "alignItems": "center",
+                          "justifyContent": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "CUR42",
+                              "fill": "#202020",
+                              "content": "Zoom -",
+                              "fontFamily": "Segoe UI",
+                              "fontSize": 12
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "CUR43",
+                          "name": "ZoomInButton",
+                          "width": 62,
+                          "height": 30,
+                          "fill": "#EFEFEF",
+                          "cornerRadius": 8,
+                          "stroke": {
+                            "align": "inside",
+                            "thickness": 1,
+                            "fill": "#C8C8C8"
+                          },
+                          "layout": "vertical",
+                          "alignItems": "center",
+                          "justifyContent": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "CUR44",
+                              "fill": "#202020",
+                              "content": "Zoom +",
+                              "fontFamily": "Segoe UI",
+                              "fontSize": 12
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "CUR45",
+                          "name": "ResetButton",
+                          "width": 58,
+                          "height": 30,
+                          "fill": "#EFEFEF",
+                          "cornerRadius": 8,
+                          "stroke": {
+                            "align": "inside",
+                            "thickness": 1,
+                            "fill": "#C8C8C8"
+                          },
+                          "layout": "vertical",
+                          "alignItems": "center",
+                          "justifyContent": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "CUR46",
+                              "fill": "#202020",
+                              "content": "Reset",
+                              "fontFamily": "Segoe UI",
+                              "fontSize": 12
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "CUR47",
+                          "name": "ToolbarSpacer",
+                          "width": "fill_container",
+                          "height": 1
+                        },
+                        {
+                          "type": "frame",
+                          "id": "CUR48",
+                          "name": "GridOnButton",
+                          "width": 70,
+                          "height": 30,
+                          "fill": "#E7F7EF",
+                          "cornerRadius": 8,
+                          "stroke": {
+                            "align": "inside",
+                            "thickness": 1,
+                            "fill": "#39A36E"
+                          },
+                          "layout": "vertical",
+                          "alignItems": "center",
+                          "justifyContent": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "CUR49",
+                              "fill": "#1C6A46",
+                              "content": "Grid On",
+                              "fontFamily": "Segoe UI",
+                              "fontSize": 12
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "CUR50",
+                          "name": "RenderModeCombo",
+                          "width": 94,
+                          "height": 30,
+                          "fill": "#FFFFFF",
+                          "cornerRadius": 8,
+                          "stroke": {
+                            "align": "inside",
+                            "thickness": 1,
+                            "fill": "#C8C8C8"
+                          },
+                          "layout": "horizontal",
+                          "alignItems": "center",
+                          "justifyContent": "space_between",
+                          "padding": [
+                            0,
+                            10
+                          ],
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "CUR51",
+                              "fill": "#202020",
+                              "content": "Solid",
+                              "fontFamily": "Segoe UI",
+                              "fontSize": 12
+                            },
+                            {
+                              "type": "text",
+                              "id": "CUR52",
+                              "fill": "#6E6E6E",
+                              "content": "v",
+                              "fontFamily": "Segoe UI",
+                              "fontSize": 11
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "CUR53",
+                      "name": "QGraphicsView Empty Canvas",
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "fill": "#FFFFFF",
+                      "cornerRadius": 10,
+                      "stroke": {
+                        "align": "inside",
+                        "thickness": 1,
+                        "fill": "#D3D3D3"
+                      },
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "CUR54",
+                          "name": "GridVertical1",
+                          "x": 120,
+                          "y": 0,
+                          "width": 1,
+                          "height": 498,
+                          "fill": "#EFEFEF"
+                        },
+                        {
+                          "type": "frame",
+                          "id": "CUR55",
+                          "name": "GridVertical2",
+                          "x": 240,
+                          "y": 0,
+                          "width": 1,
+                          "height": 498,
+                          "fill": "#EFEFEF"
+                        },
+                        {
+                          "type": "frame",
+                          "id": "CUR56",
+                          "name": "GridVertical3",
+                          "x": 360,
+                          "y": 0,
+                          "width": 1,
+                          "height": 498,
+                          "fill": "#EFEFEF"
+                        },
+                        {
+                          "type": "frame",
+                          "id": "CUR57",
+                          "name": "GridVertical4",
+                          "x": 480,
+                          "y": 0,
+                          "width": 1,
+                          "height": 498,
+                          "fill": "#EFEFEF"
+                        },
+                        {
+                          "type": "frame",
+                          "id": "CUR58",
+                          "name": "GridVertical5",
+                          "x": 600,
+                          "y": 0,
+                          "width": 1,
+                          "height": 498,
+                          "fill": "#EFEFEF"
+                        },
+                        {
+                          "type": "frame",
+                          "id": "CUR59",
+                          "name": "GridHorizontal1",
+                          "x": 0,
+                          "y": 120,
+                          "width": 910,
+                          "height": 1,
+                          "fill": "#EFEFEF"
+                        },
+                        {
+                          "type": "frame",
+                          "id": "CUR60",
+                          "name": "GridHorizontal2",
+                          "x": 0,
+                          "y": 240,
+                          "width": 910,
+                          "height": 1,
+                          "fill": "#EFEFEF"
+                        },
+                        {
+                          "type": "frame",
+                          "id": "CUR61",
+                          "name": "GridHorizontal3",
+                          "x": 0,
+                          "y": 360,
+                          "width": 910,
+                          "height": 1,
+                          "fill": "#EFEFEF"
+                        },
+                        {
+                          "type": "frame",
+                          "id": "CUR62",
+                          "name": "ScaleBar",
+                          "x": 20,
+                          "y": 450,
+                          "width": 136,
+                          "height": 28,
+                          "fill": "#FAFAFA",
+                          "cornerRadius": 8,
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "CUR63",
+                              "x": 12,
+                              "y": 16,
+                              "width": 96,
+                              "height": 2,
+                              "fill": "#202020"
+                            },
+                            {
+                              "type": "text",
+                              "id": "CUR64",
+                              "x": 114,
+                              "y": 7,
+                              "fill": "#202020",
+                              "content": "100",
+                              "fontFamily": "Segoe UI",
+                              "fontSize": 11
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "CUR65",
+                          "name": "InteractionHintCard",
+                          "x": 728,
+                          "y": 354,
+                          "width": 160,
+                          "height": 124,
+                          "fill": "#FAFAFA",
+                          "cornerRadius": 8,
+                          "stroke": {
+                            "align": "inside",
+                            "thickness": 1,
+                            "fill": "#D3D3D3"
+                          },
+                          "layout": "vertical",
+                          "gap": 8,
+                          "padding": 10,
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "CUR66",
+                              "fill": "#202020",
+                              "content": "Wheel      Zoom",
+                              "fontFamily": "Consolas",
+                              "fontSize": 11
+                            },
+                            {
+                              "type": "text",
+                              "id": "CUR67",
+                              "fill": "#202020",
+                              "content": "Middle     Pan",
+                              "fontFamily": "Consolas",
+                              "fontSize": 11
+                            },
+                            {
+                              "type": "text",
+                              "id": "CUR68",
+                              "fill": "#202020",
+                              "content": "Left       Select",
+                              "fontFamily": "Consolas",
+                              "fontSize": 11
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "CUR69",
+              "name": "VerticalSplitterHandle",
+              "width": "fill_container",
+              "height": 8,
+              "fill": "#D3D3D3"
+            },
+            {
+              "type": "frame",
+              "id": "CUR70",
+              "name": "BottomTabWidget",
+              "width": "fill_container",
+              "height": "fill_container",
+              "layout": "vertical",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "CUR71",
+                  "name": "LogPanelFrame",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "#FFFFFF",
+                  "cornerRadius": 12,
+                  "stroke": {
+                    "align": "inside",
+                    "thickness": 1,
+                    "fill": "#D3D3D3"
+                  },
+                  "layout": "vertical",
+                  "padding": 12,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "CUR72",
+                      "name": "LogEmptyHint",
+                      "fill": "#6E6E6E",
+                      "content": "Log",
+                      "fontFamily": "Consolas",
+                      "fontSize": 12
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "CUR73",
+                  "name": "SouthTabBar",
+                  "width": "fill_container",
+                  "height": 32,
+                  "layout": "horizontal",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "CUR74",
+                      "name": "LogTabSelected",
+                      "width": 64,
+                      "height": 30,
+                      "fill": "#FFFFFF",
+                      "cornerRadius": 8,
+                      "stroke": {
+                        "align": "inside",
+                        "thickness": 1,
+                        "fill": "#2D74FF"
+                      },
+                      "layout": "vertical",
+                      "alignItems": "center",
+                      "justifyContent": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "CUR75",
+                          "fill": "#15408F",
+                          "content": "Log",
+                          "fontFamily": "Segoe UI",
+                          "fontSize": 12
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "CUR76",
+          "name": "QStatusBar",
+          "width": "fill_container",
+          "height": 32,
+          "fill": "#FFFFFF",
+          "layout": "horizontal",
+          "alignItems": "center",
+          "gap": 24,
+          "padding": [
+            0,
+            16
+          ],
+          "children": [
+            {
+              "type": "text",
+              "id": "CUR77",
+              "fill": "#6E6E6E",
+              "content": "Ready",
+              "fontFamily": "Segoe UI",
+              "fontSize": 12
+            },
+            {
+              "type": "frame",
+              "id": "CUR78",
+              "width": "fill_container",
+              "height": 1
+            },
+            {
+              "type": "text",
+              "id": "CUR79",
+              "fill": "#202020",
+              "content": "Points: 0  Polylines: 0  Polygons: 0",
+              "fontFamily": "Segoe UI",
+              "fontSize": 12
+            },
+            {
+              "type": "text",
+              "id": "CUR80",
+              "fill": "#202020",
+              "content": "X: 0.00  Y: 0.00",
+              "fontFamily": "Segoe UI",
+              "fontSize": 12
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "SEL01",
+      "x": 890,
+      "y": -187,
+      "name": "PolyShow - Current UI - Primitive Selected",
+      "width": 1280,
+      "height": 800,
+      "fill": "#F5F5F5",
+      "layout": "vertical",
+      "children": [
+        {
+          "type": "frame",
+          "id": "SEL02",
+          "name": "QMenuBar",
+          "width": "fill_container",
+          "height": 30,
+          "fill": "#FFFFFF",
+          "layout": "horizontal",
+          "gap": 20,
+          "padding": [
+            0,
+            16
+          ],
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "text",
+              "id": "SEL03",
+              "fill": "#202020",
+              "content": "File",
+              "fontFamily": "Segoe UI",
+              "fontSize": 12
+            },
+            {
+              "type": "text",
+              "id": "SEL04",
+              "fill": "#202020",
+              "content": "View",
+              "fontFamily": "Segoe UI",
+              "fontSize": 12
+            },
+            {
+              "type": "text",
+              "id": "SEL05",
+              "fill": "#202020",
+              "content": "Render",
+              "fontFamily": "Segoe UI",
+              "fontSize": 12
+            },
+            {
+              "type": "text",
+              "id": "SEL06",
+              "fill": "#202020",
+              "content": "IPC",
+              "fontFamily": "Segoe UI",
+              "fontSize": 12
+            },
+            {
+              "type": "text",
+              "id": "SEL07",
+              "fill": "#202020",
+              "content": "Help",
+              "fontFamily": "Segoe UI",
+              "fontSize": 12
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "SEL08",
+          "name": "workspaceRoot",
+          "width": "fill_container",
+          "height": 738,
+          "fill": "#F5F5F5",
+          "layout": "vertical",
+          "gap": 8,
+          "padding": 12,
+          "children": [
+            {
+              "type": "frame",
+              "id": "SEL09",
+              "name": "VerticalSplitterTop",
+              "width": "fill_container",
+              "height": 568,
+              "layout": "horizontal",
+              "gap": 0,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "SEL10",
+                  "name": "Left PanelFrame - Layers",
+                  "width": 300,
+                  "height": "fill_container",
+                  "fill": "#FFFFFF",
+                  "cornerRadius": 12,
+                  "stroke": {
+                    "align": "inside",
+                    "thickness": 1,
+                    "fill": "#D3D3D3"
+                  },
+                  "layout": "vertical",
+                  "gap": 10,
+                  "padding": 12,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "SEL11",
+                      "name": "LayerHeader",
+                      "width": "fill_container",
+                      "height": 30,
+                      "layout": "horizontal",
+                      "gap": 8,
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "SEL12",
+                          "fill": "#202020",
+                          "content": "Layers",
+                          "fontFamily": "Segoe UI",
+                          "fontSize": 15,
+                          "fontWeight": "700"
+                        },
+                        {
+                          "type": "frame",
+                          "id": "SEL13",
+                          "width": "fill_container",
+                          "height": 1
+                        },
+                        {
+                          "type": "frame",
+                          "id": "SEL14",
+                          "name": "NewLayerButton",
+                          "width": 48,
+                          "height": 28,
+                          "fill": "#EFEFEF",
+                          "cornerRadius": 8,
+                          "stroke": {
+                            "align": "inside",
+                            "thickness": 1,
+                            "fill": "#C8C8C8"
+                          },
+                          "layout": "vertical",
+                          "alignItems": "center",
+                          "justifyContent": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "SEL15",
+                              "fill": "#202020",
+                              "content": "New",
+                              "fontFamily": "Segoe UI",
+                              "fontSize": 12
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "SEL16",
+                          "name": "ExportLayerButton",
+                          "width": 62,
+                          "height": 28,
+                          "fill": "#EFEFEF",
+                          "cornerRadius": 8,
+                          "stroke": {
+                            "align": "inside",
+                            "thickness": 1,
+                            "fill": "#C8C8C8"
+                          },
+                          "layout": "vertical",
+                          "alignItems": "center",
+                          "justifyContent": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "SEL17",
+                              "fill": "#202020",
+                              "content": "Export",
+                              "fontFamily": "Segoe UI",
+                              "fontSize": 12
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "SEL18",
+                          "name": "SearchToggle",
+                          "width": 28,
+                          "height": 28,
+                          "fill": "#EFEFEF",
+                          "cornerRadius": 8,
+                          "stroke": {
+                            "align": "inside",
+                            "thickness": 1,
+                            "fill": "#C8C8C8"
+                          },
+                          "layout": "vertical",
+                          "alignItems": "center",
+                          "justifyContent": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "SEL19",
+                              "fill": "#202020",
+                              "content": "S",
+                              "fontFamily": "Segoe UI",
+                              "fontSize": 12
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "SEL20",
+                      "fill": "#6E6E6E",
+                      "content": "Layers",
+                      "fontFamily": "Segoe UI",
+                      "fontSize": 11,
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "SEL21",
+                      "name": "LayerTree",
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "fill": "#FFFFFF",
+                      "cornerRadius": 10,
+                      "stroke": {
+                        "align": "inside",
+                        "thickness": 1,
+                        "fill": "#D3D3D3"
+                      },
+                      "layout": "vertical",
+                      "padding": [
+                        8,
+                        10
+                      ],
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "SEL22",
+                          "name": "LayerRowInternal",
+                          "width": "fill_container",
+                          "height": 28,
+                          "fill": "#E4EEFF",
+                          "cornerRadius": 8,
+                          "layout": "horizontal",
+                          "gap": 8,
+                          "alignItems": "center",
+                          "padding": [
+                            0,
+                            8
+                          ],
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "SEL23",
+                              "fill": "#15408F",
+                              "content": "[x] Current drawing (Internal)   5",
+                              "fontFamily": "Segoe UI",
+                              "fontSize": 12
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "SEL24",
+                          "fill": "#202020",
+                          "content": "    [x] Polygon 1",
+                          "fontFamily": "Segoe UI",
+                          "fontSize": 12
+                        },
+                        {
+                          "type": "text",
+                          "id": "SEL25",
+                          "fill": "#202020",
+                          "content": "    [x] Polyline 1",
+                          "fontFamily": "Segoe UI",
+                          "fontSize": 12
+                        },
+                        {
+                          "type": "text",
+                          "id": "SEL26",
+                          "fill": "#202020",
+                          "content": "    [x] Point 1",
+                          "fontFamily": "Segoe UI",
+                          "fontSize": 12
+                        },
+                        {
+                          "type": "text",
+                          "id": "SEL27",
+                          "fill": "#202020",
+                          "content": "[x] remote_stream (IPC)   2",
+                          "fontFamily": "Segoe UI",
+                          "fontSize": 12
+                        },
+                        {
+                          "type": "text",
+                          "id": "SEL28",
+                          "fill": "#202020",
+                          "content": "[ ] demo.ply (File)   7",
+                          "fontFamily": "Segoe UI",
+                          "fontSize": 12
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "SEL29",
+                      "fill": "#202020",
+                      "content": "3 layers  /  7 visible primitives",
+                      "fontFamily": "Consolas",
+                      "fontSize": 12
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "SEL30",
+                  "name": "HorizontalSplitterHandleLeft",
+                  "width": 8,
+                  "height": "fill_container",
+                  "fill": "#D3D3D3"
+                },
+                {
+                  "type": "frame",
+                  "id": "SEL31",
+                  "name": "Viewport PanelFrame - Canvas",
+                  "width": 608,
+                  "height": "fill_container",
+                  "fill": "#FFFFFF",
+                  "cornerRadius": 12,
+                  "stroke": {
+                    "align": "inside",
+                    "thickness": 1,
+                    "fill": "#D3D3D3"
+                  },
+                  "layout": "vertical",
+                  "gap": 10,
+                  "padding": 12,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "SEL32",
+                      "name": "ViewportControls",
+                      "width": "fill_container",
+                      "height": 34,
+                      "layout": "horizontal",
+                      "gap": 8,
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "SEL33",
+                          "width": 72,
+                          "height": 30,
+                          "fill": "#E4EEFF",
+                          "cornerRadius": 8,
+                          "stroke": {
+                            "align": "inside",
+                            "thickness": 1,
+                            "fill": "#2D74FF"
+                          },
+                          "layout": "vertical",
+                          "alignItems": "center",
+                          "justifyContent": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "SEL34",
+                              "fill": "#15408F",
+                              "content": "Browse",
+                              "fontFamily": "Segoe UI",
+                              "fontSize": 12
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "SEL35",
+                          "width": 58,
+                          "height": 30,
+                          "fill": "#EFEFEF",
+                          "cornerRadius": 8,
+                          "stroke": {
+                            "align": "inside",
+                            "thickness": 1,
+                            "fill": "#C8C8C8"
+                          },
+                          "layout": "vertical",
+                          "alignItems": "center",
+                          "justifyContent": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "SEL36",
+                              "fill": "#202020",
+                              "content": "Point",
+                              "fontFamily": "Segoe UI",
+                              "fontSize": 12
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "SEL37",
+                          "width": 78,
+                          "height": 30,
+                          "fill": "#EFEFEF",
+                          "cornerRadius": 8,
+                          "stroke": {
+                            "align": "inside",
+                            "thickness": 1,
+                            "fill": "#C8C8C8"
+                          },
+                          "layout": "vertical",
+                          "alignItems": "center",
+                          "justifyContent": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "SEL38",
+                              "fill": "#202020",
+                              "content": "Polyline",
+                              "fontFamily": "Segoe UI",
+                              "fontSize": 12
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "SEL39",
+                          "width": 74,
+                          "height": 30,
+                          "fill": "#EFEFEF",
+                          "cornerRadius": 8,
+                          "stroke": {
+                            "align": "inside",
+                            "thickness": 1,
+                            "fill": "#C8C8C8"
+                          },
+                          "layout": "vertical",
+                          "alignItems": "center",
+                          "justifyContent": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "SEL40",
+                              "fill": "#202020",
+                              "content": "Polygon",
+                              "fontFamily": "Segoe UI",
+                              "fontSize": 12
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "SEL41",
+                          "width": 60,
+                          "height": 30,
+                          "fill": "#EFEFEF",
+                          "cornerRadius": 8,
+                          "stroke": {
+                            "align": "inside",
+                            "thickness": 1,
+                            "fill": "#C8C8C8"
+                          },
+                          "layout": "vertical",
+                          "alignItems": "center",
+                          "justifyContent": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "SEL42",
+                              "fill": "#8A8A8A",
+                              "content": "Finish",
+                              "fontFamily": "Segoe UI",
+                              "fontSize": 12
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "SEL43",
+                          "width": 62,
+                          "height": 30,
+                          "fill": "#EFEFEF",
+                          "cornerRadius": 8,
+                          "stroke": {
+                            "align": "inside",
+                            "thickness": 1,
+                            "fill": "#C8C8C8"
+                          },
+                          "layout": "vertical",
+                          "alignItems": "center",
+                          "justifyContent": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "SEL44",
+                              "fill": "#8A8A8A",
+                              "content": "Cancel",
+                              "fontFamily": "Segoe UI",
+                              "fontSize": 12
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "SEL45",
+                      "name": "ViewportControlsSecondLine",
+                      "width": "fill_container",
+                      "height": 34,
+                      "layout": "horizontal",
+                      "gap": 8,
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "SEL46",
+                          "width": 70,
+                          "height": 30,
+                          "fill": "#EFEFEF",
+                          "cornerRadius": 8,
+                          "stroke": {
+                            "align": "inside",
+                            "thickness": 1,
+                            "fill": "#C8C8C8"
+                          },
+                          "layout": "vertical",
+                          "alignItems": "center",
+                          "justifyContent": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "SEL47",
+                              "fill": "#202020",
+                              "content": "Fit View",
+                              "fontFamily": "Segoe UI",
+                              "fontSize": 12
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "SEL48",
+                          "width": 62,
+                          "height": 30,
+                          "fill": "#EFEFEF",
+                          "cornerRadius": 8,
+                          "stroke": {
+                            "align": "inside",
+                            "thickness": 1,
+                            "fill": "#C8C8C8"
+                          },
+                          "layout": "vertical",
+                          "alignItems": "center",
+                          "justifyContent": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "SEL49",
+                              "fill": "#202020",
+                              "content": "Zoom -",
+                              "fontFamily": "Segoe UI",
+                              "fontSize": 12
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "SEL50",
+                          "width": 62,
+                          "height": 30,
+                          "fill": "#EFEFEF",
+                          "cornerRadius": 8,
+                          "stroke": {
+                            "align": "inside",
+                            "thickness": 1,
+                            "fill": "#C8C8C8"
+                          },
+                          "layout": "vertical",
+                          "alignItems": "center",
+                          "justifyContent": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "SEL51",
+                              "fill": "#202020",
+                              "content": "Zoom +",
+                              "fontFamily": "Segoe UI",
+                              "fontSize": 12
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "SEL52",
+                          "width": 58,
+                          "height": 30,
+                          "fill": "#EFEFEF",
+                          "cornerRadius": 8,
+                          "stroke": {
+                            "align": "inside",
+                            "thickness": 1,
+                            "fill": "#C8C8C8"
+                          },
+                          "layout": "vertical",
+                          "alignItems": "center",
+                          "justifyContent": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "SEL53",
+                              "fill": "#202020",
+                              "content": "Reset",
+                              "fontFamily": "Segoe UI",
+                              "fontSize": 12
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "SEL54",
+                          "width": "fill_container",
+                          "height": 1
+                        },
+                        {
+                          "type": "frame",
+                          "id": "SEL55",
+                          "width": 70,
+                          "height": 30,
+                          "fill": "#E7F7EF",
+                          "cornerRadius": 8,
+                          "stroke": {
+                            "align": "inside",
+                            "thickness": 1,
+                            "fill": "#39A36E"
+                          },
+                          "layout": "vertical",
+                          "alignItems": "center",
+                          "justifyContent": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "SEL56",
+                              "fill": "#1C6A46",
+                              "content": "Grid On",
+                              "fontFamily": "Segoe UI",
+                              "fontSize": 12
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "SEL57",
+                          "width": 94,
+                          "height": 30,
+                          "fill": "#FFFFFF",
+                          "cornerRadius": 8,
+                          "stroke": {
+                            "align": "inside",
+                            "thickness": 1,
+                            "fill": "#C8C8C8"
+                          },
+                          "layout": "horizontal",
+                          "alignItems": "center",
+                          "justifyContent": "space_between",
+                          "padding": [
+                            0,
+                            10
+                          ],
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "SEL58",
+                              "fill": "#202020",
+                              "content": "Solid",
+                              "fontFamily": "Segoe UI",
+                              "fontSize": 12
+                            },
+                            {
+                              "type": "text",
+                              "id": "SEL59",
+                              "fill": "#6E6E6E",
+                              "content": "v",
+                              "fontFamily": "Segoe UI",
+                              "fontSize": 11
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "SEL60",
+                      "name": "QGraphicsView Canvas With Selection",
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "fill": "#FFFFFF",
+                      "cornerRadius": 10,
+                      "stroke": {
+                        "align": "inside",
+                        "thickness": 1,
+                        "fill": "#D3D3D3"
+                      },
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "SEL61",
+                          "x": 96,
+                          "y": 0,
+                          "width": 1,
+                          "height": 424,
+                          "fill": "#EFEFEF"
+                        },
+                        {
+                          "type": "frame",
+                          "id": "SEL62",
+                          "x": 192,
+                          "y": 0,
+                          "width": 1,
+                          "height": 424,
+                          "fill": "#EFEFEF"
+                        },
+                        {
+                          "type": "frame",
+                          "id": "SEL63",
+                          "x": 288,
+                          "y": 0,
+                          "width": 1,
+                          "height": 424,
+                          "fill": "#EFEFEF"
+                        },
+                        {
+                          "type": "frame",
+                          "id": "SEL64",
+                          "x": 384,
+                          "y": 0,
+                          "width": 1,
+                          "height": 424,
+                          "fill": "#EFEFEF"
+                        },
+                        {
+                          "type": "frame",
+                          "id": "SEL65",
+                          "x": 480,
+                          "y": 0,
+                          "width": 1,
+                          "height": 424,
+                          "fill": "#EFEFEF"
+                        },
+                        {
+                          "type": "frame",
+                          "id": "SEL66",
+                          "x": 0,
+                          "y": 96,
+                          "width": 584,
+                          "height": 1,
+                          "fill": "#EFEFEF"
+                        },
+                        {
+                          "type": "frame",
+                          "id": "SEL67",
+                          "x": 0,
+                          "y": 192,
+                          "width": 584,
+                          "height": 1,
+                          "fill": "#EFEFEF"
+                        },
+                        {
+                          "type": "frame",
+                          "id": "SEL68",
+                          "x": 0,
+                          "y": 288,
+                          "width": 584,
+                          "height": 1,
+                          "fill": "#EFEFEF"
+                        },
+                        {
+                          "type": "frame",
+                          "id": "SEL69",
+                          "name": "SelectedPolygon",
+                          "x": 164,
+                          "y": 118,
+                          "width": 212,
+                          "height": 150,
+                          "fill": "#E4EEFF",
+                          "cornerRadius": 8,
+                          "stroke": {
+                            "align": "inside",
+                            "thickness": 2,
+                            "fill": "#2D74FF"
+                          }
+                        },
+                        {
+                          "type": "frame",
+                          "id": "SEL70",
+                          "name": "PolylinePreview",
+                          "x": 382,
+                          "y": 278,
+                          "width": 120,
+                          "height": 3,
+                          "fill": "#C45A5A",
+                          "cornerRadius": 2
+                        },
+                        {
+                          "type": "ellipse",
+                          "id": "SEL71",
+                          "name": "PointPrimitive",
+                          "x": 436,
+                          "y": 150,
+                          "width": 12,
+                          "height": 12,
+                          "fill": "#39A36E",
+                          "stroke": {
+                            "align": "inside",
+                            "thickness": 1,
+                            "fill": "#1C6A46"
+                          }
+                        },
+                        {
+                          "type": "frame",
+                          "id": "SEL72",
+                          "name": "ScaleBar",
+                          "x": 20,
+                          "y": 374,
+                          "width": 136,
+                          "height": 28,
+                          "fill": "#FAFAFA",
+                          "cornerRadius": 8,
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "SEL73",
+                              "x": 12,
+                              "y": 16,
+                              "width": 96,
+                              "height": 2,
+                              "fill": "#202020"
+                            },
+                            {
+                              "type": "text",
+                              "id": "SEL74",
+                              "x": 114,
+                              "y": 7,
+                              "fill": "#202020",
+                              "content": "100",
+                              "fontFamily": "Segoe UI",
+                              "fontSize": 11
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "SEL75",
+                          "name": "InteractionHintCard",
+                          "x": 402,
+                          "y": 278,
+                          "width": 160,
+                          "height": 124,
+                          "fill": "#FAFAFA",
+                          "cornerRadius": 8,
+                          "stroke": {
+                            "align": "inside",
+                            "thickness": 1,
+                            "fill": "#D3D3D3"
+                          },
+                          "layout": "vertical",
+                          "gap": 8,
+                          "padding": 10,
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "SEL76",
+                              "fill": "#202020",
+                              "content": "Wheel      Zoom",
+                              "fontFamily": "Consolas",
+                              "fontSize": 11
+                            },
+                            {
+                              "type": "text",
+                              "id": "SEL77",
+                              "fill": "#202020",
+                              "content": "Middle     Pan",
+                              "fontFamily": "Consolas",
+                              "fontSize": 11
+                            },
+                            {
+                              "type": "text",
+                              "id": "SEL78",
+                              "fill": "#202020",
+                              "content": "Left       Select",
+                              "fontFamily": "Consolas",
+                              "fontSize": 11
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "SEL79",
+                  "name": "HorizontalSplitterHandleRight",
+                  "width": 8,
+                  "height": "fill_container",
+                  "fill": "#D3D3D3"
+                },
+                {
+                  "type": "frame",
+                  "id": "SEL80",
+                  "name": "Inspector PanelFrame",
+                  "width": 332,
+                  "height": "fill_container",
+                  "fill": "#FFFFFF",
+                  "cornerRadius": 12,
+                  "stroke": {
+                    "align": "inside",
+                    "thickness": 1,
+                    "fill": "#D3D3D3"
+                  },
+                  "layout": "vertical",
+                  "gap": 12,
+                  "padding": 12,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "SEL81",
+                      "name": "InspectorHeader",
+                      "width": "fill_container",
+                      "height": 28,
+                      "layout": "horizontal",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "SEL82",
+                          "fill": "#202020",
+                          "content": "Inspector",
+                          "fontFamily": "Segoe UI",
+                          "fontSize": 15,
+                          "fontWeight": "700"
+                        },
+                        {
+                          "type": "frame",
+                          "id": "SEL83",
+                          "width": "fill_container",
+                          "height": 1
+                        },
+                        {
+                          "type": "frame",
+                          "id": "SEL84",
+                          "name": "InspectorBadge",
+                          "width": 74,
+                          "height": 22,
+                          "fill": "#E4EEFF",
+                          "cornerRadius": 10,
+                          "layout": "vertical",
+                          "alignItems": "center",
+                          "justifyContent": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "SEL85",
+                              "fill": "#15408F",
+                              "content": "Primitive",
+                              "fontFamily": "Segoe UI",
+                              "fontSize": 11,
+                              "fontWeight": "600"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "SEL86",
+                      "name": "InspectorCard",
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "fill": "#FAFAFA",
+                      "cornerRadius": 10,
+                      "stroke": {
+                        "align": "inside",
+                        "thickness": 1,
+                        "fill": "#D3D3D3"
+                      },
+                      "layout": "vertical",
+                      "gap": 10,
+                      "padding": 12,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "SEL87",
+                          "fill": "#202020",
+                          "content": "Polygon 1",
+                          "fontFamily": "Segoe UI",
+                          "fontSize": 15,
+                          "fontWeight": "700"
+                        },
+                        {
+                          "type": "text",
+                          "id": "SEL88",
+                          "fill": "#202020",
+                          "content": "Primitive / selected in Current drawing",
+                          "fontFamily": "Segoe UI",
+                          "fontSize": 12
+                        },
+                        {
+                          "type": "text",
+                          "id": "SEL89",
+                          "fill": "#6E6E6E",
+                          "content": "Geometry",
+                          "fontFamily": "Segoe UI",
+                          "fontSize": 11,
+                          "fontWeight": "600"
+                        },
+                        {
+                          "type": "text",
+                          "id": "SEL90",
+                          "fill": "#202020",
+                          "content": "Type        Polygon\nVertices    4\nBounds      220.00 x 160.00\nVisible     true",
+                          "fontFamily": "Consolas",
+                          "fontSize": 12
+                        },
+                        {
+                          "type": "text",
+                          "id": "SEL91",
+                          "fill": "#202020",
+                          "content": "Style fields submit on Enter or when focus leaves. Coordinates update in real time.",
+                          "fontFamily": "Segoe UI",
+                          "fontSize": 12
+                        },
+                        {
+                          "type": "text",
+                          "id": "SEL92",
+                          "fill": "#6E6E6E",
+                          "content": "Stroke Color",
+                          "fontFamily": "Segoe UI",
+                          "fontSize": 11,
+                          "fontWeight": "600"
+                        },
+                        {
+                          "type": "frame",
+                          "id": "SEL93",
+                          "name": "StrokeColorField",
+                          "width": "fill_container",
+                          "height": 34,
+                          "fill": "#FFFFFF",
+                          "cornerRadius": 8,
+                          "stroke": {
+                            "align": "inside",
+                            "thickness": 1,
+                            "fill": "#C8C8C8"
+                          },
+                          "layout": "horizontal",
+                          "gap": 8,
+                          "alignItems": "center",
+                          "padding": [
+                            0,
+                            10
+                          ],
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "SEL94",
+                              "width": 18,
+                              "height": 18,
+                              "fill": "#2D74FF",
+                              "cornerRadius": 4
+                            },
+                            {
+                              "type": "text",
+                              "id": "SEL95",
+                              "fill": "#202020",
+                              "content": "#2D74FFFF",
+                              "fontFamily": "Consolas",
+                              "fontSize": 12
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "SEL96",
+                          "fill": "#6E6E6E",
+                          "content": "Fill",
+                          "fontFamily": "Segoe UI",
+                          "fontSize": 11,
+                          "fontWeight": "600"
+                        },
+                        {
+                          "type": "text",
+                          "id": "SEL97",
+                          "fill": "#202020",
+                          "content": "[x] Enable Fill",
+                          "fontFamily": "Segoe UI",
+                          "fontSize": 12
+                        },
+                        {
+                          "type": "text",
+                          "id": "SEL98",
+                          "fill": "#6E6E6E",
+                          "content": "Fill Color",
+                          "fontFamily": "Segoe UI",
+                          "fontSize": 11,
+                          "fontWeight": "600"
+                        },
+                        {
+                          "type": "frame",
+                          "id": "SEL99",
+                          "name": "FillColorField",
+                          "width": "fill_container",
+                          "height": 34,
+                          "fill": "#FFFFFF",
+                          "cornerRadius": 8,
+                          "stroke": {
+                            "align": "inside",
+                            "thickness": 1,
+                            "fill": "#C8C8C8"
+                          },
+                          "layout": "horizontal",
+                          "gap": 8,
+                          "alignItems": "center",
+                          "padding": [
+                            0,
+                            10
+                          ],
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "SE100",
+                              "width": 18,
+                              "height": 18,
+                              "fill": "#E4EEFF",
+                              "cornerRadius": 4,
+                              "stroke": {
+                                "align": "inside",
+                                "thickness": 1,
+                                "fill": "#2D74FF"
+                              }
+                            },
+                            {
+                              "type": "text",
+                              "id": "SE101",
+                              "fill": "#202020",
+                              "content": "#E4EEFFFF",
+                              "fontFamily": "Consolas",
+                              "fontSize": 12
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "SE102",
+                          "fill": "#6E6E6E",
+                          "content": "Line Width",
+                          "fontFamily": "Segoe UI",
+                          "fontSize": 11,
+                          "fontWeight": "600"
+                        },
+                        {
+                          "type": "frame",
+                          "id": "SE103",
+                          "width": "fill_container",
+                          "height": 34,
+                          "fill": "#FFFFFF",
+                          "cornerRadius": 8,
+                          "stroke": {
+                            "align": "inside",
+                            "thickness": 1,
+                            "fill": "#C8C8C8"
+                          },
+                          "layout": "vertical",
+                          "justifyContent": "center",
+                          "padding": [
+                            0,
+                            10
+                          ],
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "SE104",
+                              "fill": "#202020",
+                              "content": "2.00",
+                              "fontFamily": "Segoe UI",
+                              "fontSize": 12
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "SE105",
+                          "fill": "#6E6E6E",
+                          "content": "Point Size",
+                          "fontFamily": "Segoe UI",
+                          "fontSize": 11,
+                          "fontWeight": "600"
+                        },
+                        {
+                          "type": "frame",
+                          "id": "SE106",
+                          "width": "fill_container",
+                          "height": 34,
+                          "fill": "#FFFFFF",
+                          "cornerRadius": 8,
+                          "stroke": {
+                            "align": "inside",
+                            "thickness": 1,
+                            "fill": "#C8C8C8"
+                          },
+                          "layout": "vertical",
+                          "justifyContent": "center",
+                          "padding": [
+                            0,
+                            10
+                          ],
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "SE107",
+                              "fill": "#202020",
+                              "content": "6.00",
+                              "fontFamily": "Segoe UI",
+                              "fontSize": 12
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "SE108",
+                          "fill": "#6E6E6E",
+                          "content": "Coordinates",
+                          "fontFamily": "Segoe UI",
+                          "fontSize": 11,
+                          "fontWeight": "600"
+                        },
+                        {
+                          "type": "frame",
+                          "id": "SE109",
+                          "width": "fill_container",
+                          "height": 92,
+                          "fill": "#FFFFFF",
+                          "cornerRadius": 8,
+                          "stroke": {
+                            "align": "inside",
+                            "thickness": 1,
+                            "fill": "#C8C8C8"
+                          },
+                          "layout": "vertical",
+                          "padding": 10,
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "SE110",
+                              "fill": "#202020",
+                              "content": "120 80\n340 88\n336 240\n128 228",
+                              "fontFamily": "Consolas",
+                              "fontSize": 12
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "SE111",
+                          "fill": "#202020",
+                          "content": "Invalid coordinates keep the text, turn the border red, and hide the preview.",
+                          "fontFamily": "Segoe UI",
+                          "fontSize": 12
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "SE112",
+              "name": "VerticalSplitterHandle",
+              "width": "fill_container",
+              "height": 8,
+              "fill": "#D3D3D3"
+            },
+            {
+              "type": "frame",
+              "id": "SE113",
+              "name": "BottomTabWidget",
+              "width": "fill_container",
+              "height": "fill_container",
+              "layout": "vertical",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "SE114",
+                  "name": "LogPanelFrame",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "#FFFFFF",
+                  "cornerRadius": 12,
+                  "stroke": {
+                    "align": "inside",
+                    "thickness": 1,
+                    "fill": "#D3D3D3"
+                  },
+                  "layout": "vertical",
+                  "gap": 4,
+                  "padding": 12,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "SE115",
+                      "fill": "#15408F",
+                      "content": "[info] Created internal layer Current drawing",
+                      "fontFamily": "Consolas",
+                      "fontSize": 12
+                    },
+                    {
+                      "type": "text",
+                      "id": "SE116",
+                      "fill": "#15408F",
+                      "content": "[info] Added Polygon 1 to Current drawing",
+                      "fontFamily": "Consolas",
+                      "fontSize": 12
+                    },
+                    {
+                      "type": "text",
+                      "id": "SE117",
+                      "fill": "#8A6400",
+                      "content": "[warning] demo.ply hidden from layer tree visibility",
+                      "fontFamily": "Consolas",
+                      "fontSize": 12
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "SE118",
+                  "name": "SouthTabBar",
+                  "width": "fill_container",
+                  "height": 32,
+                  "layout": "horizontal",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "SE119",
+                      "name": "LogTabSelected",
+                      "width": 64,
+                      "height": 30,
+                      "fill": "#FFFFFF",
+                      "cornerRadius": 8,
+                      "stroke": {
+                        "align": "inside",
+                        "thickness": 1,
+                        "fill": "#2D74FF"
+                      },
+                      "layout": "vertical",
+                      "alignItems": "center",
+                      "justifyContent": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "SE120",
+                          "fill": "#15408F",
+                          "content": "Log",
+                          "fontFamily": "Segoe UI",
+                          "fontSize": 12
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "SE121",
+          "name": "QStatusBar",
+          "width": "fill_container",
+          "height": 32,
+          "fill": "#FFFFFF",
+          "layout": "horizontal",
+          "alignItems": "center",
+          "gap": 24,
+          "padding": [
+            0,
+            16
+          ],
+          "children": [
+            {
+              "type": "text",
+              "id": "SE122",
+              "fill": "#6E6E6E",
+              "content": "Browse mode",
+              "fontFamily": "Segoe UI",
+              "fontSize": 12
+            },
+            {
+              "type": "frame",
+              "id": "SE123",
+              "width": "fill_container",
+              "height": 1
+            },
+            {
+              "type": "text",
+              "id": "SE124",
+              "fill": "#202020",
+              "content": "Points: 1  Polylines: 1  Polygons: 1",
+              "fontFamily": "Segoe UI",
+              "fontSize": 12
+            },
+            {
+              "type": "text",
+              "id": "SE125",
+              "fill": "#202020",
+              "content": "X: 184.52  Y: 238.10",
+              "fontFamily": "Segoe UI",
+              "fontSize": 12
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

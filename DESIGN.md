@@ -1,268 +1,304 @@
-# PolyShow UI 原型设计说明
+# PolyShow Design Guide
 
-## 1. 文档目的
+## Purpose
 
-本文档用于说明当前 [polyshow.pen](D:/project/polyshow/designs/ui-prototype/polyshow.pen) 中的 UI 原型设计。
+This document defines the UI direction for PolyShow and the design constraints that should stay aligned with
+`designs/ui-prototype/polyshow.pen`.
 
-这份文档是当前设计稿的说明性来源，主要约束以下内容：
+The current direction is V2: a Blender-inspired dark spatial editor style that is dense, task-focused, panelized, and
+centered on a dominant geometry viewport. PolyShow should borrow Blender's product logic, not its branding.
 
-- `.pen` 文件中的页面状态
-- 各区域的布局职责
-- 需要在后续迭代中保持一致的交互逻辑
-- 当前原型使用的视觉风格
+The previous prototype is preserved as `designs/ui-prototype/polyshow-v1.pen`. The current source of truth is
+`designs/ui-prototype/polyshow.pen`.
 
-本文档聚焦产品 UI 设计，不讨论 Qt 代码实现细节。
+## References
 
-## 2. 当前设计稿页面
+Primary references used for this guide:
 
-当前原型包含 4 个顶层页面：
+- Blender Manual: Workspaces
+  https://docs.blender.org/manual/en/3.0/interface/window_system/workspaces.html
+- Blender Manual: Areas
+  https://docs.blender.org/manual/en/latest/interface/window_system/areas.html
+- Blender Manual: Regions
+  https://docs.blender.org/manual/en/latest/interface/window_system/regions.html
+- Blender Manual: Tabs & Panels
+  https://docs.blender.org/manual/en/latest/interface/window_system/tabs_panels.html
+- Blender Manual: Status Bar
+  https://docs.blender.org/manual/en/3.0/interface/window_system/status_bar.html
+- Blender Developer Documentation: Layouts
+  https://developer.blender.org/docs/features/interface/human_interface_guidelines/layouts/
+- Blender Developer Documentation: Icons
+  https://developer.blender.org/docs/features/interface/human_interface_guidelines/icons/
 
-1. `PolyShow - Primitive Selected`
-2. `PolyShow - Layer Selected`
-3. `PolyShow - Empty State`
-4. `PolyShow - Search Open`
+## Blender Style Takeaways
 
-这 4 个页面不是 4 套独立风格，而是同一套产品在不同工作状态下的页面表达。
+Blender's UI is organized as a spatial editor system:
 
-## 3. 核心产品逻辑
+- Workspaces are task-oriented layouts.
+- Areas reserve screen space for editors.
+- Editors have a dominant main region plus secondary regions such as headers, toolbars, sidebars, and panels.
+- Panels are the smallest reusable organization unit and can collapse when detail is not needed.
+- The status bar carries contextual shortcuts, messages, and statistics.
+- Important and frequent actions stay visible; less common controls move lower or into panels.
+- Icon-only controls require tooltips and must not reuse the same icon for different meanings.
 
-### 3.1 文件与图层关系
+## PolyShow Layout Model
 
-- 一个导入文件等于一个图层。
-- 当前产品逻辑中，一个文件下面不会再拆成多个独立图层。
-- 因此左侧结构树应表现为：
-  - 顶层是文件/图层节点
-  - 文件/图层节点下面直接挂图元节点
+PolyShow uses the same spatial hierarchy in a simpler 2D geometry context:
 
-### 3.2 显隐控制
+1. Window
+2. Workspace root
+3. Areas
+4. Regions
+5. Panels
+6. Controls
 
-- 文件/图层节点和图元节点都需要显隐控制。
-- 当前设计统一使用复选框表达显隐状态。
-- 勾选表示显示。
-- 未勾选表示隐藏。
+The main window remains a desktop editor, not a web dashboard or marketing surface.
 
-### 3.3 搜索行为
+### Areas
 
-- 搜索不是长期展开的输入框。
-- 默认状态下，左侧顶部只显示一个搜索按钮。
-- 当搜索被打开时，按钮进入激活态，并在左侧标题下方临时展开搜索输入框。
-- `PolyShow - Search Open` 页面专门用于表示这一展开状态。
+PolyShow has these primary areas:
 
-### 3.4 右侧检查器行为
+- Top menu bar: global application commands.
+- Left structure area: layer and primitive navigation.
+- Center editor area: geometry viewport and viewport-local tools.
+- Right properties area: contextual inspector, hidden when nothing is selected.
+- Bottom output area: log panel.
+- Bottom status bar: transient messages, counts, and cursor position.
 
-右侧检查器是状态驱动的：
+### Dominant Region
 
-- 当没有任何选择时，右侧检查器隐藏。
-- 当选中文件/图层时，右侧显示图层信息。
-- 当选中图元时，右侧显示图元信息。
+The geometry viewport is always the dominant visual region.
 
-这也是当前设计稿需要拆成 `Empty State`、`Layer Selected`、`Primitive Selected` 三个页面的原因。
+Rules:
 
-## 4. 统一布局结构
+- The viewport must receive the largest continuous space.
+- Side panels should support the viewport, not compete with it.
+- Viewport controls live inside the viewport panel because they operate on the editor region.
+- Empty state should enlarge the viewport by hiding the inspector.
 
-所有主页面都遵循同一套桌面编辑器布局：
+## Prototype Versioning
 
-1. 顶部菜单栏
-2. 中间主工作区
-3. 下方日志面板
-4. 底部状态栏
+- `designs/ui-prototype/polyshow-v1.pen` is the V1 legacy reference. Do not edit it for new design work.
+- `designs/ui-prototype/polyshow.pen` is the V2 current design source of truth.
+- V2 should not keep old pages as hidden leftovers inside the active `.pen`; use the separate V1 file for comparison.
 
-### 4.1 顶部菜单栏
+## Current Prototype Screens
 
-- 这里只放全局菜单语义。
-- 当前菜单结构为：
-  - `File`
-  - `View`
-  - `Render`
-  - `Help`
+The prototype currently includes these product states:
 
-顶部不再使用第二层全局工具栏。
+- `PolyShow V2 - Primitive Selected`
+- `PolyShow V2 - Layer Selected`
+- `PolyShow V2 - Empty State`
+- `PolyShow V2 - Search Open`
+- `PolyShow V2 - Menus and Dialogs`
+- `PolyShow V2 - Drawing IPC and Theme States`
 
-### 4.2 左侧结构栏
+These are not separate styles. They are states of one editor system.
 
-左侧主要负责结构导航和可见性管理。
+## Navigation and Structure
 
-当前包含：
+The left sidebar is PolyShow's equivalent of a simplified Outliner.
 
-- 标题区域
-- 搜索按钮或搜索展开态
-- 已导入文件分区标题
-- 文件/图层与图元树
-- 显隐复选框
-- 底部简要统计
+Rules:
 
-这个面板应保持紧凑、高密度、工具化。
+- A file-backed import appears as a layer row.
+- Internal layers and IPC layers use the same row structure with a type suffix.
+- Primitive rows are direct children of their owning layer.
+- Layer and primitive visibility are represented with checkboxes.
+- A layer checkbox may represent mixed visibility when child primitives differ.
+- Search is collapsed by default and expands only when requested.
+- Search results should preserve hierarchy where possible.
 
-### 4.3 中央视图区
+## Viewport
 
-中间区域是整个应用的视觉中心。
+The viewport is PolyShow's primary editor region.
 
-当前包含：
+It should include:
 
-- 视图卡片容器
-- 内嵌在视图中的顶部工具条
-- 几何画布
-- 网格与坐标轴
-- 当前选中图元高亮
+- Grid and axis rendering.
+- Geometry primitives.
+- Selection bounds.
+- Drawing preview.
+- Interaction hint overlay.
+- Scale bar overlay.
+- Viewport-local controls for browse/draw modes, fit, zoom, reset, grid, and render mode.
 
-关键原则：
+Rules:
 
-- 与图形视图直接相关的操作必须放在视图区内部，不再单独放到顶部全局工具栏。
+- Do not move viewport-local operations into global navigation.
+- Keep tool controls compact and scan-friendly.
+- Use segmented or pill controls for mutually exclusive tools.
+- Use a combo box for render mode because it has three options and can grow later.
+- Show contextual feedback in the status bar and log panel, not as large decorative banners.
 
-当前视图工具包括：
+## Inspector
 
-- `Pan`
-- `Fit View`
-- `Zoom -`
-- `Zoom +`
-- `Reset`
-- `Grid On`
-- `Solid`
+The right inspector is contextual and selection-driven.
 
-### 4.4 右侧检查器
+States:
 
-右侧是一个统一的检查器面板，而不是多张分散的小卡片。
+- No selection: hidden.
+- Layer selection: show layer type, summary, primitive counts, and source meaning.
+- Primitive selection: show primitive identity, geometry summary, style fields, and coordinates.
 
-当前检查器承担的职责：
+Rules:
 
-- 当前对象身份信息
-- 几何信息
-- 坐标信息
-- 样式信息
-- 后续可编辑方向提示
+- Group related fields with compact section labels.
+- Keep editable fields in predictable order: identity, geometry, style, coordinates, hints.
+- Validation errors stay near the field that caused them.
+- Invalid coordinates should visibly mark the text edit and suppress misleading previews.
+- Avoid nested decorative cards; one card inside the inspector is enough.
 
-目前视觉上是一个主信息卡片承载全部核心内容。
+## Menus and Dialogs
 
-### 4.5 底部日志面板
+Menus are global command surfaces.
 
-底部日志区保持简化设计。
+Current menu model:
 
-- 只使用一个 `Log` 标签页。
-- 日志以逐行方式展示。
-- 可以继续使用颜色区分不同级别：
-  - error
-  - warning
-  - info
+- File: New Layer, Open, Export Active Layer, Exit.
+- View: Fit to View, Zoom In, Zoom Out, Reset View.
+- Render: Solid, Wireframe, Points.
+- IPC: Start IPC Listener, Stop IPC Listener.
+- Help: About.
 
-当前设计明确不拆成 `Problems`、`Warnings`、`Output` 等多个标签页。
+Dialogs should remain plain Qt-style utility dialogs:
 
-## 5. 不同状态页规则
+- New Layer: name input, type selector, validation text, OK/Cancel.
+- About: short feature summary.
+- Export/Open failures: concise messages and direct recovery path.
 
-### 5.1 Primitive Selected
+## Status and Logs
 
-页面：`PolyShow - Primitive Selected`
+The status bar should follow Blender's status-bar pattern:
 
-该页面用于表示“当前选中的是图元”。
+- Left: current transient message.
+- Right: scene counts and cursor coordinates.
 
-右侧应展示：
+The log panel is the persistent record:
 
-- 图元名称
-- 图元类型
-- 几何摘要
-- 坐标点信息
-- 样式信息
-- 后续可编辑属性方向
+- `info`: normal successful operations.
+- `warning`: recoverable or surprising behavior.
+- `error`: failed user action, parser failure, IPC rejection, or validation failure.
 
-### 5.2 Layer Selected
+Do not split the log into multiple tabs until the product has enough output volume to justify it.
 
-页面：`PolyShow - Layer Selected`
+## Visual Style
 
-该页面用于表示“当前选中的是文件/图层”。
+PolyShow should feel like a compact technical editor. V2 is dark-first.
 
-右侧应展示：
+### V2 Prototype Dark Theme
 
-- 文件名
-- 图层身份
-- 图元数量
-- 可见/隐藏数量
-- 各图元类型分布
-- 源文件信息
+Current V2 prototype tokens:
 
-### 5.3 Empty State
+- Window background: `#202124`
+- Top bar: `#2C2D31`
+- Panel: `#303236`
+- Secondary panel: `#282A2E`
+- Viewport/canvas: `#1F2228`
+- Border: `#45484F`
+- Text: `#E9EAEC`
+- Muted text: `#AEB4BC`
+- Primary accent: `#63A7FF`
+- Primary selected background: `#274763`
+- Success accent: `#6EC987`
+- Warning accent: `#E7BF67`
+- Error accent: `#ED8A8A`
 
-页面：`PolyShow - Empty State`
+### Runtime Light Theme
 
-该页面用于表示“当前没有任何选择”。
+Current Qt tokens:
 
-预期表现：
+- Window background: `#F5F5F5`
+- Panel: `#FFFFFF`
+- Card: `#FAFAFA`
+- Border: `#D3D3D3`
+- Button: `#EFEFEF`
+- Text: `#202020`
+- Muted text: `#6E6E6E`
+- Primary accent: `#2D74FF`
+- Primary selected background: `#E4EEFF`
+- Success accent: `#39A36E`
+- Error accent: `#C45A5A`
 
-- 右侧检查器隐藏
-- 中央视图成为更强的视觉中心
-- 左侧结构栏继续保留
-- 底部日志继续保留
+### Runtime Dark Theme
 
-### 5.4 Search Open
+Current Qt tokens:
 
-页面：`PolyShow - Search Open`
+- Window background: `#2B2B2B`
+- Panel: `#353535`
+- Card: `#303030`
+- Border: `#494949`
+- Button: `#3A3A3A`
+- Text: `#E4E4E4`
+- Muted text: `#A0A0A0`
+- Primary accent: `#4E8CFF`
+- Primary selected background: `#254A73`
+- Success accent: `#5FBF8F`
+- Error accent: `#C76969`
 
-该页面用于表示“左侧搜索被临时展开”的状态。
+## Typography
 
-预期表现：
+Use Qt's current UI typography:
 
-- 搜索按钮进入激活态
-- 左侧标题下方展开搜索输入框
-- 左侧分区标题可切换为搜索结果语义
-- 页脚可以显示匹配数量
+- `Segoe UI` for ordinary UI text.
+- `Consolas` or `IBM Plex Mono` for logs, coordinates, paths, and structured numeric data.
 
-## 6. 当前视觉风格
+Use smaller text in panels. Reserve large type for screen titles in design boards only, not in the application UI.
 
-当前原型采用的是现代工具型桌面应用风格，整体方向偏干净、克制、编辑器化。
+## Icon System
 
-### 6.1 配色方向
+PolyShow uses Google Material Symbols Rounded as the default icon language.
 
-整体使用接近 Tailwind 的中性色和蓝色强调体系：
+Rules:
 
-- 页面底色：`slate / gray 50-100`
-- 面板底色：白色
-- 分割线与边框：`slate 200`
-- 文本：
-  - 主文本：深色 slate
-  - 次文本：浅色 slate
-- 强调色：
-  - 选中与激活：蓝色
-  - 成功或状态提示：绿色
-  - 日志级别：红 / 橙 / 蓝
+- In Pencil, use `icon_font` with `iconFontFamily: "Material Symbols Rounded"` before considering any custom asset.
+- In Qt UI work, prefer the Google Material Symbols Rounded icon font for menus, toolbars, buttons, panels, and status UI.
+- Use text labels with icons for important commands; icon-only controls require tooltips.
+- Do not mix Material Symbols Rounded with other icon families unless a deliberate migration plan exists.
+- Use custom SVG only when Material Symbols Rounded cannot express the required shape or when the icon is a product-specific diagram.
 
-### 6.2 形状与密度
+### SVG Exception Workflow
 
-- 面板使用柔和圆角。
-- 整体应保持紧凑、工作导向。
-- 左侧结构栏和底部日志区密度高于视图区。
-- 视图区必须始终是最清晰、最大的视觉主体。
+When a custom SVG icon is genuinely required:
 
-### 6.3 字体策略
+1. Use `$svg-precision-skill`.
+2. Define fixed dimensions, explicit `viewBox`, and deterministic geometry.
+3. Build and validate the SVG with the skill tooling.
+4. Place the generated SVG under `resources/icons/`.
+5. If the program needs the icon, add it to the relevant Qt `.qrc` file in the implementation phase.
+6. If the design needs the icon, reference the same asset in the Pencil design rather than recreating a separate version.
 
-当前原型使用：
+## Component Rules
 
-- `Inter`：通用 UI 文本
-- `IBM Plex Mono`：结构化数字、路径、日志、坐标等数据文本
+- `PanelFrame` is the standard panel, card, and canvas container.
+- `PillButton` is the standard viewport/tool action button.
+- `ColorField` is the standard color editor pattern.
+- Reusable UI behavior belongs in a reusable widget, not as one-off `MainWindow` code.
+- Prefer Material Symbols Rounded icons for component affordances.
+- Use checkboxes for binary visibility.
+- Use combo boxes for option sets with three or more values.
+- Use compact labels and tooltips for dense tool controls.
 
-这套区分在后续版本中应继续保持。
+## Anti-Patterns
 
-## 7. 后续迭代约束
+Avoid:
 
-后续设计迭代应继续保持以下约束：
+- Marketing-style hero sections.
+- Large decorative cards around every element.
+- Floating visual ornaments that do not support editing.
+- Multiple equal-weight focal regions.
+- Duplicating the same command in unrelated locations.
+- Icon-only controls without tooltips.
+- Full-width warning banners for routine validation.
+- UI text that explains the UI instead of showing state.
 
-- 一个文件就是一个图层
-- 文件行与图元行都要有显式的显隐复选框
-- 搜索默认保持收起
-- 检查器内容必须随选中状态切换
-- 视图工具必须留在视图区内部
-- 底部输出区在需求变化前保持简单
+## Change Control
 
-如果未来代码行为有变化，这份文档和 `.pen` 原型应一起同步更新。
+When UI behavior changes:
 
-## 8. 与后续实现的关系
-
-当前 UI 原型有意贴合项目的现阶段方向：
-
-- 左侧负责导入文件/图层结构与图元可见性管理
-- 中间是几何工作区
-- 右侧是未来可编辑的检查器
-- 下方是解析输出与运行反馈
-
-这份原型还不是精确到像素级的 Qt 部件实现图，但它应作为后续 UI 落地讨论时的体验和布局参考。
-
-## 9. 更新说明
-
-本文档反映的是 `2026-04-15` 当前设计稿状态。
+1. Update the Qt implementation.
+2. Update `designs/ui-prototype/polyshow.pen`.
+3. Update this guide if the layout model, style, or state behavior changed.
+4. Keep `AGENTS.md` aligned with any implementation rules that coding agents must follow.
+5. If custom SVG icons were added, validate that the same asset path is usable by both the program and the design.

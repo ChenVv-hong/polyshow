@@ -1,8 +1,7 @@
 #include "ui/MaterialIconLabel.h"
 
-#include "ui/MaterialIcon.h"
-
-#include <QFont>
+#include <QStyle>
+#include <QtGlobal>
 
 namespace PolyShow
 {
@@ -23,11 +22,13 @@ void MaterialIconLabel::setIconName(const QString &iconName)
 
 void MaterialIconLabel::setIconPixelSize(int pixelSize)
 {
-    QFont iconFont(MaterialIcon::fontFamily());
-    iconFont.setPixelSize(pixelSize);
-    iconFont.setWeight(QFont::Normal);
-    setFont(iconFont);
-    setFixedSize(pixelSize, pixelSize);
+    const int normalizedPixelSize = qMax(pixelSize, 1);
+    setProperty("iconSize", QString::number(normalizedPixelSize));
+    setFixedSize(normalizedPixelSize, normalizedPixelSize);
+
+    style()->unpolish(this);
+    style()->polish(this);
+    update();
 }
 
 } // namespace PolyShow

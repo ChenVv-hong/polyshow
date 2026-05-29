@@ -124,8 +124,68 @@ QLabel[role="panelTitle"] {
 }
 
 QLabel#materialIcon {
+    font-family: "Material Symbols Rounded";
+    font-size: 16px;
+    font-weight: 400;
     color: #2D74FF;
     background-color: transparent;
+}
+
+QLabel#materialIcon[iconSize="16"] {
+    font-size: 16px;
+}
+
+QLabel#materialIcon[iconSize="18"] {
+    font-size: 18px;
+}
+
+QLabel#materialIcon[iconSize="20"] {
+    font-size: 20px;
+}
+
+QLabel#materialIcon[iconSize="24"] {
+    font-size: 24px;
+}
+
+QLabel#materialIcon[iconRole="button"] {
+    color: #5E6875;
+}
+
+QLabel#materialIcon[iconRole="button"][buttonState="active"] {
+    color: #15408F;
+}
+
+QLabel#materialIcon[iconRole="button"][buttonState="disabled"] {
+    color: #8B95A1;
+}
+
+QLabel#materialIcon[iconRole="button"][buttonVariant="success"] {
+    color: #1C6A46;
+}
+
+QLabel#materialIcon[iconRole="button"][buttonState="disabled"] {
+    color: #8B95A1;
+}
+
+QLabel#buttonText {
+    color: #5E6875;
+    background-color: transparent;
+}
+
+QLabel#buttonText[buttonState="active"] {
+    color: #15408F;
+}
+
+QLabel#buttonText[buttonState="disabled"] {
+    color: #8B95A1;
+}
+
+QLabel#buttonText[buttonVariant="success"] {
+    color: #1C6A46;
+}
+
+QLabel#buttonText[buttonState="disabled"] {
+    color: #8B95A1;
 }
 
 QPushButton#iconButton,
@@ -230,6 +290,31 @@ QTreeWidget#outlinerTree::item:selected {
 
 QTreeWidget#outlinerTree::branch:selected {
     background-color: transparent;
+}
+
+QWidget#outlinerRow {
+    background-color: transparent;
+}
+
+QLabel#materialIcon[iconRole="outliner"] {
+    color: #6B7280;
+}
+
+QLabel#materialIcon[iconRole="outliner"][rowState="selected"] {
+    color: #2D74FF;
+}
+
+QLabel#outlinerRowText {
+    color: #5E6875;
+    background-color: transparent;
+}
+
+QLabel#outlinerRowText[rowKind="layer"] {
+    font-weight: 600;
+}
+
+QLabel#outlinerRowText[rowState="selected"] {
+    color: #15408F;
 }
 
 QTreeView::indicator,
@@ -357,8 +442,42 @@ QListWidget#logList {
 
 QListWidget#logList::item {
     min-height: 24px;
-    padding: 0px 8px;
+    padding: 0px;
     border-radius: 0px;
+}
+
+QWidget#logRow {
+    min-height: 24px;
+    background-color: #E3F0FF;
+}
+
+QWidget#logRow[severity="warning"] {
+    background-color: #FFF4D8;
+}
+
+QWidget#logRow[severity="error"] {
+    background-color: #FCE7E7;
+}
+
+QLabel#logMessage {
+    color: #15408F;
+    font-family: "Consolas";
+    font-size: 10px;
+    background-color: transparent;
+}
+
+QLabel#materialIcon[iconRole="log"] {
+    color: #15408F;
+}
+
+QLabel#logMessage[severity="warning"],
+QLabel#materialIcon[iconRole="log"][severity="warning"] {
+    color: #8A5A14;
+}
+
+QLabel#logMessage[severity="error"],
+QLabel#materialIcon[iconRole="log"][severity="error"] {
+    color: #B24A4A;
 }
 
 QMenu {

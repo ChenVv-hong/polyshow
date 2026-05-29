@@ -2,16 +2,20 @@
 
 #include "ui/EditorPanelHeader.h"
 #include "ui/IconButton.h"
-#include "ui/MaterialIcon.h"
+#include "ui/MaterialIconLabel.h"
 
+#include <QAbstractItemView>
+#include <QHeaderView>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QLineEdit>
 #include <QPushButton>
 #include <QSignalBlocker>
+#include <QStyle>
 #include <QTreeWidget>
 #include <QTreeWidgetItem>
 #include <QVBoxLayout>
+#include <QWidget>
 
 #include <algorithm>
 
@@ -30,6 +34,8 @@ enum ItemKind
 constexpr int kItemKindRole = Qt::UserRole + 1;
 constexpr int kLayerIndexRole = Qt::UserRole + 2;
 constexpr int kPrimitiveIndexRole = Qt::UserRole + 3;
+constexpr int kVisibilityColumn = 0;
+constexpr int kContentColumn = 1;
 
 Qt::CheckState layerCheckState(const LayerData &layer)
 {
@@ -70,7 +76,7 @@ Qt::CheckState layerCheckState(const QTreeWidgetItem *layerItem)
     int checkedCount = 0;
     for (int childIndex = 0; childIndex < layerItem->childCount(); ++childIndex)
     {
-        if (layerItem->child(childIndex)->checkState(0) == Qt::Checked)
+        if (layerItem->child(childIndex)->checkState(kVisibilityColumn) == Qt::Checked)
         {
             ++checkedCount;
         }
@@ -98,7 +104,7 @@ void setLayerChildCheckStates(QTreeWidgetItem *layerItem, Qt::CheckState checkSt
 
     for (int childIndex = 0; childIndex < layerItem->childCount(); ++childIndex)
     {
-        layerItem->child(childIndex)->setCheckState(0, checkState);
+        layerItem->child(childIndex)->setCheckState(kVisibilityColumn, checkState);
     }
 }
 
@@ -207,6 +213,67 @@ QString footerSummary(const DocumentData &documentData)
         .arg(visiblePrimitiveCount);
 }
 
+void refreshStyledWidget(QWidget *widget)
+{
+    if (widget == nullptr)
+    {
+        return;
+    }
+
+    widget->style()->unpolish(widget);
+    widget->style()->polish(widget);
+    widget->update();
+}
+
+QWidget *createTreeRowWidget(const QString &iconName, const QString &text, bool isLayer, QWidget *parent)
+{
+    auto *row = new QWidget(parent);
+    row->setObjectName(QStringLiteral("outlinerRow"));
+    row->setProperty("rowKind", isLayer ? QStringLiteral("layer") : QStringLiteral("primitive"));
+    row->setProperty("rowState", QStringLiteral("normal"));
+    row->setAttribute(Qt::WA_TransparentForMouseEvents);
+
+    auto *layout = new QHBoxLayout(row);
+    layout->setContentsMargins(0, 0, 6, 0);
+    layout->setSpacing(6);
+
+    auto *icon = new MaterialIconLabel(iconName, row);
+    icon->setProperty("iconRole", QStringLiteral("outliner"));
+    icon->setProperty("rowState", QStringLiteral("normal"));
+    icon->setAttribute(Qt::WA_TransparentForMouseEvents);
+    icon->setIconPixelSize(18);
+    layout->addWidget(icon);
+
+    auto *label = new QLabel(text, row);
+    label->setObjectName(QStringLiteral("outlinerRowText"));
+    label->setProperty("rowKind", isLayer ? QStringLiteral("layer") : QStringLiteral("primitive"));
+    label->setProperty("rowState", QStringLiteral("normal"));
+    label->setAttribute(Qt::WA_TransparentForMouseEvents);
+    label->setTextFormat(Qt::PlainText);
+    layout->addWidget(label, 1);
+
+    return row;
+}
+
+void refreshTreeRowWidget(QWidget *row, bool selected)
+{
+    if (row == nullptr)
+    {
+        return;
+    }
+
+    const QString rowState = selected ? QStringLiteral("selected") : QStringLiteral("normal");
+    row->setProperty("rowState", rowState);
+    refreshStyledWidget(row);
+
+    const QList<QWidget *> children = row->findChildren<QWidget *>();
+    for (QWidget *child : children)
+    {
+        child->setProperty("rowState", rowState);
+        refreshStyledWidget(child);
+    }
+}
+
 } // namespace
 
 LayerSidebar::LayerSidebar(QWidget *parent)
@@ -255,11 +322,15 @@ LayerSidebar::LayerSidebar(QWidget *parent)
 
     m_tree_widget = new QTreeWidget(this);
     m_tree_widget->setObjectName(QStringLiteral("outlinerTree"));
-    m_tree_widget->setColumnCount(1);
+    m_tree_widget->setColumnCount(2);
     m_tree_widget->setHeaderHidden(true);
     m_tree_widget->setRootIsDecorated(true);
+    m_tree_widget->setSelectionBehavior(QAbstractItemView::SelectRows);
     m_tree_widget->setIndentation(18);
     m_tree_widget->setAlternatingRowColors(false);
+    m_tree_widget->header()->setSectionResizeMode(kVisibilityColumn, QHeaderView::Fixed);
+    m_tree_widget->header()->resizeSection(kVisibilityColumn, 42);
+    m_tree_widget->header()->setSectionResizeMode(kContentColumn, QHeaderView::Stretch);
     layout->addWidget(m_tree_widget, 1);
 
     m_footer_label = new QLabel(this);
@@ -277,21 +348,22 @@ LayerSidebar::LayerSidebar(QWidget *parent)
         applyFilter();
     });
     connect(m_tree_widget, &QTreeWidget::itemChanged, this, [this](QTreeWidgetItem *item, int column) {
-        if (m_is_rebuilding_tree || m_is_syncing_visibility || m_is_syncing_selection || column != 0
+        if (m_is_rebuilding_tree || m_is_syncing_visibility || m_is_syncing_selection || column != kVisibilityColumn
             || item == nullptr)
         {
             return;
         }
 
-        const int itemKind = item->data(0, kItemKindRole).toInt();
-        const int layerIndex = item->data(0, kLayerIndexRole).toInt();
+        const int itemKind = item->data(kVisibilityColumn, kItemKindRole).toInt();
+        const int layerIndex = item->data(kVisibilityColumn, kLayerIndexRole).toInt();
 
         if (itemKind == ItemKindLayer)
         {
-            const Qt::CheckState nextCheckState = item->checkState(0) == Qt::Unchecked ? Qt::Unchecked : Qt::Checked;
+            const Qt::CheckState nextCheckState =
+                item->checkState(kVisibilityColumn) == Qt::Unchecked ? Qt::Unchecked : Qt::Checked;
 
             m_is_syncing_visibility = true;
-            item->setCheckState(0, nextCheckState);
+            item->setCheckState(kVisibilityColumn, nextCheckState);
             setLayerChildCheckStates(item, nextCheckState);
             m_is_syncing_visibility = false;
 
@@ -301,14 +373,14 @@ LayerSidebar::LayerSidebar(QWidget *parent)
 
         if (itemKind == ItemKindPrimitive)
         {
-            const bool visible = item->checkState(0) == Qt::Checked;
-            const int primitiveIndex = item->data(0, kPrimitiveIndexRole).toInt();
+            const bool visible = item->checkState(kVisibilityColumn) == Qt::Checked;
+            const int primitiveIndex = item->data(kVisibilityColumn, kPrimitiveIndexRole).toInt();
 
             m_is_syncing_visibility = true;
             QTreeWidgetItem *layerItem = item->parent();
             if (layerItem != nullptr)
             {
-                layerItem->setCheckState(0, layerCheckState(layerItem));
+                layerItem->setCheckState(kVisibilityColumn, layerCheckState(layerItem));
             }
             m_is_syncing_visibility = false;
 
@@ -324,19 +396,21 @@ LayerSidebar::LayerSidebar(QWidget *parent)
         if (current == nullptr)
         {
             m_selection_state = SelectionState {};
+            refreshTreeRowStyles();
             emit selectionChanged(m_selection_state);
             return;
         }
 
         SelectionState nextSelection;
-        const int itemKind = current->data(0, kItemKindRole).toInt();
-        nextSelection.layer_index = current->data(0, kLayerIndexRole).toInt();
-        nextSelection.primitive_index = current->data(0, kPrimitiveIndexRole).toInt();
+        const int itemKind = current->data(kVisibilityColumn, kItemKindRole).toInt();
+        nextSelection.layer_index = current->data(kVisibilityColumn, kLayerIndexRole).toInt();
+        nextSelection.primitive_index = current->data(kVisibilityColumn, kPrimitiveIndexRole).toInt();
         nextSelection.kind = itemKind == ItemKindPrimitive ? SelectionKind::Primitive : SelectionKind::Layer;
 
         if (nextSelection != m_selection_state)
         {
             m_selection_state = nextSelection;
+            refreshTreeRowStyles();
             emit selectionChanged(m_selection_state);
         }
     });
@@ -371,12 +445,14 @@ void LayerSidebar::setSelectionState(const SelectionState &selectionState)
     {
         m_tree_widget->clearSelection();
         m_tree_widget->setCurrentItem(nullptr);
+        refreshTreeRowStyles();
         m_is_syncing_selection = false;
         return;
     }
 
     m_tree_widget->setCurrentItem(item);
     item->setSelected(true);
+    refreshTreeRowStyles();
     m_is_syncing_selection = false;
 }
 
@@ -440,33 +516,53 @@ void LayerSidebar::rebuildTree()
         const LayerData &layer = m_document_data.layers.at(layerIndex);
 
         auto *layerItem = new QTreeWidgetItem(m_tree_widget);
-        layerItem->setText(0, layerText(layer));
-        layerItem->setIcon(0, MaterialIcon::icon(layerIconName(layer)));
-        layerItem->setToolTip(0, layerToolTip(layer));
+        layerItem->setText(kContentColumn, layerText(layer));
+        layerItem->setToolTip(kVisibilityColumn, layerToolTip(layer));
+        layerItem->setToolTip(kContentColumn, layerToolTip(layer));
         layerItem->setFlags(layerItem->flags() | Qt::ItemIsUserCheckable | Qt::ItemIsSelectable | Qt::ItemIsEnabled);
-        layerItem->setData(0, kItemKindRole, ItemKindLayer);
-        layerItem->setData(0, kLayerIndexRole, layerIndex);
-        layerItem->setData(0, kPrimitiveIndexRole, -1);
+        layerItem->setData(kVisibilityColumn, kItemKindRole, ItemKindLayer);
+        layerItem->setData(kVisibilityColumn, kLayerIndexRole, layerIndex);
+        layerItem->setData(kVisibilityColumn, kPrimitiveIndexRole, -1);
 
         for (int primitiveIndex = 0; primitiveIndex < layer.primitives.size(); ++primitiveIndex)
         {
             const LayerPrimitiveData &primitive = layer.primitives.at(primitiveIndex);
 
             auto *primitiveItem = new QTreeWidgetItem(layerItem);
-            primitiveItem->setText(0, primitive.display_name);
-            primitiveItem->setIcon(0, MaterialIcon::icon(primitiveIconName(layer, primitiveIndex)));
+            primitiveItem->setText(kContentColumn, primitive.display_name);
             primitiveItem->setFlags(
                 primitiveItem->flags() | Qt::ItemIsUserCheckable | Qt::ItemIsSelectable | Qt::ItemIsEnabled);
-            primitiveItem->setCheckState(0, primitive.visible ? Qt::Checked : Qt::Unchecked);
-            primitiveItem->setData(0, kItemKindRole, ItemKindPrimitive);
-            primitiveItem->setData(0, kLayerIndexRole, layerIndex);
-            primitiveItem->setData(0, kPrimitiveIndexRole, primitiveIndex);
+            primitiveItem->setCheckState(kVisibilityColumn, primitive.visible ? Qt::Checked : Qt::Unchecked);
+            primitiveItem->setData(kVisibilityColumn, kItemKindRole, ItemKindPrimitive);
+            primitiveItem->setData(kVisibilityColumn, kLayerIndexRole, layerIndex);
+            primitiveItem->setData(kVisibilityColumn, kPrimitiveIndexRole, primitiveIndex);
         }
 
-        layerItem->setCheckState(0, layerCheckState(layer));
+        layerItem->setCheckState(kVisibilityColumn, layerCheckState(layer));
         layerItem->setExpanded(true);
+        m_tree_widget->setItemWidget(
+            layerItem,
+            kContentColumn,
+            createTreeRowWidget(layerIconName(layer), layerText(layer), true, m_tree_widget));
+
+        for (int primitiveIndex = 0; primitiveIndex < layer.primitives.size(); ++primitiveIndex)
+        {
+            QTreeWidgetItem *primitiveItem = layerItem->child(primitiveIndex);
+            if (primitiveItem == nullptr)
+            {
+                continue;
+            }
+
+            const LayerPrimitiveData &primitive = layer.primitives.at(primitiveIndex);
+            m_tree_widget->setItemWidget(
+                primitiveItem,
+                kContentColumn,
+                createTreeRowWidget(
+                    primitiveIconName(layer, primitiveIndex), primitive.display_name, false, m_tree_widget));
+        }
     }
 
+    refreshTreeRowStyles();
     m_is_rebuilding_tree = false;
 }
 
@@ -494,10 +590,12 @@ void LayerSidebar::syncTreeCheckStates()
                 continue;
             }
 
-            primitiveItem->setCheckState(0, layer.primitives.at(primitiveIndex).visible ? Qt::Checked : Qt::Unchecked);
+            primitiveItem->setCheckState(
+                kVisibilityColumn,
+                layer.primitives.at(primitiveIndex).visible ? Qt::Checked : Qt::Unchecked);
         }
 
-        layerItem->setCheckState(0, layerCheckState(layer));
+        layerItem->setCheckState(kVisibilityColumn, layerCheckState(layer));
     }
 
     m_is_syncing_visibility = false;
@@ -518,13 +616,14 @@ void LayerSidebar::applyFilter()
             continue;
         }
 
-        const bool layerMatches = layerItem->text(0).toLower().contains(query);
+        const bool layerMatches = layerItem->text(kContentColumn).toLower().contains(query);
         bool anyVisibleChild = false;
 
         for (int childIndex = 0; childIndex < layerItem->childCount(); ++childIndex)
         {
             QTreeWidgetItem *childItem = layerItem->child(childIndex);
-            const bool childMatches = !hasQuery || layerMatches || childItem->text(0).toLower().contains(query);
+            const bool childMatches =
+                !hasQuery || layerMatches || childItem->text(kContentColumn).toLower().contains(query);
             childItem->setHidden(!childMatches);
             anyVisibleChild = anyVisibleChild || childMatches;
         }
@@ -535,6 +634,32 @@ void LayerSidebar::applyFilter()
     }
 
     updateFooter();
+    refreshTreeRowStyles();
+}
+
+void LayerSidebar::refreshTreeRowStyles()
+{
+    for (int layerIndex = 0; layerIndex < m_tree_widget->topLevelItemCount(); ++layerIndex)
+    {
+        QTreeWidgetItem *layerItem = m_tree_widget->topLevelItem(layerIndex);
+        if (layerItem == nullptr)
+        {
+            continue;
+        }
+
+        refreshTreeRowWidget(m_tree_widget->itemWidget(layerItem, kContentColumn), layerItem->isSelected());
+
+        for (int childIndex = 0; childIndex < layerItem->childCount(); ++childIndex)
+        {
+            QTreeWidgetItem *childItem = layerItem->child(childIndex);
+            if (childItem == nullptr)
+            {
+                continue;
+            }
+
+            refreshTreeRowWidget(m_tree_widget->itemWidget(childItem, kContentColumn), childItem->isSelected());
+        }
+    }
 }
 
 QTreeWidgetItem *LayerSidebar::findItem(const SelectionState &selectionState) const
@@ -552,7 +677,7 @@ QTreeWidgetItem *LayerSidebar::findItem(const SelectionState &selectionState) co
             continue;
         }
 
-        const int itemLayerIndex = layerItem->data(0, kLayerIndexRole).toInt();
+        const int itemLayerIndex = layerItem->data(kVisibilityColumn, kLayerIndexRole).toInt();
         if (itemLayerIndex != selectionState.layer_index)
         {
             continue;
@@ -566,7 +691,7 @@ QTreeWidgetItem *LayerSidebar::findItem(const SelectionState &selectionState) co
         for (int childIndex = 0; childIndex < layerItem->childCount(); ++childIndex)
         {
             QTreeWidgetItem *childItem = layerItem->child(childIndex);
-            if (childItem->data(0, kPrimitiveIndexRole).toInt() == selectionState.primitive_index)
+            if (childItem->data(kVisibilityColumn, kPrimitiveIndexRole).toInt() == selectionState.primitive_index)
             {
                 return childItem;
             }

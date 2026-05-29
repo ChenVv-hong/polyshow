@@ -60,6 +60,9 @@ private:
     /// Applies the current filter text to the tree.
     void applyFilter();
 
+    /// Synchronizes custom tree row widgets with the current selection state.
+    void refreshTreeRowStyles();
+
     /// Returns the item representing the given selection state, if any.
     [[nodiscard]]
     QTreeWidgetItem *findItem(const SelectionState &selectionState) const;

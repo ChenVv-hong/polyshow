@@ -262,6 +262,8 @@ Rules:
 
 - In Pencil, use `icon_font` with `iconFontFamily: "Material Symbols Rounded"` before considering any custom asset.
 - In Qt UI work, prefer the Google Material Symbols Rounded icon font for menus, toolbars, buttons, panels, and status UI.
+- In Qt implementation, render Material Symbols Rounded as ligature text in styled widgets whenever practical. QSS owns the icon font family, weight, color, and state rules; C++ may only set the ligature name, fixed bounds, and size/state properties for those widgets.
+- Use `MaterialIcon::icon()` only for Qt APIs that require a native `QIcon`, such as `QAction`, `QComboBox` items, or third-party/native widgets. It must render from a sufficiently large default size and include high-DPI pixmaps so icons are not blurred by upscaling.
 - Use text labels with icons for important commands; icon-only controls require tooltips.
 - Do not mix Material Symbols Rounded with other icon families unless a deliberate migration plan exists.
 - Use custom SVG only when Material Symbols Rounded cannot express the required shape or when the icon is a product-specific diagram.

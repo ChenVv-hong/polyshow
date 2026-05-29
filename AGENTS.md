@@ -121,6 +121,8 @@ Important principles:
 - Keep colors centralized through light/dark style resources and `RenderTheme`.
 - Support both light and dark theme tokens when adding styled widgets.
 - Prefer Google Material Symbols Rounded for UI icons in both design and program implementation, loaded from application resources when used by Qt code.
+- Render visible Material Symbols Rounded controls as ligature text widgets whenever practical. Those widgets must get `font-family`, weight, color, and state styling from standalone QSS. C++ may set the ligature text, fixed bounds, and size/state dynamic properties.
+- Use `MaterialIcon::icon()` only for Qt APIs that require a native `QIcon`, such as `QAction`, `QComboBox` items, or third-party/native widgets. Keep its default size large enough to avoid blurry upscaling, and do not use it to replace QSS-styled icon labels in custom controls.
 - Use checkboxes for binary visibility and combo boxes for option sets with three or more values.
 - Icon-only controls must have a tooltip.
 - Do not add decorative UI that does not help navigation, inspection, editing, or feedback.

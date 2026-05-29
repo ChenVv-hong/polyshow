@@ -1,13 +1,16 @@
 #include "ui/LogPanel.h"
 
-#include "style/RenderTheme.h"
 #include "ui/EditorPanelHeader.h"
-#include "ui/MaterialIcon.h"
+#include "ui/MaterialIconLabel.h"
 
-#include <QFont>
+#include <QAbstractItemView>
+#include <QHBoxLayout>
+#include <QLabel>
 #include <QListWidget>
 #include <QListWidgetItem>
+#include <QSize>
 #include <QVBoxLayout>
+#include <QWidget>
 
 namespace PolyShow
 {
@@ -15,36 +18,61 @@ namespace PolyShow
 namespace
 {
 
-QColor lineBorder(LogSeverity severity)
+QString severityName(LogSeverity severity)
 {
-    const RenderColors &renderColors = RenderTheme::colors();
     switch (severity)
     {
     case LogSeverity::Error:
-        return renderColors.log_error_border;
+        return QStringLiteral("error");
     case LogSeverity::Warning:
-        return renderColors.log_warning_border;
+        return QStringLiteral("warning");
     case LogSeverity::Info:
-        return renderColors.log_info_border;
+        return QStringLiteral("info");
     default:
-        return QColor(QStringLiteral("#808080"));
+        return QStringLiteral("info");
     }
 }
 
-QColor lineText(LogSeverity severity)
+QString severityIcon(LogSeverity severity)
 {
-    const RenderColors &renderColors = RenderTheme::colors();
     switch (severity)
     {
     case LogSeverity::Error:
-        return renderColors.log_error_text;
+        return QStringLiteral("error");
     case LogSeverity::Warning:
-        return renderColors.log_warning_text;
+        return QStringLiteral("warning");
     case LogSeverity::Info:
-        return renderColors.log_info_text;
+        return QStringLiteral("info");
     default:
-        return QColor(QStringLiteral("#808080"));
+        return QStringLiteral("info");
     }
+}
+
+QWidget *createLogRow(LogSeverity severity, const QString &message, QWidget *parent)
+{
+    auto *row = new QWidget(parent);
+    row->setObjectName(QStringLiteral("logRow"));
+    row->setProperty("severity", severityName(severity));
+    row->setAttribute(Qt::WA_StyledBackground, true);
+
+    auto *layout = new QHBoxLayout(row);
+    layout->setContentsMargins(8, 0, 8, 0);
+    layout->setSpacing(7);
+
+    auto *icon = new MaterialIconLabel(severityIcon(severity), row);
+    icon->setProperty("iconRole", QStringLiteral("log"));
+    icon->setProperty("severity", severityName(severity));
+    icon->setIconPixelSize(16);
+    layout->addWidget(icon);
+
+    auto *label = new QLabel(message, row);
+    label->setObjectName(QStringLiteral("logMessage"));
+    label->setProperty("severity", severityName(severity));
+    label->setTextFormat(Qt::PlainText);
+    label->setWordWrap(false);
+    layout->addWidget(label, 1);
+
+    return row;
 }
 
 } // namespace
@@ -71,17 +99,11 @@ LogPanel::LogPanel(QWidget *parent)
 
 void LogPanel::appendMessage(LogSeverity severity, const QString &message)
 {
-    auto *item = new QListWidgetItem(message, m_list_widget);
-    item->setFont(QFont(QStringLiteral("IBM Plex Mono"), 10));
-    item->setIcon(MaterialIcon::icon(
-        severity == LogSeverity::Error
-            ? QStringLiteral("error")
-            : (severity == LogSeverity::Warning ? QStringLiteral("warning") : QStringLiteral("info")),
-        lineText(severity)));
-    item->setForeground(lineText(severity));
-    item->setBackground(lineBorder(severity));
-    item->setData(Qt::UserRole, lineBorder(severity));
+    auto *item = new QListWidgetItem(m_list_widget);
+    item->setSizeHint(QSize(0, 24));
     item->setToolTip(message);
+
+    m_list_widget->setItemWidget(item, createLogRow(severity, message, m_list_widget));
 }
 
 void LogPanel::clearMessages()

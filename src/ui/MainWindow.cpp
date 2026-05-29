@@ -8,7 +8,6 @@
 #include "ui/LayerSidebar.h"
 #include "ui/LogPanel.h"
 #include "ui/MaterialIcon.h"
-#include "ui/MaterialIconLabel.h"
 #include "ui/PanelFrame.h"
 #include "ui/PillButton.h"
 
@@ -29,7 +28,6 @@
 #include <QMenu>
 #include <QMenuBar>
 #include <QMessageBox>
-#include <QPixmap>
 #include <QPushButton>
 #include <QSignalBlocker>
 #include <QSplitter>
@@ -58,6 +56,11 @@ QString ipcNativeEndpoint()
 #else
     return QStringLiteral("/tmp/polyshow-ipc.sock");
 #endif
+}
+
+QIcon materialIcon(const QString &iconName)
+{
+    return MaterialIcon::icon(iconName);
 }
 
 QString normalizedLayerBaseName(const QString &name)
@@ -1379,53 +1382,47 @@ void MainWindow::setupMenuBar()
 
     m_file_menu = menuBar()->addMenu(QStringLiteral("File"));
 
-    m_new_layer_action = new QAction(QStringLiteral("New Layer"), this);
-    m_new_layer_action->setIcon(MaterialIcon::icon(QStringLiteral("add")));
+    m_new_layer_action = new QAction(materialIcon(QStringLiteral("add")), QStringLiteral("New Layer"), this);
     m_new_layer_action->setShortcut(QKeySequence(QStringLiteral("Ctrl+Shift+N")));
     connect(m_new_layer_action, &QAction::triggered, this, &MainWindow::createLayer);
     m_file_menu->addAction(m_new_layer_action);
 
-    m_open_action = new QAction(QStringLiteral("Open .ply..."), this);
-    m_open_action->setIcon(MaterialIcon::icon(QStringLiteral("folder_open")));
+    m_open_action = new QAction(materialIcon(QStringLiteral("folder_open")), QStringLiteral("Open .ply..."), this);
     m_open_action->setShortcut(QKeySequence::Open);
     connect(m_open_action, &QAction::triggered, this, &MainWindow::openPlyFile);
     m_file_menu->addAction(m_open_action);
 
-    m_export_layer_action = new QAction(QStringLiteral("Export Active Layer..."), this);
-    m_export_layer_action->setIcon(MaterialIcon::icon(QStringLiteral("ios_share")));
+    m_export_layer_action =
+        new QAction(materialIcon(QStringLiteral("ios_share")), QStringLiteral("Export Active Layer..."), this);
     m_export_layer_action->setShortcut(QKeySequence(QStringLiteral("Ctrl+Shift+S")));
     connect(m_export_layer_action, &QAction::triggered, this, &MainWindow::exportActiveLayer);
     m_file_menu->addAction(m_export_layer_action);
 
     m_file_menu->addSeparator();
 
-    m_exit_action = new QAction(QStringLiteral("Exit"), this);
-    m_exit_action->setIcon(MaterialIcon::icon(QStringLiteral("logout")));
+    m_exit_action = new QAction(materialIcon(QStringLiteral("close")), QStringLiteral("Exit"), this);
     m_exit_action->setShortcut(QKeySequence::Quit);
     connect(m_exit_action, &QAction::triggered, this, &QMainWindow::close);
     m_file_menu->addAction(m_exit_action);
 
     m_view_menu = menuBar()->addMenu(QStringLiteral("View"));
 
-    m_fit_action = new QAction(QStringLiteral("Fit to View"), this);
-    m_fit_action->setIcon(MaterialIcon::icon(QStringLiteral("fit_screen")));
+    m_fit_action = new QAction(materialIcon(QStringLiteral("fit_screen")), QStringLiteral("Fit to View"), this);
     connect(m_fit_action, &QAction::triggered, m_geometry_viewer, &GeometryViewer::fitScene);
     m_view_menu->addAction(m_fit_action);
 
-    m_zoom_in_action = new QAction(QStringLiteral("Zoom In"), this);
-    m_zoom_in_action->setIcon(MaterialIcon::icon(QStringLiteral("zoom_in")));
+    m_zoom_in_action = new QAction(materialIcon(QStringLiteral("zoom_in")), QStringLiteral("Zoom In"), this);
     m_zoom_in_action->setShortcut(QKeySequence::ZoomIn);
     connect(m_zoom_in_action, &QAction::triggered, m_geometry_viewer, &GeometryViewer::zoomIn);
     m_view_menu->addAction(m_zoom_in_action);
 
-    m_zoom_out_action = new QAction(QStringLiteral("Zoom Out"), this);
-    m_zoom_out_action->setIcon(MaterialIcon::icon(QStringLiteral("zoom_out")));
+    m_zoom_out_action = new QAction(materialIcon(QStringLiteral("zoom_out")), QStringLiteral("Zoom Out"), this);
     m_zoom_out_action->setShortcut(QKeySequence::ZoomOut);
     connect(m_zoom_out_action, &QAction::triggered, m_geometry_viewer, &GeometryViewer::zoomOut);
     m_view_menu->addAction(m_zoom_out_action);
 
-    m_reset_view_action = new QAction(QStringLiteral("Reset View"), this);
-    m_reset_view_action->setIcon(MaterialIcon::icon(QStringLiteral("center_focus_strong")));
+    m_reset_view_action =
+        new QAction(materialIcon(QStringLiteral("center_focus_strong")), QStringLiteral("Reset View"), this);
     connect(m_reset_view_action, &QAction::triggered, m_geometry_viewer, &GeometryViewer::resetViewTransform);
     m_view_menu->addAction(m_reset_view_action);
 
@@ -1433,22 +1430,20 @@ void MainWindow::setupMenuBar()
     m_render_mode_action_group = new QActionGroup(this);
     m_render_mode_action_group->setExclusive(true);
 
-    m_solid_mode_action = new QAction(QStringLiteral("Solid"), this);
-    m_solid_mode_action->setIcon(MaterialIcon::icon(QStringLiteral("deployed_code")));
+    m_solid_mode_action = new QAction(materialIcon(QStringLiteral("deployed_code")), QStringLiteral("Solid"), this);
     m_solid_mode_action->setCheckable(true);
     connect(m_solid_mode_action, &QAction::triggered, this, &MainWindow::setRenderModeSolid);
     m_render_mode_action_group->addAction(m_solid_mode_action);
     m_render_menu->addAction(m_solid_mode_action);
 
-    m_wireframe_mode_action = new QAction(QStringLiteral("Wireframe"), this);
-    m_wireframe_mode_action->setIcon(MaterialIcon::icon(QStringLiteral("timeline")));
+    m_wireframe_mode_action = new QAction(materialIcon(QStringLiteral("polyline")), QStringLiteral("Wireframe"), this);
     m_wireframe_mode_action->setCheckable(true);
     connect(m_wireframe_mode_action, &QAction::triggered, this, &MainWindow::setRenderModeWireframe);
     m_render_mode_action_group->addAction(m_wireframe_mode_action);
     m_render_menu->addAction(m_wireframe_mode_action);
 
-    m_points_mode_action = new QAction(QStringLiteral("Points"), this);
-    m_points_mode_action->setIcon(MaterialIcon::icon(QStringLiteral("scatter_plot")));
+    m_points_mode_action =
+        new QAction(materialIcon(QStringLiteral("radio_button_checked")), QStringLiteral("Points"), this);
     m_points_mode_action->setCheckable(true);
     connect(m_points_mode_action, &QAction::triggered, this, &MainWindow::setRenderModePoints);
     m_render_mode_action_group->addAction(m_points_mode_action);
@@ -1456,19 +1451,18 @@ void MainWindow::setupMenuBar()
 
     m_ipc_menu = menuBar()->addMenu(QStringLiteral("IPC"));
 
-    m_start_ipc_listener_action = new QAction(QStringLiteral("Start IPC Listener"), this);
-    m_start_ipc_listener_action->setIcon(MaterialIcon::icon(QStringLiteral("play_arrow")));
+    m_start_ipc_listener_action =
+        new QAction(materialIcon(QStringLiteral("sensors")), QStringLiteral("Start IPC Listener"), this);
     connect(m_start_ipc_listener_action, &QAction::triggered, this, &MainWindow::startIpcListener);
     m_ipc_menu->addAction(m_start_ipc_listener_action);
 
-    m_stop_ipc_listener_action = new QAction(QStringLiteral("Stop IPC Listener"), this);
-    m_stop_ipc_listener_action->setIcon(MaterialIcon::icon(QStringLiteral("stop")));
+    m_stop_ipc_listener_action =
+        new QAction(materialIcon(QStringLiteral("sensors_off")), QStringLiteral("Stop IPC Listener"), this);
     connect(m_stop_ipc_listener_action, &QAction::triggered, this, &MainWindow::stopIpcListener);
     m_ipc_menu->addAction(m_stop_ipc_listener_action);
 
     m_help_menu = menuBar()->addMenu(QStringLiteral("Help"));
-    m_about_action = new QAction(QStringLiteral("About"), this);
-    m_about_action->setIcon(MaterialIcon::icon(QStringLiteral("info")));
+    m_about_action = new QAction(materialIcon(QStringLiteral("info")), QStringLiteral("About"), this);
     connect(m_about_action, &QAction::triggered, this, &MainWindow::showAboutDialog);
     m_help_menu->addAction(m_about_action);
 
@@ -1641,9 +1635,9 @@ void MainWindow::setupViewportControls()
 
     m_render_mode_combo_box = new QComboBox(m_viewport_controls_widget);
     m_render_mode_combo_box->setObjectName(QStringLiteral("renderModeCombo"));
-    m_render_mode_combo_box->addItem(MaterialIcon::icon(QStringLiteral("deployed_code")), QStringLiteral("Solid"));
-    m_render_mode_combo_box->addItem(MaterialIcon::icon(QStringLiteral("timeline")), QStringLiteral("Wireframe"));
-    m_render_mode_combo_box->addItem(MaterialIcon::icon(QStringLiteral("scatter_plot")), QStringLiteral("Points"));
+    m_render_mode_combo_box->addItem(materialIcon(QStringLiteral("deployed_code")), QStringLiteral("Solid"));
+    m_render_mode_combo_box->addItem(materialIcon(QStringLiteral("polyline")), QStringLiteral("Wireframe"));
+    m_render_mode_combo_box->addItem(materialIcon(QStringLiteral("radio_button_checked")), QStringLiteral("Points"));
     connect(
         m_render_mode_combo_box,
         qOverload<int>(&QComboBox::currentIndexChanged),

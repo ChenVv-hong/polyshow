@@ -433,11 +433,7 @@ SelectionState normalizedSelection(const DocumentData &documentData, const Selec
         return {};
     }
 
-    if (!layer.primitives.at(selectionState.primitive_index).visible)
-    {
-        return {};
-    }
-
+    // Visibility is an editable property of the selection target, so hidden primitives stay selectable in the outliner.
     return selectionState;
 }
 

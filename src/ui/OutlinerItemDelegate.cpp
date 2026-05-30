@@ -13,6 +13,7 @@
 #include <QMouseEvent>
 #include <QPainter>
 #include <QStyleOptionViewItem>
+#include <QTreeView>
 
 namespace PolyShow
 {
@@ -23,9 +24,15 @@ namespace
 constexpr int kRowHeight = 25;
 constexpr int kHorizontalPadding = 6;
 constexpr int kChildIndent = 16;
+constexpr int kDisclosureSize = 16;
 constexpr int kIconSize = 17;
 constexpr int kCheckSize = 14;
 constexpr int kGap = 6;
+
+bool hasChildren(const QModelIndex &index)
+{
+    return index.model() != nullptr && index.model()->rowCount(index) > 0;
+}
 
 bool isPrimitive(const QModelIndex &index)
 {
@@ -59,6 +66,7 @@ void OutlinerItemDelegate::paint(
     const bool hidden = index.data(OutlinerHiddenRole).toBool();
     const Qt::CheckState checkState = static_cast<Qt::CheckState>(index.data(Qt::CheckStateRole).toInt());
 
+    painter->fillRect(option.rect, colors.outliner_row_background);
     if (selected)
     {
         painter->fillRect(option.rect, colors.outliner_row_selected_background);
@@ -72,6 +80,20 @@ void OutlinerItemDelegate::paint(
         : (hidden ? colors.outliner_row_hidden_text : colors.outliner_row_text);
     const QColor iconColor = selected ? colors.outliner_icon_selected
         : (hidden ? colors.outliner_row_hidden_text : colors.outliner_icon);
+
+    if (!isPrimitive(index) && hasChildren(index))
+    {
+        QFont disclosureFont(MaterialIcon::fontFamily());
+        disclosureFont.setPixelSize(16);
+        disclosureFont.setWeight(QFont::Normal);
+        painter->setFont(disclosureFont);
+        painter->setPen(iconColor);
+        painter->drawText(
+            disclosureRect(option, index),
+            Qt::AlignCenter,
+            option.state.testFlag(QStyle::State_Open) ? QStringLiteral("expand_more")
+                                                      : QStringLiteral("chevron_right"));
+    }
 
     QFont iconFont(MaterialIcon::fontFamily());
     iconFont.setPixelSize(17);
@@ -119,8 +141,12 @@ void OutlinerItemDelegate::paint(
     painter->setFont(labelFont);
     painter->setPen(textColor);
     const QFontMetrics labelMetrics(labelFont);
-    const QString labelText = labelMetrics.elidedText(index.data(Qt::DisplayRole).toString(), Qt::ElideRight, labelRect(option, index).width());
-    painter->drawText(labelRect(option, index), Qt::AlignVCenter | Qt::AlignLeft, labelText);
+    const QRect textRect = labelRect(option, index);
+    const QString labelText = labelMetrics.elidedText(
+        index.data(Qt::DisplayRole).toString(),
+        Qt::ElideRight,
+        textRect.width());
+    painter->drawText(textRect, Qt::AlignVCenter | Qt::AlignLeft, labelText);
 
     painter->restore();
 }
@@ -144,7 +170,24 @@ bool OutlinerItemDelegate::editorEvent(
     if (event->type() == QEvent::MouseButtonRelease)
     {
         auto *mouseEvent = static_cast<QMouseEvent *>(event);
-        if (mouseEvent->button() != Qt::LeftButton || !checkRect(option, index).contains(mouseEvent->pos()))
+        if (mouseEvent->button() != Qt::LeftButton)
+        {
+            return false;
+        }
+
+        if (!isPrimitive(index) && hasChildren(index) && disclosureRect(option, index).contains(mouseEvent->pos()))
+        {
+            auto *treeView = qobject_cast<QTreeView *>(parent());
+            if (treeView == nullptr)
+            {
+                return false;
+            }
+
+            treeView->setExpanded(index, !treeView->isExpanded(index));
+            return true;
+        }
+
+        if (!checkRect(option, index).contains(mouseEvent->pos()))
         {
             return false;
         }
@@ -167,16 +210,53 @@ bool OutlinerItemDelegate::editorEvent(
     return model->setData(index, nextState, Qt::CheckStateRole);
 }
 
+OutlinerItemHitTarget OutlinerItemDelegate::hitTest(
+    const QStyleOptionViewItem &option,
+    const QModelIndex &index,
+    const QPoint &position) const
+{
+    if (!index.isValid())
+    {
+        return OutlinerItemHitTarget::None;
+    }
+
+    if (!isPrimitive(index) && hasChildren(index) && disclosureRect(option, index).contains(position))
+    {
+        return OutlinerItemHitTarget::Disclosure;
+    }
+
+    if (checkRect(option, index).contains(position))
+    {
+        return OutlinerItemHitTarget::Check;
+    }
+
+    return OutlinerItemHitTarget::None;
+}
+
+QRect OutlinerItemDelegate::disclosureRect(const QStyleOptionViewItem &option, const QModelIndex &) const
+{
+    const QRect bounds = rowRect(option);
+    return QRect(
+        bounds.left(),
+        option.rect.center().y() - kDisclosureSize / 2,
+        kDisclosureSize,
+        kDisclosureSize);
+}
+
 QRect OutlinerItemDelegate::checkRect(const QStyleOptionViewItem &option, const QModelIndex &index) const
 {
     const QRect iconBounds = iconRect(option, index);
-    return QRect(iconBounds.right() + 1 + kGap, option.rect.center().y() - kCheckSize / 2, kCheckSize, kCheckSize);
+    return QRect(
+        iconBounds.right() + 1 + kGap,
+        option.rect.center().y() - kCheckSize / 2,
+        kCheckSize,
+        kCheckSize);
 }
 
 QRect OutlinerItemDelegate::iconRect(const QStyleOptionViewItem &option, const QModelIndex &index) const
 {
     const QRect bounds = rowRect(option);
-    const int left = bounds.left() + (isPrimitive(index) ? kChildIndent : 0);
+    const int left = bounds.left() + kDisclosureSize + (isPrimitive(index) ? kChildIndent : 0);
     return QRect(left, option.rect.center().y() - kIconSize / 2, kIconSize, kIconSize);
 }
 
@@ -184,7 +264,11 @@ QRect OutlinerItemDelegate::labelRect(const QStyleOptionViewItem &option, const 
 {
     const QRect checkBoxRect = checkRect(option, index);
     const int left = checkBoxRect.right() + 1 + kGap;
-    return QRect(left, option.rect.top(), qMax(0, option.rect.right() - left - kHorizontalPadding + 1), option.rect.height());
+    return QRect(
+        left,
+        option.rect.top(),
+        qMax(0, option.rect.right() - left - kHorizontalPadding + 1),
+        option.rect.height());
 }
 
 } // namespace PolyShow

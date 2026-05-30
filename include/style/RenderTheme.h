@@ -29,6 +29,7 @@ struct RenderColors
     QColor outliner_row_text;
     QColor outliner_row_selected_text;
     QColor outliner_row_hidden_text;
+    QColor outliner_row_background;
     QColor outliner_row_hover_background;
     QColor outliner_row_selected_background;
     QColor outliner_icon;

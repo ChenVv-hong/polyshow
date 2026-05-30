@@ -568,12 +568,14 @@
                           "alignItems": "center",
                           "children": [
                             {
-                              "type": "frame",
+                              "type": "icon_font",
                               "id": "H0IaEM",
-                              "name": "Layer Mixed Indent",
-                              "width": 0,
-                              "height": 1,
-                              "fill": "#00000000"
+                              "name": "Layer Mixed Disclosure",
+                              "width": 16,
+                              "height": 16,
+                              "iconFontName": "expand_more",
+                              "iconFontFamily": "Material Symbols Rounded",
+                              "fill": "#AEB4BC"
                             },
                             {
                               "type": "icon_font",
@@ -706,7 +708,7 @@
                           "name": "Primitive Polyline",
                           "width": "fill_container",
                           "height": 25,
-                          "fill": "#63A7FF28",
+                          "fill": "#3A404A",
                           "gap": 6,
                           "padding": [
                             0,
@@ -863,12 +865,14 @@
                           "alignItems": "center",
                           "children": [
                             {
-                              "type": "frame",
+                              "type": "icon_font",
                               "id": "w7Swj",
-                              "name": "Layer IPC Indent",
-                              "width": 0,
-                              "height": 1,
-                              "fill": "#00000000"
+                              "name": "Layer IPC Disclosure",
+                              "width": 16,
+                              "height": 16,
+                              "iconFontName": "expand_more",
+                              "iconFontFamily": "Material Symbols Rounded",
+                              "fill": "#AEB4BC"
                             },
                             {
                               "type": "icon_font",
@@ -3884,7 +3888,7 @@
                           "name": "Layer Mixed",
                           "width": "fill_container",
                           "height": 25,
-                          "fill": "#63A7FF28",
+                          "fill": "#3A404A",
                           "gap": 6,
                           "padding": [
                             0,
@@ -3893,12 +3897,14 @@
                           "alignItems": "center",
                           "children": [
                             {
-                              "type": "frame",
+                              "type": "icon_font",
                               "id": "rUtUH",
-                              "name": "Layer Mixed Indent",
-                              "width": 0,
-                              "height": 1,
-                              "fill": "#00000000"
+                              "name": "Layer Mixed Disclosure",
+                              "width": 16,
+                              "height": 16,
+                              "iconFontName": "expand_more",
+                              "iconFontFamily": "Material Symbols Rounded",
+                              "fill": "#63A7FF"
                             },
                             {
                               "type": "icon_font",
@@ -4189,12 +4195,14 @@
                           "alignItems": "center",
                           "children": [
                             {
-                              "type": "frame",
+                              "type": "icon_font",
                               "id": "OJp9n",
-                              "name": "Layer IPC Indent",
-                              "width": 0,
-                              "height": 1,
-                              "fill": "#00000000"
+                              "name": "Layer IPC Disclosure",
+                              "width": 16,
+                              "height": 16,
+                              "iconFontName": "expand_more",
+                              "iconFontFamily": "Material Symbols Rounded",
+                              "fill": "#AEB4BC"
                             },
                             {
                               "type": "icon_font",
@@ -8810,12 +8818,14 @@
                           "alignItems": "center",
                           "children": [
                             {
-                              "type": "frame",
+                              "type": "icon_font",
                               "id": "KPRbJ",
-                              "name": "Layer Mixed Indent",
-                              "width": 0,
-                              "height": 1,
-                              "fill": "#00000000"
+                              "name": "Layer Mixed Disclosure",
+                              "width": 16,
+                              "height": 16,
+                              "iconFontName": "expand_more",
+                              "iconFontFamily": "Material Symbols Rounded",
+                              "fill": "#AEB4BC"
                             },
                             {
                               "type": "icon_font",
@@ -8875,7 +8885,7 @@
                           "name": "Search Polyline",
                           "width": "fill_container",
                           "height": 25,
-                          "fill": "#63A7FF28",
+                          "fill": "#3A404A",
                           "gap": 6,
                           "padding": [
                             0,
@@ -9032,12 +9042,14 @@
                           "alignItems": "center",
                           "children": [
                             {
-                              "type": "frame",
+                              "type": "icon_font",
                               "id": "NkpyB",
-                              "name": "Layer Named Indent",
-                              "width": 0,
-                              "height": 1,
-                              "fill": "#00000000"
+                              "name": "Layer Named Disclosure",
+                              "width": 16,
+                              "height": 16,
+                              "iconFontName": "chevron_right",
+                              "iconFontFamily": "Material Symbols Rounded",
+                              "fill": "#AEB4BC"
                             },
                             {
                               "type": "icon_font",

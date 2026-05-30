@@ -95,11 +95,7 @@ PolyShow::SelectionState normalizeSelectionState(
         return {};
     }
 
-    if (!layer.primitives.at(selectionState.primitive_index).visible)
-    {
-        return {};
-    }
-
+    // Hidden primitives remain selectable from the outliner; visibility only controls scene drawing.
     return selectionState;
 }
 
@@ -551,12 +547,17 @@ void GeometryScene::rebuildScene()
         && m_selection_state.layer_index >= 0
         && m_selection_state.layer_index < m_document_data.layers.size())
     {
-        if (!(suppressSelectedPrimitive
-              && m_edit_preview_state.selection_state.layer_index == m_selection_state.layer_index
-              && m_edit_preview_state.selection_state.primitive_index == m_selection_state.primitive_index))
+        const LayerData &selectedLayer = m_document_data.layers.at(m_selection_state.layer_index);
+        const bool hasVisibleSelectedPrimitive = m_selection_state.primitive_index >= 0
+            && m_selection_state.primitive_index < selectedLayer.primitives.size()
+            && selectedLayer.primitives.at(m_selection_state.primitive_index).visible;
+
+        if (hasVisibleSelectedPrimitive
+            && !(suppressSelectedPrimitive
+                 && m_edit_preview_state.selection_state.layer_index == m_selection_state.layer_index
+                 && m_edit_preview_state.selection_state.primitive_index == m_selection_state.primitive_index))
         {
-            selectionBounds = primitiveSelectionBounds(
-                m_document_data.layers.at(m_selection_state.layer_index), m_selection_state.primitive_index);
+            selectionBounds = primitiveSelectionBounds(selectedLayer, m_selection_state.primitive_index);
         }
     }
     else if (

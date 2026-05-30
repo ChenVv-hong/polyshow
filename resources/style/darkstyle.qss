@@ -296,6 +296,9 @@ QTreeView#outlinerTree {
     border: 0px;
     outline: 0px;
     padding: 6px 0px;
+    show-decoration-selected: 0;
+    selection-background-color: transparent;
+    selection-color: #AEB4BC;
 }
 
 QTreeView#outlinerTree::item {
@@ -307,16 +310,28 @@ QTreeView#outlinerTree::item {
 }
 
 QTreeView#outlinerTree::item:hover,
-QTreeView#outlinerTree::item:selected {
+QTreeView#outlinerTree::item:selected,
+QTreeView#outlinerTree::item:selected:active,
+QTreeView#outlinerTree::item:selected:!active,
+QTreeView#outlinerTree::item:focus {
     background-color: transparent;
+    color: #AEB4BC;
+    border: 0px;
 }
 
-QTreeView#outlinerTree::branch {
+QTreeView#outlinerTree::branch,
+QTreeView#outlinerTree::branch:hover,
+QTreeView#outlinerTree::branch:closed,
+QTreeView#outlinerTree::branch:open {
     background-color: transparent;
+    border: 0px;
 }
 
-QTreeView#outlinerTree::branch:selected {
+QTreeView#outlinerTree::branch:selected,
+QTreeView#outlinerTree::branch:selected:active,
+QTreeView#outlinerTree::branch:selected:!active {
     background-color: transparent;
+    border: 0px;
 }
 
 QWidget#outlinerEmpty {

@@ -2,6 +2,7 @@
 
 #include "core/GeometryTypes.h"
 
+#include <QPersistentModelIndex>
 #include <QWidget>
 
 class QLabel;
@@ -49,6 +50,8 @@ signals:
     void exportLayerRequested();
 
 private:
+    bool eventFilter(QObject *watched, QEvent *event) override;
+
     /// Expands or collapses the search field.
     void setSearchExpanded(bool expanded);
 
@@ -56,7 +59,7 @@ private:
     void updateFooter();
 
     /// Applies the current filter text to the tree.
-    void applyFilter();
+    void applyFilter(bool expandVisibleLayersAfterFilter);
 
     /// Keeps the tree/empty surfaces aligned with the current document state.
     void updateContentSurface();
@@ -78,6 +81,9 @@ private:
     bool m_is_search_expanded {false};
     bool m_is_syncing_selection {false};
     bool m_is_applying_filter {false};
+    bool m_has_tree_control_press {false};
+    QPersistentModelIndex m_tree_control_press_index;
+    int m_tree_control_press_target {0};
 };
 
 } // namespace PolyShow

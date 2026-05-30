@@ -29,6 +29,7 @@ set(POLYSHOW_HEADERS
     include/ui/ColorField.h
     include/ui/EditorPanelHeader.h
     include/ui/IconButton.h
+    include/ui/InspectorCheckBox.h
     include/ui/InspectorPanel.h
     include/ui/InspectorSection.h
     include/ui/IpcListenerWorker.h
@@ -64,6 +65,7 @@ set(POLYSHOW_SOURCES
     src/ui/EditorPanelHeader.cpp
     src/ui/GeometryViewer.cpp
     src/ui/IconButton.cpp
+    src/ui/InspectorCheckBox.cpp
     src/ui/InspectorPanel.cpp
     src/ui/InspectorSection.cpp
     src/ui/IpcListenerWorker.cpp

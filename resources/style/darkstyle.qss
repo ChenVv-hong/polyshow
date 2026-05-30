@@ -399,6 +399,12 @@ QWidget#inspectorBody {
     background-color: #303236;
 }
 
+QScrollArea#inspectorScrollArea,
+QWidget#inspectorScrollViewport {
+    background-color: #303236;
+    border: 0px;
+}
+
 QLabel#inspectorBadge {
     background-color: #274763;
     color: #E9EAEC;
@@ -426,6 +432,10 @@ QFrame#inspectorSection {
 QWidget#inspectorSectionHeader {
     background-color: #282A2E;
     border-bottom: 1px solid #45484F;
+}
+
+QWidget#inspectorSectionHeader[collapsed="true"] {
+    border-bottom: 0px;
 }
 
 QWidget#inspectorSectionContent {

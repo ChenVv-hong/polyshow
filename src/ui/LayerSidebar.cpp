@@ -130,7 +130,7 @@ LayerSidebar::LayerSidebar(QWidget *parent)
     m_tree_view->setIndentation(0);
     m_tree_view->setMouseTracking(true);
     m_tree_view->setSelectionBehavior(QAbstractItemView::SelectRows);
-    m_tree_view->setSelectionMode(QAbstractItemView::SingleSelection);
+    m_tree_view->setSelectionMode(QAbstractItemView::MultiSelection);
     m_tree_view->setEditTriggers(QAbstractItemView::NoEditTriggers);
     m_tree_view->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     m_tree_view->viewport()->installEventFilter(this);
@@ -166,7 +166,7 @@ LayerSidebar::LayerSidebar(QWidget *parent)
         &LayerSidebar::primitiveVisibilityChanged);
     connect(m_filter_model, &QAbstractItemModel::modelReset, this, [this]() {
         updateContentSurface();
-        setSelectionState(m_selection_state);
+        setSelectionSet(m_selection_set);
     });
     connect(m_filter_model, &QAbstractItemModel::rowsInserted, this, [this]() {
         updateContentSurface();
@@ -187,17 +187,11 @@ LayerSidebar::LayerSidebar(QWidget *parent)
             if (!current.isValid())
             {
                 m_selection_state = SelectionState {};
-                emit selectionChanged(m_selection_state);
+                emit selectionRequested(m_selection_state, false);
                 return;
             }
 
-            const QModelIndex sourceIndex = m_filter_model->mapToSource(current);
-            const SelectionState nextSelection = m_tree_model->selectionForIndex(sourceIndex);
-            if (nextSelection != m_selection_state)
-            {
-                m_selection_state = nextSelection;
-                emit selectionChanged(m_selection_state);
-            }
+            requestSelectionForIndex(current, false);
         });
 
     updateContentSurface();
@@ -231,6 +225,14 @@ bool LayerSidebar::eventFilter(QObject *watched, QEvent *event)
         const OutlinerItemHitTarget hitTarget = delegate->hitTest(option, index, mouseEvent->pos());
         if (hitTarget == OutlinerItemHitTarget::None)
         {
+            if (index.isValid())
+            {
+                m_has_tree_selection_press = true;
+                m_tree_selection_press_index = index;
+                m_tree_selection_toggle_requested = mouseEvent->modifiers().testFlag(Qt::ControlModifier);
+                return true;
+            }
+
             return QWidget::eventFilter(watched, event);
         }
 
@@ -291,7 +293,43 @@ bool LayerSidebar::eventFilter(QObject *watched, QEvent *event)
         return true;
     }
 
+    if (event->type() == QEvent::MouseButtonRelease && m_has_tree_selection_press)
+    {
+        auto *mouseEvent = static_cast<QMouseEvent *>(event);
+        const QPersistentModelIndex pressedIndex = m_tree_selection_press_index;
+        const bool toggleRequested = m_tree_selection_toggle_requested;
+        m_has_tree_selection_press = false;
+        m_tree_selection_press_index = QPersistentModelIndex();
+        m_tree_selection_toggle_requested = false;
+
+        if (mouseEvent->button() != Qt::LeftButton || !pressedIndex.isValid())
+        {
+            return true;
+        }
+
+        const QModelIndex index = m_tree_view->indexAt(mouseEvent->pos());
+        if (index == QModelIndex(pressedIndex))
+        {
+            requestSelectionForIndex(index, toggleRequested);
+        }
+
+        return true;
+    }
+
     return QWidget::eventFilter(watched, event);
+}
+
+void LayerSidebar::requestSelectionForIndex(const QModelIndex &proxyIndex, bool toggleRequested)
+{
+    if (!proxyIndex.isValid())
+    {
+        emit selectionRequested(SelectionState {}, false);
+        return;
+    }
+
+    const QModelIndex sourceIndex = m_filter_model->mapToSource(proxyIndex);
+    const SelectionState nextSelection = m_tree_model->selectionForIndex(sourceIndex);
+    emit selectionRequested(nextSelection, toggleRequested);
 }
 
 void LayerSidebar::setDocumentData(const DocumentData &documentData, bool rebuildTreeItems)
@@ -302,31 +340,71 @@ void LayerSidebar::setDocumentData(const DocumentData &documentData, bool rebuil
     applyFilter(shouldExpandLayers || !m_search_line_edit->text().trimmed().isEmpty());
     updateContentSurface();
     updateFooter();
-    setSelectionState(m_selection_state);
+    setSelectionSet(m_selection_set);
+}
+
+void LayerSidebar::setSelectionSet(const SelectionSet &selectionSet)
+{
+    m_is_syncing_selection = true;
+    m_selection_set = selectionSet;
+    m_selection_state = selectionSet.primary_selection;
+    m_tree_model->setSelectionSet(selectionSet);
+
+    // Keep selection model signals alive so QTreeView repaints immediately; m_is_syncing_selection blocks app-level echo.
+    m_tree_view->selectionModel()->clearSelection();
+
+    const auto selectOne = [this](const SelectionState &selectionState) {
+        const QModelIndex sourceIndex = m_tree_model->indexForSelection(selectionState);
+        const QModelIndex proxyIndex = sourceIndex.isValid() ? m_filter_model->mapFromSource(sourceIndex) : QModelIndex();
+        if (!proxyIndex.isValid())
+        {
+            return QModelIndex();
+        }
+
+        m_tree_view->selectionModel()->select(proxyIndex, QItemSelectionModel::Select | QItemSelectionModel::Rows);
+        return proxyIndex;
+    };
+
+    QModelIndex primaryProxyIndex;
+    if (selectionSet.selected_primitives.isEmpty())
+    {
+        primaryProxyIndex = selectOne(selectionSet.primary_selection);
+    }
+    else
+    {
+        for (const SelectionState &selectionState : selectionSet.selected_primitives)
+        {
+            const QModelIndex proxyIndex = selectOne(selectionState);
+            if (selectionState == selectionSet.primary_selection)
+            {
+                primaryProxyIndex = proxyIndex;
+            }
+        }
+    }
+
+    if (primaryProxyIndex.isValid())
+    {
+        m_tree_view->setCurrentIndex(primaryProxyIndex);
+        m_tree_view->scrollTo(primaryProxyIndex, QAbstractItemView::PositionAtCenter);
+    }
+    else
+    {
+        m_tree_view->setCurrentIndex(QModelIndex());
+    }
+
+    m_is_syncing_selection = false;
+    m_tree_view->viewport()->update();
 }
 
 void LayerSidebar::setSelectionState(const SelectionState &selectionState)
 {
-    m_is_syncing_selection = true;
-    m_selection_state = selectionState;
-
-    const QSignalBlocker selectionBlocker(m_tree_view->selectionModel());
-    const QModelIndex sourceIndex = m_tree_model->indexForSelection(selectionState);
-    const QModelIndex proxyIndex = sourceIndex.isValid() ? m_filter_model->mapFromSource(sourceIndex) : QModelIndex();
-
-    if (!proxyIndex.isValid())
+    SelectionSet selectionSet;
+    selectionSet.primary_selection = selectionState;
+    if (selectionState.kind == SelectionKind::Primitive)
     {
-        m_tree_view->selectionModel()->clearSelection();
-        m_tree_view->setCurrentIndex(QModelIndex());
-        m_is_syncing_selection = false;
-        return;
+        selectionSet.selected_primitives.append(selectionState);
     }
-
-    m_tree_view->setCurrentIndex(proxyIndex);
-    m_tree_view->selectionModel()->select(proxyIndex, QItemSelectionModel::ClearAndSelect | QItemSelectionModel::Rows);
-    m_tree_view->scrollTo(proxyIndex, QAbstractItemView::PositionAtCenter);
-
-    m_is_syncing_selection = false;
+    setSelectionSet(selectionSet);
 }
 
 void LayerSidebar::setSearchExpanded(bool expanded)
@@ -375,7 +453,7 @@ void LayerSidebar::applyFilter(bool expandVisibleLayersAfterFilter)
     }
     updateFooter();
     updateContentSurface();
-    setSelectionState(m_selection_state);
+    setSelectionSet(m_selection_set);
 }
 
 void LayerSidebar::updateContentSurface()

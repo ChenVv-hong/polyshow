@@ -56,10 +56,10 @@ signals:
     void workspaceHoverExited();
 
     /// Emitted when the user clicks one primitive in the scene.
-    void primitiveActivated(int layerIndex, int primitiveIndex);
+    void primitiveActivated(int layerIndex, int primitiveIndex, bool toggleRequested);
 
     /// Emitted when the user clicks empty scene space.
-    void emptyAreaActivated();
+    void emptyAreaActivated(bool toggleRequested);
 
     /// Emitted when the active drawing tool receives one vertex click.
     void drawingPointRequested(const QPointF &scenePosition);

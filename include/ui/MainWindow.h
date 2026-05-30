@@ -85,14 +85,14 @@ private slots:
     /// Maps combo-box selection changes to render modes.
     void onRenderModeChanged(int index);
 
-    /// Applies the latest selection state to the full UI.
-    void onSelectionStateChanged(const SelectionState &selectionState);
+    /// Applies one direct selection request to the full UI.
+    void onSelectionRequested(const SelectionState &selectionState, bool toggleRequested);
 
     /// Handles a primitive click coming from the scene view.
-    void onScenePrimitiveActivated(int layerIndex, int primitiveIndex);
+    void onScenePrimitiveActivated(int layerIndex, int primitiveIndex, bool toggleRequested);
 
     /// Handles a click on empty scene space.
-    void onEmptySceneActivated();
+    void onEmptySceneActivated(bool toggleRequested);
 
     /// Validates and applies one field-level style change from the inspector.
     void onInspectorStyleChangeRequested(const PrimitiveStyleChangeRequest &request);
@@ -210,6 +210,13 @@ private:
     [[nodiscard]]
     SelectionState normalizedSelectionState(const SelectionState &selectionState) const;
 
+    /// Normalizes one selection set against the current document.
+    [[nodiscard]]
+    SelectionSet normalizedSelectionSet(const SelectionSet &selectionSet) const;
+
+    /// Applies one normalized selection set to every selection-aware view.
+    void setSelectionSet(const SelectionSet &selectionSet);
+
     /// Refreshes UI state from the current scene data.
     void updateUiFromScene();
 
@@ -262,6 +269,7 @@ private:
     QLabel *m_status_mouse_label {nullptr};
 
     DocumentData m_document_data;
+    SelectionSet m_selection_set;
     SelectionState m_selection_state;
     PrimitiveEditPreviewState m_edit_preview_state;
     bool m_has_logged_invalid_coordinate_draft {false};

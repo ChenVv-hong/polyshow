@@ -58,9 +58,16 @@ public:
     [[nodiscard]]
     int polygonCount() const;
 
-    /// Returns the current selection state.
+    /// Returns the current selection set.
+    [[nodiscard]]
+    SelectionSet selectionSet() const;
+
+    /// Returns the primary selection state.
     [[nodiscard]]
     SelectionState selectionState() const;
+
+    /// Updates the selected layers/primitives.
+    void setSelectionSet(const SelectionSet &selectionSet);
 
     /// Updates the selected layer or primitive.
     void setSelectionState(const SelectionState &selectionState);
@@ -78,8 +85,8 @@ signals:
     /// Emitted after the geometry statistics change.
     void geometryChanged(int pointCount, int polylineCount, int polygonCount);
 
-    /// Emitted after the selected object changes.
-    void selectionStateChanged(const SelectionState &selectionState);
+    /// Emitted after the selected objects change.
+    void selectionSetChanged(const SelectionSet &selectionSet);
 
 private:
     /// Recomputes the cached visible primitive counts.
@@ -94,7 +101,7 @@ private:
     int m_point_count {0};
     int m_polyline_count {0};
     int m_polygon_count {0};
-    SelectionState m_selection_state;
+    SelectionSet m_selection_set;
     PrimitiveEditPreviewState m_edit_preview_state;
     bool m_has_drawing_preview {false};
     PrimitiveKind m_drawing_preview_kind {PrimitiveKind::Point};

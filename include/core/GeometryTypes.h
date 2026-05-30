@@ -96,6 +96,25 @@ struct SelectionState
     }
 };
 
+/// Describes the primary selection plus every selected primitive.
+struct SelectionSet
+{
+    SelectionState primary_selection;
+    QVector<SelectionState> selected_primitives;
+
+    [[nodiscard]]
+    bool operator==(const SelectionSet &other) const
+    {
+        return primary_selection == other.primary_selection && selected_primitives == other.selected_primitives;
+    }
+
+    [[nodiscard]]
+    bool operator!=(const SelectionSet &other) const
+    {
+        return !(*this == other);
+    }
+};
+
 /// Standalone point primitive.
 struct PointShape2D
 {

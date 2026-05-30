@@ -505,6 +505,7 @@ void GeometryViewer::mousePressEvent(QMouseEvent *event)
 
     if (event->button() == Qt::LeftButton)
     {
+        const bool toggleRequested = event->modifiers().testFlag(Qt::ControlModifier);
         const QList<QGraphicsItem *> sceneItems = items(event->pos());
         for (QGraphicsItem *item : sceneItems)
         {
@@ -517,14 +518,14 @@ void GeometryViewer::mousePressEvent(QMouseEvent *event)
             const QVariant primitiveIndex = item->data(kPrimitiveIndexRole);
             if (layerIndex.isValid() && primitiveIndex.isValid())
             {
-                emit primitiveActivated(layerIndex.toInt(), primitiveIndex.toInt());
+                emit primitiveActivated(layerIndex.toInt(), primitiveIndex.toInt(), toggleRequested);
                 updateInteractionCursor(event->pos());
                 event->accept();
                 return;
             }
         }
 
-        emit emptyAreaActivated();
+        emit emptyAreaActivated(toggleRequested);
         updateInteractionCursor(event->pos());
         event->accept();
         return;

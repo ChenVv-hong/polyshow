@@ -99,6 +99,59 @@ PolyShow::SelectionState normalizeSelectionState(
     return selectionState;
 }
 
+bool containsPrimitiveSelection(
+    const QVector<PolyShow::SelectionState> &selectionStates,
+    const PolyShow::SelectionState &selectionState)
+{
+    return std::any_of(
+        selectionStates.cbegin(),
+        selectionStates.cend(),
+        [&selectionState](const PolyShow::SelectionState &candidate) {
+            return candidate == selectionState;
+        });
+}
+
+PolyShow::SelectionSet normalizeSelectionSet(
+    const PolyShow::DocumentData &documentData, const PolyShow::SelectionSet &selectionSet)
+{
+    const PolyShow::SelectionState primarySelection =
+        normalizeSelectionState(documentData, selectionSet.primary_selection);
+    if (primarySelection.kind == PolyShow::SelectionKind::Layer)
+    {
+        PolyShow::SelectionSet normalizedSelectionSet;
+        normalizedSelectionSet.primary_selection = primarySelection;
+        return normalizedSelectionSet;
+    }
+
+    PolyShow::SelectionSet normalizedSelectionSet;
+    for (const PolyShow::SelectionState &selectionState : selectionSet.selected_primitives)
+    {
+        const PolyShow::SelectionState normalizedSelection = normalizeSelectionState(documentData, selectionState);
+        if (normalizedSelection.kind == PolyShow::SelectionKind::Primitive
+            && !containsPrimitiveSelection(normalizedSelectionSet.selected_primitives, normalizedSelection))
+        {
+            normalizedSelectionSet.selected_primitives.append(normalizedSelection);
+        }
+    }
+
+    if (primarySelection.kind == PolyShow::SelectionKind::Primitive)
+    {
+        if (!containsPrimitiveSelection(normalizedSelectionSet.selected_primitives, primarySelection))
+        {
+            normalizedSelectionSet.selected_primitives.append(primarySelection);
+        }
+        normalizedSelectionSet.primary_selection = primarySelection;
+        return normalizedSelectionSet;
+    }
+
+    if (!normalizedSelectionSet.selected_primitives.isEmpty())
+    {
+        normalizedSelectionSet.primary_selection = normalizedSelectionSet.selected_primitives.last();
+    }
+
+    return normalizedSelectionSet;
+}
+
 int primitiveListIndexForReference(
     const PolyShow::LayerData &layer, PolyShow::PrimitiveKind primitiveKind, int geometryIndex)
 {
@@ -213,7 +266,7 @@ GeometryScene::GeometryScene(QObject *parent)
 void GeometryScene::setDocumentData(const DocumentData &documentData)
 {
     m_document_data = documentData;
-    m_selection_state = normalizeSelectionState(m_document_data, m_selection_state);
+    m_selection_set = normalizeSelectionSet(m_document_data, m_selection_set);
     updateVisibleCounts();
     rebuildScene();
     emit geometryChanged(m_point_count, m_polyline_count, m_polygon_count);
@@ -321,22 +374,38 @@ int GeometryScene::polygonCount() const
     return m_polygon_count;
 }
 
-SelectionState GeometryScene::selectionState() const
+SelectionSet GeometryScene::selectionSet() const
 {
-    return m_selection_state;
+    return m_selection_set;
 }
 
-void GeometryScene::setSelectionState(const SelectionState &selectionState)
+SelectionState GeometryScene::selectionState() const
 {
-    const SelectionState normalizedSelection = normalizeSelectionState(m_document_data, selectionState);
-    if (normalizedSelection == m_selection_state)
+    return m_selection_set.primary_selection;
+}
+
+void GeometryScene::setSelectionSet(const SelectionSet &selectionSet)
+{
+    const SelectionSet normalizedSelectionSet = normalizeSelectionSet(m_document_data, selectionSet);
+    if (normalizedSelectionSet == m_selection_set)
     {
         return;
     }
 
-    m_selection_state = normalizedSelection;
+    m_selection_set = normalizedSelectionSet;
     rebuildScene();
-    emit selectionStateChanged(m_selection_state);
+    emit selectionSetChanged(m_selection_set);
+}
+
+void GeometryScene::setSelectionState(const SelectionState &selectionState)
+{
+    SelectionSet selectionSet;
+    selectionSet.primary_selection = selectionState;
+    if (selectionState.kind == SelectionKind::Primitive)
+    {
+        selectionSet.selected_primitives.append(selectionState);
+    }
+    setSelectionSet(selectionSet);
 }
 
 /// Recomputes visible counts from all currently enabled layers and primitives.
@@ -542,34 +611,12 @@ void GeometryScene::rebuildScene()
         }
     }
 
-    QRectF selectionBounds;
-    if (m_selection_state.kind == SelectionKind::Primitive
-        && m_selection_state.layer_index >= 0
-        && m_selection_state.layer_index < m_document_data.layers.size())
-    {
-        const LayerData &selectedLayer = m_document_data.layers.at(m_selection_state.layer_index);
-        const bool hasVisibleSelectedPrimitive = m_selection_state.primitive_index >= 0
-            && m_selection_state.primitive_index < selectedLayer.primitives.size()
-            && selectedLayer.primitives.at(m_selection_state.primitive_index).visible;
-
-        if (hasVisibleSelectedPrimitive
-            && !(suppressSelectedPrimitive
-                 && m_edit_preview_state.selection_state.layer_index == m_selection_state.layer_index
-                 && m_edit_preview_state.selection_state.primitive_index == m_selection_state.primitive_index))
+    const auto addSelectionOverlay = [this, &renderColors](const QRectF &selectionBounds) {
+        if (selectionBounds.isNull())
         {
-            selectionBounds = primitiveSelectionBounds(selectedLayer, m_selection_state.primitive_index);
+            return;
         }
-    }
-    else if (
-        m_selection_state.kind == SelectionKind::Layer
-        && m_selection_state.layer_index >= 0
-        && m_selection_state.layer_index < m_document_data.layers.size())
-    {
-        selectionBounds = layerSelectionBounds(m_document_data.layers.at(m_selection_state.layer_index));
-    }
 
-    if (!selectionBounds.isNull())
-    {
         QPen selectionPen(renderColors.selection_stroke);
         selectionPen.setStyle(Qt::DashLine);
         selectionPen.setCosmetic(true);
@@ -579,6 +626,36 @@ void GeometryScene::rebuildScene()
         overlay->setData(kSelectionOverlayRole, true);
         overlay->setAcceptedMouseButtons(Qt::NoButton);
         overlay->setZValue(10000.0);
+    };
+
+    if (!m_selection_set.selected_primitives.isEmpty())
+    {
+        for (const SelectionState &selectionState : std::as_const(m_selection_set.selected_primitives))
+        {
+            if (selectionState.layer_index < 0 || selectionState.layer_index >= m_document_data.layers.size())
+            {
+                continue;
+            }
+
+            const LayerData &selectedLayer = m_document_data.layers.at(selectionState.layer_index);
+            const bool hasVisibleSelectedPrimitive = selectionState.primitive_index >= 0
+                && selectionState.primitive_index < selectedLayer.primitives.size()
+                && selectedLayer.primitives.at(selectionState.primitive_index).visible;
+            const bool isSuppressed = suppressSelectedPrimitive
+                && m_edit_preview_state.selection_state.layer_index == selectionState.layer_index
+                && m_edit_preview_state.selection_state.primitive_index == selectionState.primitive_index;
+            if (hasVisibleSelectedPrimitive && !isSuppressed)
+            {
+                addSelectionOverlay(primitiveSelectionBounds(selectedLayer, selectionState.primitive_index));
+            }
+        }
+    }
+    else if (
+        m_selection_set.primary_selection.kind == SelectionKind::Layer
+        && m_selection_set.primary_selection.layer_index >= 0
+        && m_selection_set.primary_selection.layer_index < m_document_data.layers.size())
+    {
+        addSelectionOverlay(layerSelectionBounds(m_document_data.layers.at(m_selection_set.primary_selection.layer_index)));
     }
 
     if (m_has_drawing_preview && !m_drawing_preview_points.isEmpty())

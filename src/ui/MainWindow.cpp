@@ -437,6 +437,112 @@ SelectionState normalizedSelection(const DocumentData &documentData, const Selec
     return selectionState;
 }
 
+/// Returns whether the selection points at one primitive.
+bool isPrimitiveSelection(const SelectionState &selectionState)
+{
+    return selectionState.kind == SelectionKind::Primitive;
+}
+
+/// Returns whether the primitive selection already exists in one selection list.
+bool containsPrimitiveSelection(const QVector<SelectionState> &selectionStates, const SelectionState &selectionState)
+{
+    return std::any_of(
+        selectionStates.cbegin(),
+        selectionStates.cend(),
+        [&selectionState](const SelectionState &candidate) {
+            return candidate == selectionState;
+        });
+}
+
+/// Builds a selection set from one primary selection request.
+SelectionSet selectionSetFromPrimarySelection(const SelectionState &selectionState)
+{
+    SelectionSet selectionSet;
+    selectionSet.primary_selection = selectionState;
+    if (isPrimitiveSelection(selectionState))
+    {
+        selectionSet.selected_primitives.append(selectionState);
+    }
+    return selectionSet;
+}
+
+/// Returns one selection set normalized against the current document shape.
+SelectionSet normalizedSelectionSetForDocument(const DocumentData &documentData, const SelectionSet &selectionSet)
+{
+    const SelectionState primarySelection = normalizedSelection(documentData, selectionSet.primary_selection);
+
+    // Layer rows remain single-selection anchors and should never carry primitive multi-selection state.
+    if (primarySelection.kind == SelectionKind::Layer)
+    {
+        SelectionSet normalizedSelectionSet;
+        normalizedSelectionSet.primary_selection = primarySelection;
+        return normalizedSelectionSet;
+    }
+
+    SelectionSet normalizedSelectionSet;
+    for (const SelectionState &selectionState : selectionSet.selected_primitives)
+    {
+        const SelectionState normalizedCandidate = normalizedSelection(documentData, selectionState);
+        if (isPrimitiveSelection(normalizedCandidate)
+            && !containsPrimitiveSelection(normalizedSelectionSet.selected_primitives, normalizedCandidate))
+        {
+            normalizedSelectionSet.selected_primitives.append(normalizedCandidate);
+        }
+    }
+
+    if (isPrimitiveSelection(primarySelection))
+    {
+        if (!containsPrimitiveSelection(normalizedSelectionSet.selected_primitives, primarySelection))
+        {
+            normalizedSelectionSet.selected_primitives.append(primarySelection);
+        }
+        normalizedSelectionSet.primary_selection = primarySelection;
+        return normalizedSelectionSet;
+    }
+
+    if (!normalizedSelectionSet.selected_primitives.isEmpty())
+    {
+        normalizedSelectionSet.primary_selection = normalizedSelectionSet.selected_primitives.last();
+    }
+
+    return normalizedSelectionSet;
+}
+
+/// Toggles one primitive inside a normalized primitive selection set.
+SelectionSet toggledPrimitiveSelectionSet(const SelectionSet &currentSelectionSet, const SelectionState &selectionState)
+{
+    SelectionSet nextSelectionSet = currentSelectionSet;
+    if (nextSelectionSet.primary_selection.kind == SelectionKind::Layer)
+    {
+        nextSelectionSet = {};
+    }
+
+    for (int index = 0; index < nextSelectionSet.selected_primitives.size(); ++index)
+    {
+        if (nextSelectionSet.selected_primitives.at(index) != selectionState)
+        {
+            continue;
+        }
+
+        nextSelectionSet.selected_primitives.removeAt(index);
+        if (nextSelectionSet.selected_primitives.isEmpty())
+        {
+            return {};
+        }
+
+        if (nextSelectionSet.primary_selection == selectionState
+            || !containsPrimitiveSelection(nextSelectionSet.selected_primitives, nextSelectionSet.primary_selection))
+        {
+            nextSelectionSet.primary_selection = nextSelectionSet.selected_primitives.last();
+        }
+        return nextSelectionSet;
+    }
+
+    nextSelectionSet.selected_primitives.append(selectionState);
+    nextSelectionSet.primary_selection = selectionState;
+    return nextSelectionSet;
+}
+
 /// Formats one numeric value for compact log output.
 QString formatNumber(double value)
 {
@@ -632,7 +738,8 @@ void MainWindow::createLayer()
 
     m_document_data.layers.append(createEmptyLayer(layerName, layerType));
     m_active_layer_index = m_document_data.layers.size() - 1;
-    m_selection_state = layerSelectionState(m_active_layer_index);
+    m_selection_set = selectionSetFromPrimarySelection(layerSelectionState(m_active_layer_index));
+    m_selection_state = m_selection_set.primary_selection;
     syncDocumentToViews(false);
     m_log_panel->appendMessage(
         LogSeverity::Info,
@@ -682,7 +789,7 @@ void MainWindow::exportActiveLayer()
 
     m_document_data.layers[layerIndex].file_path = filePath;
     m_layer_sidebar->setDocumentData(m_document_data, true);
-    m_layer_sidebar->setSelectionState(m_selection_state);
+    m_layer_sidebar->setSelectionSet(m_selection_set);
     m_log_panel->appendMessage(
         LogSeverity::Info,
         QStringLiteral("[info] Exported %1 to %2").arg(layerLogLabel(m_document_data, layerIndex), filePath));
@@ -827,48 +934,45 @@ void MainWindow::onRenderModeChanged(int index)
     }
 }
 
-void MainWindow::onSelectionStateChanged(const SelectionState &selectionState)
+void MainWindow::onSelectionRequested(const SelectionState &selectionState, bool toggleRequested)
 {
     const SelectionState normalizedSelectionStateValue = normalizedSelectionState(selectionState);
-    if (normalizedSelectionStateValue != m_selection_state)
+    if (normalizedSelectionStateValue.kind == SelectionKind::None)
     {
-        clearCoordinatePreviewState();
-    }
-
-    m_selection_state = normalizedSelectionStateValue;
-    if (m_selection_state.kind == SelectionKind::Layer || m_selection_state.kind == SelectionKind::Primitive)
-    {
-        m_active_layer_index = m_selection_state.layer_index;
-    }
-    m_scene->setEditPreviewState(m_edit_preview_state, false);
-    m_scene->setSelectionState(m_selection_state);
-    m_layer_sidebar->setSelectionState(m_selection_state);
-    reloadInspectorForSelectionChange();
-    const bool showInspector = m_selection_state.kind != SelectionKind::None;
-    m_inspector_container->setVisible(showInspector);
-    if (showInspector)
-    {
-        QList<int> sizes = m_splitter->sizes();
-        if (sizes.size() == 3 && sizes.at(2) == 0)
+        if (!toggleRequested)
         {
-            m_splitter->setSizes({300, 700, 332});
+            setSelectionSet({});
         }
+        return;
     }
-    m_status_info_label->setText(
-        QStringLiteral("Points: %1  Polylines: %2  Polygons: %3")
-            .arg(m_scene->pointCount())
-            .arg(m_scene->polylineCount())
-            .arg(m_scene->polygonCount()));
+
+    if (normalizedSelectionStateValue.kind == SelectionKind::Layer)
+    {
+        setSelectionSet(selectionSetFromPrimarySelection(normalizedSelectionStateValue));
+        return;
+    }
+
+    if (toggleRequested)
+    {
+        // Ctrl selection is primitive-only, so layer anchors are discarded before toggling primitives.
+        setSelectionSet(toggledPrimitiveSelectionSet(m_selection_set, normalizedSelectionStateValue));
+        return;
+    }
+
+    setSelectionSet(selectionSetFromPrimarySelection(normalizedSelectionStateValue));
 }
 
-void MainWindow::onScenePrimitiveActivated(int layerIndex, int primitiveIndex)
+void MainWindow::onScenePrimitiveActivated(int layerIndex, int primitiveIndex, bool toggleRequested)
 {
-    onSelectionStateChanged(SelectionState {SelectionKind::Primitive, layerIndex, primitiveIndex});
+    onSelectionRequested(SelectionState {SelectionKind::Primitive, layerIndex, primitiveIndex}, toggleRequested);
 }
 
-void MainWindow::onEmptySceneActivated()
+void MainWindow::onEmptySceneActivated(bool toggleRequested)
 {
-    onSelectionStateChanged(SelectionState {});
+    if (!toggleRequested)
+    {
+        setSelectionSet({});
+    }
 }
 
 void MainWindow::onInspectorStyleChangeRequested(const PrimitiveStyleChangeRequest &request)
@@ -1055,7 +1159,8 @@ void MainWindow::onDrawingPointRequested(const QPointF &scenePosition)
             return;
         }
 
-        m_selection_state = primitiveSelectionState(layerIndex, primitiveIndex);
+        m_selection_set = selectionSetFromPrimarySelection(primitiveSelectionState(layerIndex, primitiveIndex));
+        m_selection_state = m_selection_set.primary_selection;
         m_has_drawing_hover_point = false;
         syncDocumentToViews(false);
         m_log_panel->appendMessage(
@@ -1113,7 +1218,8 @@ void MainWindow::finishDrawing()
     }
 
     clearDrawingDraft(false);
-    m_selection_state = primitiveSelectionState(layerIndex, primitiveIndex);
+    m_selection_set = selectionSetFromPrimarySelection(primitiveSelectionState(layerIndex, primitiveIndex));
+    m_selection_state = m_selection_set.primary_selection;
     syncDocumentToViews(false);
     m_log_panel->appendMessage(
         LogSeverity::Info,
@@ -1359,7 +1465,7 @@ void MainWindow::setupUi()
     connect(m_geometry_viewer, &GeometryViewer::emptyAreaActivated, this, &MainWindow::onEmptySceneActivated);
     connect(m_geometry_viewer, &GeometryViewer::drawingPointRequested, this, &MainWindow::onDrawingPointRequested);
     connect(m_geometry_viewer, &GeometryViewer::drawingFinishedRequested, this, &MainWindow::finishDrawing);
-    connect(m_layer_sidebar, &LayerSidebar::selectionChanged, this, &MainWindow::onSelectionStateChanged);
+    connect(m_layer_sidebar, &LayerSidebar::selectionRequested, this, &MainWindow::onSelectionRequested);
     connect(m_layer_sidebar, &LayerSidebar::layerVisibilityChanged, this, &MainWindow::onLayerVisibilityChanged);
     connect(m_layer_sidebar, &LayerSidebar::primitiveVisibilityChanged, this, &MainWindow::onPrimitiveVisibilityChanged);
     connect(m_layer_sidebar, &LayerSidebar::createLayerRequested, this, &MainWindow::createLayer);
@@ -1830,6 +1936,7 @@ void MainWindow::openFiles(const QStringList &filePaths)
 
     m_document_data = nextDocument;
     m_active_layer_index = m_document_data.layers.isEmpty() ? -1 : (m_document_data.layers.size() - 1);
+    m_selection_set = {};
     m_selection_state = {};
     syncDocumentToViews(true);
 
@@ -1857,12 +1964,13 @@ void MainWindow::openFiles(const QStringList &filePaths)
 void MainWindow::syncDocumentToViews(bool fitScene)
 {
     clearCoordinatePreviewState();
-    m_selection_state = normalizedSelectionState(m_selection_state);
+    m_selection_set = normalizedSelectionSet(m_selection_set);
+    m_selection_state = m_selection_set.primary_selection;
     m_layer_sidebar->setDocumentData(m_document_data, true);
     m_scene->setEditPreviewState(m_edit_preview_state, false);
     m_scene->setDocumentData(m_document_data);
     updateDrawingPreview();
-    onSelectionStateChanged(m_selection_state);
+    setSelectionSet(m_selection_set);
 
     if (fitScene)
     {
@@ -1875,26 +1983,66 @@ SelectionState MainWindow::normalizedSelectionState(const SelectionState &select
     return normalizedSelection(m_document_data, selectionState);
 }
 
+SelectionSet MainWindow::normalizedSelectionSet(const SelectionSet &selectionSet) const
+{
+    return normalizedSelectionSetForDocument(m_document_data, selectionSet);
+}
+
+void MainWindow::setSelectionSet(const SelectionSet &selectionSet)
+{
+    const SelectionSet normalizedSelectionSetValue = normalizedSelectionSet(selectionSet);
+    if (normalizedSelectionSetValue != m_selection_set)
+    {
+        clearCoordinatePreviewState();
+    }
+
+    m_selection_set = normalizedSelectionSetValue;
+    m_selection_state = m_selection_set.primary_selection;
+    if (m_selection_state.kind == SelectionKind::Layer || m_selection_state.kind == SelectionKind::Primitive)
+    {
+        m_active_layer_index = m_selection_state.layer_index;
+    }
+
+    m_scene->setEditPreviewState(m_edit_preview_state, false);
+    m_scene->setSelectionSet(m_selection_set);
+    m_layer_sidebar->setSelectionSet(m_selection_set);
+    reloadInspectorForSelectionChange();
+
+    const bool showInspector = m_selection_state.kind != SelectionKind::None
+        || !m_selection_set.selected_primitives.isEmpty();
+    m_inspector_container->setVisible(showInspector);
+    if (showInspector)
+    {
+        QList<int> sizes = m_splitter->sizes();
+        if (sizes.size() == 3 && sizes.at(2) == 0)
+        {
+            m_splitter->setSizes({300, 700, 332});
+        }
+    }
+
+    m_status_info_label->setText(
+        QStringLiteral("Points: %1  Polylines: %2  Polygons: %3")
+            .arg(m_scene->pointCount())
+            .arg(m_scene->polylineCount())
+            .arg(m_scene->polygonCount()));
+}
+
 void MainWindow::refreshViewsForVisibilityChange()
 {
     // Keep checkbox-triggered updates on the existing outliner model shape; the
     // source document remains the single owner of final visibility state.
     clearCoordinatePreviewState();
-    const SelectionState nextSelection = normalizedSelectionState(m_selection_state);
+    const SelectionSet nextSelectionSet = normalizedSelectionSet(m_selection_set);
     m_layer_sidebar->setDocumentData(m_document_data, false);
     m_scene->setEditPreviewState(m_edit_preview_state, false);
     m_scene->setDocumentData(m_document_data);
     updateDrawingPreview();
-    reloadInspectorForSelectionChange();
-    if (nextSelection != m_selection_state)
-    {
-        onSelectionStateChanged(nextSelection);
-    }
+    setSelectionSet(nextSelectionSet);
 }
 
 void MainWindow::reloadInspectorForSelectionChange()
 {
-    m_inspector_panel->loadSelectionContext(m_document_data, m_selection_state);
+    m_inspector_panel->loadSelectionContext(m_document_data, m_selection_set);
 }
 
 void MainWindow::refreshSceneForPrimitiveEdit()
@@ -2069,7 +2217,7 @@ void MainWindow::updateUiFromScene()
     onGeometryChanged(m_scene->pointCount(), m_scene->polylineCount(), m_scene->polygonCount());
     updateViewportControlState();
     updateDrawingToolState();
-    onSelectionStateChanged(m_selection_state);
+    setSelectionSet(m_selection_set);
 }
 
 } // namespace PolyShow

@@ -1,11 +1,10 @@
 #pragma once
 
-#include "core/PrimitiveEditing.h"
 #include "core/GeometryTypes.h"
+#include "core/PrimitiveEditing.h"
 
 #include <QWidget>
 
-class QCheckBox;
 class QLabel;
 class QLineEdit;
 class QPlainTextEdit;
@@ -16,6 +15,7 @@ namespace PolyShow
 {
 
 class ColorField;
+class InspectorCheckBox;
 class InspectorSection;
 class MaterialIconLabel;
 
@@ -30,6 +30,9 @@ public:
 
     /// Rebuilds the inspector from the current selection context.
     void loadSelectionContext(const DocumentData &documentData, const SelectionState &selectionState);
+
+    /// Rebuilds the inspector from the current multi-selection context.
+    void loadSelectionContext(const DocumentData &documentData, const SelectionSet &selectionSet);
 
     /// Replaces the validation error for one style field.
     void setStyleFieldError(PrimitiveStyleField field, const QString &message);
@@ -83,6 +86,7 @@ private:
     PrimitiveCoordinateDraft currentCoordinateDraft() const;
 
     DocumentData m_document_data;
+    SelectionSet m_selection_set;
     SelectionState m_selection_state;
     PrimitiveEditValidationErrors m_validation_errors;
     bool m_is_loading_form {false};
@@ -99,7 +103,7 @@ private:
     QWidget *m_width_section_widget {nullptr};
     ColorField *m_stroke_color_field {nullptr};
     ColorField *m_fill_color_field {nullptr};
-    QCheckBox *m_fill_enabled_check_box {nullptr};
+    InspectorCheckBox *m_fill_enabled_check_box {nullptr};
     QLineEdit *m_width_line_edit {nullptr};
     QLineEdit *m_point_size_line_edit {nullptr};
     QLabel *m_width_error_label {nullptr};

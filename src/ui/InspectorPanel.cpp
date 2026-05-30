@@ -3,10 +3,10 @@
 #include "core/PrimitiveEditing.h"
 #include "ui/ColorField.h"
 #include "ui/EditorPanelHeader.h"
+#include "ui/InspectorCheckBox.h"
 #include "ui/InspectorSection.h"
 #include "ui/MaterialIconLabel.h"
 
-#include <QCheckBox>
 #include <QFont>
 #include <QHBoxLayout>
 #include <QLabel>
@@ -14,6 +14,7 @@
 #include <QLineEdit>
 #include <QPlainTextEdit>
 #include <QRectF>
+#include <QScrollArea>
 #include <QStyle>
 #include <QVBoxLayout>
 
@@ -89,6 +90,17 @@ struct LayerSummary
     int point_count {0};
 };
 
+struct SelectionSummary
+{
+    int primitive_count {0};
+    int layer_count {0};
+    int visible_count {0};
+    int hidden_count {0};
+    int polygon_count {0};
+    int polyline_count {0};
+    int point_count {0};
+};
+
 /// Counts one layer's primitive summary values.
 LayerSummary layerSummary(const LayerData &layer)
 {
@@ -117,6 +129,61 @@ LayerSummary layerSummary(const LayerData &layer)
     }
 
     summary.hidden_count = summary.primitive_count - summary.visible_count;
+    return summary;
+}
+
+/// Counts the valid primitives in a multi-selection without enabling batch edits.
+SelectionSummary selectionSummary(const DocumentData &documentData, const SelectionSet &selectionSet)
+{
+    SelectionSummary summary;
+    QVector<int> layerIndices;
+
+    for (const SelectionState &selectionState : selectionSet.selected_primitives)
+    {
+        if (selectionState.kind != SelectionKind::Primitive
+            || selectionState.layer_index < 0
+            || selectionState.layer_index >= documentData.layers.size())
+        {
+            continue;
+        }
+
+        const LayerData &layer = documentData.layers.at(selectionState.layer_index);
+        if (selectionState.primitive_index < 0 || selectionState.primitive_index >= layer.primitives.size())
+        {
+            continue;
+        }
+
+        if (!layerIndices.contains(selectionState.layer_index))
+        {
+            layerIndices.append(selectionState.layer_index);
+        }
+
+        const LayerPrimitiveData &primitive = layer.primitives.at(selectionState.primitive_index);
+        ++summary.primitive_count;
+        if (primitive.visible)
+        {
+            ++summary.visible_count;
+        }
+        else
+        {
+            ++summary.hidden_count;
+        }
+
+        switch (primitive.reference.kind)
+        {
+        case PrimitiveKind::Point:
+            ++summary.point_count;
+            break;
+        case PrimitiveKind::Polyline:
+            ++summary.polyline_count;
+            break;
+        case PrimitiveKind::Polygon:
+            ++summary.polygon_count;
+            break;
+        }
+    }
+
+    summary.layer_count = layerIndices.size();
     return summary;
 }
 
@@ -301,7 +368,17 @@ InspectorPanel::InspectorPanel(QWidget *parent)
     objectLayout->addWidget(m_title_label, 1);
     layout->addWidget(objectRow);
 
-    auto *body = new QWidget(this);
+    auto *scrollArea = new QScrollArea(this);
+    scrollArea->setObjectName(QStringLiteral("inspectorScrollArea"));
+    scrollArea->setFrameShape(QFrame::NoFrame);
+    scrollArea->setWidgetResizable(true);
+    scrollArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    scrollArea->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+    scrollArea->setAttribute(Qt::WA_StyledBackground, true);
+    scrollArea->viewport()->setObjectName(QStringLiteral("inspectorScrollViewport"));
+    scrollArea->viewport()->setAttribute(Qt::WA_StyledBackground, true);
+
+    auto *body = new QWidget(scrollArea);
     body->setObjectName(QStringLiteral("inspectorBody"));
     body->setAttribute(Qt::WA_StyledBackground, true);
     auto *bodyLayout = new QVBoxLayout(body);
@@ -331,7 +408,7 @@ InspectorPanel::InspectorPanel(QWidget *parent)
     fillLayout->setContentsMargins(6, 5, 6, 6);
     fillLayout->setSpacing(6);
 
-    m_fill_enabled_check_box = new QCheckBox(QStringLiteral("Enable Fill"), fillWrapper);
+    m_fill_enabled_check_box = new InspectorCheckBox(QStringLiteral("Enable Fill"), fillWrapper);
     fillLayout->addWidget(m_fill_enabled_check_box);
 
     m_fill_color_field = new ColorField(fillWrapper);
@@ -373,7 +450,8 @@ InspectorPanel::InspectorPanel(QWidget *parent)
     m_coordinates_section->contentLayout()->addWidget(m_coordinates_hint_label);
 
     bodyLayout->addStretch();
-    layout->addWidget(body, 1);
+    scrollArea->setWidget(body);
+    layout->addWidget(scrollArea, 1);
 
     connect(m_stroke_color_field, &ColorField::colorTextCommitted, this, [this](const QString &) {
         if (!m_is_loading_form)
@@ -387,7 +465,7 @@ InspectorPanel::InspectorPanel(QWidget *parent)
             emit styleChangeRequested(buildStyleChangeRequest(PrimitiveStyleField::FillColor));
         }
     });
-    connect(m_fill_enabled_check_box, &QCheckBox::toggled, this, [this](bool) {
+    connect(m_fill_enabled_check_box, &InspectorCheckBox::toggled, this, [this](bool) {
         if (!m_is_loading_form)
         {
             updateVisibleEditorFields(currentPrimitiveKind());
@@ -418,8 +496,20 @@ InspectorPanel::InspectorPanel(QWidget *parent)
 
 void InspectorPanel::loadSelectionContext(const DocumentData &documentData, const SelectionState &selectionState)
 {
+    SelectionSet selectionSet;
+    selectionSet.primary_selection = selectionState;
+    if (selectionState.kind == SelectionKind::Primitive)
+    {
+        selectionSet.selected_primitives.append(selectionState);
+    }
+    loadSelectionContext(documentData, selectionSet);
+}
+
+void InspectorPanel::loadSelectionContext(const DocumentData &documentData, const SelectionSet &selectionSet)
+{
     m_document_data = documentData;
-    m_selection_state = selectionState;
+    m_selection_set = selectionSet;
+    m_selection_state = selectionSet.primary_selection;
     updateContent();
 }
 
@@ -465,11 +555,57 @@ void InspectorPanel::clearCoordinateError()
 void InspectorPanel::updateContent()
 {
     m_validation_errors.clear();
-    m_badge_label->setText(selectionBadgeText(m_selection_state.kind));
+    m_badge_label->setText(
+        m_selection_set.selected_primitives.size() > 1 ? QStringLiteral("Multi") : selectionBadgeText(m_selection_state.kind));
     m_editor_widget->setVisible(false);
     m_style_section->setVisible(false);
     m_coordinates_section->setVisible(false);
     clearLayout(m_geometry_content_layout);
+
+    const SelectionSummary multiSummary = selectionSummary(m_document_data, m_selection_set);
+    if (multiSummary.primitive_count > 1)
+    {
+        m_object_icon_label->setIconName(QStringLiteral("select_all"));
+        m_title_label->setText(QStringLiteral("%1 primitives selected").arg(multiSummary.primitive_count));
+        m_geometry_section->setTitle(QStringLiteral("Selection"));
+        m_geometry_content_layout->addWidget(createReadonlyFieldRow(
+            m_geometry_section,
+            QStringLiteral("category"),
+            QStringLiteral("Primitives"),
+            QString::number(multiSummary.primitive_count)));
+        m_geometry_content_layout->addWidget(createReadonlyFieldRow(
+            m_geometry_section,
+            QStringLiteral("layers"),
+            QStringLiteral("Layers"),
+            QString::number(multiSummary.layer_count)));
+        m_geometry_content_layout->addWidget(createReadonlyFieldRow(
+            m_geometry_section,
+            QStringLiteral("visibility"),
+            QStringLiteral("Visible"),
+            QString::number(multiSummary.visible_count)));
+        m_geometry_content_layout->addWidget(createReadonlyFieldRow(
+            m_geometry_section,
+            QStringLiteral("visibility_off"),
+            QStringLiteral("Hidden"),
+            QString::number(multiSummary.hidden_count)));
+        m_geometry_content_layout->addWidget(createReadonlyFieldRow(
+            m_geometry_section,
+            QStringLiteral("radio_button_checked"),
+            QStringLiteral("Points"),
+            QString::number(multiSummary.point_count)));
+        m_geometry_content_layout->addWidget(createReadonlyFieldRow(
+            m_geometry_section,
+            QStringLiteral("timeline"),
+            QStringLiteral("Polylines"),
+            QString::number(multiSummary.polyline_count)));
+        m_geometry_content_layout->addWidget(createReadonlyFieldRow(
+            m_geometry_section,
+            QStringLiteral("pentagon"),
+            QStringLiteral("Polygons"),
+            QString::number(multiSummary.polygon_count)));
+        updateFieldErrors();
+        return;
+    }
 
     if (m_selection_state.kind == SelectionKind::Layer
         && m_selection_state.layer_index >= 0

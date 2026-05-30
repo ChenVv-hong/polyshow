@@ -2424,7 +2424,7 @@
                                       "name": "Primitive Type Row Icon",
                                       "width": 15,
                                       "height": 15,
-                                      "iconFontName": "timeline",
+                                      "iconFontName": "pentagon",
                                       "iconFontFamily": "Material Symbols Rounded",
                                       "fill": "#7E858F"
                                     },
@@ -2447,7 +2447,7 @@
                                       "fill": "#E9EAEC",
                                       "textGrowth": "fixed-width",
                                       "width": "fill_container",
-                                      "content": "Polyline",
+                                      "content": "Polygon",
                                       "fontFamily": "Consolas",
                                       "fontSize": 11,
                                       "fontWeight": "normal"
@@ -2796,6 +2796,181 @@
                                 },
                                 {
                                   "type": "frame",
+                                  "id": "v2PrimFill",
+                                  "name": "Fill Controls",
+                                  "width": "fill_container",
+                                  "fill": "#26282E",
+                                  "layout": "vertical",
+                                  "gap": 6,
+                                  "padding": [
+                                    5,
+                                    6,
+                                    6,
+                                    6
+                                  ],
+                                  "children": [
+                                    {
+                                      "type": "frame",
+                                      "id": "v2PrimFillToggle",
+                                      "name": "Enable Fill Row",
+                                      "width": "fill_container",
+                                      "height": 22,
+                                      "fill": "#26282E",
+                                      "gap": 7,
+                                      "alignItems": "center",
+                                      "children": [
+                                        {
+                                          "type": "frame",
+                                          "id": "v2PrimFillCheck",
+                                          "name": "Enable Fill Checkbox",
+                                          "width": 14,
+                                          "height": 14,
+                                          "fill": "#274763",
+                                          "cornerRadius": 4,
+                                          "stroke": {
+                                            "align": "inside",
+                                            "thickness": 1,
+                                            "fill": "#63A7FF"
+                                          },
+                                          "layout": "none",
+                                          "children": [
+                                            {
+                                              "type": "icon_font",
+                                              "id": "v2PrimFillCheckIcon",
+                                              "name": "Enable Fill Check Icon",
+                                              "width": 13,
+                                              "height": 13,
+                                              "iconFontName": "check",
+                                              "iconFontFamily": "Material Symbols Rounded",
+                                              "fill": "#E9EAEC"
+                                            }
+                                          ]
+                                        },
+                                        {
+                                          "type": "text",
+                                          "id": "v2PrimFillCheckText",
+                                          "name": "Enable Fill Text",
+                                          "fill": "#E9EAEC",
+                                          "content": "Enable Fill",
+                                          "fontFamily": "Segoe UI",
+                                          "fontSize": 11,
+                                          "fontWeight": "normal"
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "type": "frame",
+                                      "id": "v2PrimFillColor",
+                                      "name": "Fill Color",
+                                      "width": "fill_container",
+                                      "fill": "#26282E",
+                                      "layout": "vertical",
+                                      "gap": 4,
+                                      "padding": [
+                                        5,
+                                        0,
+                                        0,
+                                        0
+                                      ],
+                                      "children": [
+                                        {
+                                          "type": "text",
+                                          "id": "v2PrimFillColorLabel",
+                                          "name": "Fill Color Label",
+                                          "fill": "#7E858F",
+                                          "content": "Fill Color",
+                                          "fontFamily": "Segoe UI",
+                                          "fontSize": 10,
+                                          "fontWeight": "600"
+                                        },
+                                        {
+                                          "type": "frame",
+                                          "id": "v2PrimFillColorRow",
+                                          "name": "Fill Color Row",
+                                          "width": "fill_container",
+                                          "gap": 8,
+                                          "alignItems": "center",
+                                          "children": [
+                                            {
+                                              "type": "frame",
+                                              "id": "v2PrimFillSwatch",
+                                              "name": "Fill Color Swatch",
+                                              "width": 28,
+                                              "height": 28,
+                                              "fill": "#282A2E",
+                                              "cornerRadius": 5,
+                                              "stroke": {
+                                                "align": "inside",
+                                                "thickness": 1,
+                                                "fill": "#45484F"
+                                              },
+                                              "layout": "none",
+                                              "children": [
+                                                {
+                                                  "type": "rectangle",
+                                                  "id": "v2PrimFillSwatchFill",
+                                                  "x": 5,
+                                                  "y": 5,
+                                                  "name": "Fill Color Swatch Fill",
+                                                  "width": 18,
+                                                  "height": 18,
+                                                  "fill": "#62D18B45",
+                                                  "cornerRadius": 3
+                                                }
+                                              ]
+                                            },
+                                            {
+                                              "type": "frame",
+                                              "id": "v2PrimFillInput",
+                                              "name": "Fill Color Input",
+                                              "width": "fill_container",
+                                              "height": 28,
+                                              "fill": "#282A2E",
+                                              "cornerRadius": 5,
+                                              "stroke": {
+                                                "align": "inside",
+                                                "thickness": 1,
+                                                "fill": "#45484F"
+                                              },
+                                              "gap": 6,
+                                              "padding": [
+                                                0,
+                                                8
+                                              ],
+                                              "alignItems": "center",
+                                              "children": [
+                                                {
+                                                  "type": "icon_font",
+                                                  "id": "v2PrimFillInputIcon",
+                                                  "name": "Fill Color Input Icon",
+                                                  "width": 17,
+                                                  "height": 17,
+                                                  "iconFontName": "palette",
+                                                  "iconFontFamily": "Material Symbols Rounded",
+                                                  "fill": "#7E858F"
+                                                },
+                                                {
+                                                  "type": "text",
+                                                  "id": "v2PrimFillInputText",
+                                                  "name": "Fill Color Input Text",
+                                                  "fill": "#E9EAEC",
+                                                  "content": "#62D18B45",
+                                                  "fontFamily": "Segoe UI",
+                                                  "fontSize": 11,
+                                                  "fontWeight": "normal",
+                                                  "textGrowth": "fixed-width",
+                                                  "width": "fill_container"
+                                                }
+                                              ]
+                                            }
+                                          ]
+                                        }
+                                      ]
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "frame",
                                   "id": "i7Gwxi",
                                   "name": "Line Width",
                                   "width": "fill_container",
@@ -3085,7 +3260,8 @@
                             }
                           ]
                         }
-                      ]
+                      ],
+                      "clip": true
                     }
                   ]
                 }
@@ -3322,6 +3498,405 @@
               "name": "Status Mouse",
               "fill": "#AEB4BC",
               "content": "X: 0.00  Y: 0.00",
+              "fontFamily": "Consolas",
+              "fontSize": 11,
+              "fontWeight": "normal"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "multiPrimitiveSelectedState",
+      "x": 5170,
+      "y": -187,
+      "name": "PolyShow V2 - Multi Primitive Selected",
+      "clip": true,
+      "width": 1280,
+      "height": 800,
+      "fill": "#202124",
+      "layout": "none",
+      "children": [
+        {
+          "type": "frame",
+          "id": "multiTopBar",
+          "x": 0,
+          "y": 0,
+          "name": "V2 Top Bar",
+          "width": 1280,
+          "height": 34,
+          "fill": "#2C2D31",
+          "stroke": {
+            "align": "inside",
+            "thickness": {
+              "bottom": 1
+            },
+            "fill": "#45484F"
+          },
+          "layout": "none",
+          "children": [
+            {
+              "type": "text",
+              "id": "multiTopBarTitle",
+              "x": 12,
+              "y": 8,
+              "name": "Top Bar Title",
+              "fill": "#E9EAEC",
+              "content": "PolyShow",
+              "fontFamily": "Segoe UI",
+              "fontSize": 12,
+              "fontWeight": "700"
+            },
+            {
+              "type": "text",
+              "id": "multiTopBarContext",
+              "x": 112,
+              "y": 9,
+              "name": "Top Bar Context",
+              "fill": "#AEB4BC",
+              "content": "Ctrl multi-select sync state",
+              "fontFamily": "Segoe UI",
+              "fontSize": 11,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "multiOutliner",
+          "x": 0,
+          "y": 34,
+          "name": "Outliner - Multiple Primitives Selected",
+          "width": 300,
+          "height": 634,
+          "fill": "#303236",
+          "stroke": {
+            "align": "inside",
+            "thickness": {
+              "right": 1,
+              "bottom": 1
+            },
+            "fill": "#45484F"
+          },
+          "layout": "none",
+          "children": [
+            {
+              "type": "text",
+              "id": "multiOutlinerTitle",
+              "x": 12,
+              "y": 10,
+              "name": "Outliner Header Text",
+              "fill": "#E9EAEC",
+              "content": "Outliner",
+              "fontFamily": "Segoe UI",
+              "fontSize": 12,
+              "fontWeight": "700"
+            },
+            {
+              "type": "frame",
+              "id": "multiLayerRow",
+              "x": 6,
+              "y": 48,
+              "name": "Layer Row",
+              "width": 288,
+              "height": 25,
+              "fill": "#303236",
+              "layout": "none",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "multiLayerRowText",
+                  "x": 32,
+                  "y": 5,
+                  "name": "Layer Row Text",
+                  "fill": "#E9EAEC",
+                  "content": "multi_shape.ply (File)   4",
+                  "fontFamily": "Segoe UI",
+                  "fontSize": 11,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "multiPrimitiveRowOne",
+              "x": 6,
+              "y": 76,
+              "name": "Selected Primitive Row One",
+              "width": 288,
+              "height": 25,
+              "fill": "#3A4350",
+              "cornerRadius": 2,
+              "layout": "none",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "multiPrimitiveRowOneText",
+                  "x": 48,
+                  "y": 5,
+                  "name": "Selected Primitive Row One Text",
+                  "fill": "#F2F6FA",
+                  "content": "Polygon 1",
+                  "fontFamily": "Segoe UI",
+                  "fontSize": 11,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "multiPrimitiveRowTwo",
+              "x": 6,
+              "y": 104,
+              "name": "Selected Primitive Row Two",
+              "width": 288,
+              "height": 25,
+              "fill": "#3A4350",
+              "cornerRadius": 2,
+              "layout": "none",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "multiPrimitiveRowTwoText",
+                  "x": 48,
+                  "y": 5,
+                  "name": "Selected Primitive Row Two Text",
+                  "fill": "#F2F6FA",
+                  "content": "Polyline 1",
+                  "fontFamily": "Segoe UI",
+                  "fontSize": 11,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "multiPrimitiveHiddenRow",
+              "x": 6,
+              "y": 132,
+              "name": "Selected Hidden Primitive Row",
+              "width": 288,
+              "height": 25,
+              "fill": "#3A4350",
+              "cornerRadius": 2,
+              "layout": "none",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "multiPrimitiveHiddenRowText",
+                  "x": 48,
+                  "y": 5,
+                  "name": "Selected Hidden Primitive Row Text",
+                  "fill": "#AEB4BC",
+                  "content": "Point 1  (hidden)",
+                  "fontFamily": "Segoe UI",
+                  "fontSize": 11,
+                  "fontWeight": "600"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "multiViewport",
+          "x": 300,
+          "y": 34,
+          "name": "2D Viewport - Multiple Selection Boxes",
+          "width": 648,
+          "height": 634,
+          "fill": "#202124",
+          "stroke": {
+            "align": "inside",
+            "thickness": 1,
+            "fill": "#45484F"
+          },
+          "layout": "none",
+          "children": [
+            {
+              "type": "frame",
+              "id": "multiViewportPolygon",
+              "x": 148,
+              "y": 132,
+              "name": "Visible Polygon Selection",
+              "width": 156,
+              "height": 112,
+              "fill": "#63A7FF1A",
+              "stroke": {
+                "align": "inside",
+                "thickness": 2,
+                "fill": "#63A7FF"
+              }
+            },
+            {
+              "type": "frame",
+              "id": "multiViewportPolyline",
+              "x": 342,
+              "y": 286,
+              "name": "Visible Polyline Selection",
+              "width": 178,
+              "height": 86,
+              "fill": "#63A7FF12",
+              "stroke": {
+                "align": "inside",
+                "thickness": 2,
+                "fill": "#63A7FF"
+              }
+            },
+            {
+              "type": "text",
+              "id": "multiViewportHiddenNote",
+              "x": 20,
+              "y": 596,
+              "name": "Hidden Selection Note",
+              "fill": "#AEB4BC",
+              "content": "Hidden selected primitives remain selected in the tree; viewport draws boxes only for visible primitives.",
+              "fontFamily": "Segoe UI",
+              "fontSize": 11,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "multiInspector",
+          "x": 948,
+          "y": 34,
+          "name": "Inspector - Multi Selection Summary",
+          "width": 332,
+          "height": 634,
+          "fill": "#303236",
+          "stroke": {
+            "align": "inside",
+            "thickness": {
+              "left": 1,
+              "bottom": 1
+            },
+            "fill": "#45484F"
+          },
+          "layout": "none",
+          "children": [
+            {
+              "type": "text",
+              "id": "multiInspectorHeader",
+              "x": 12,
+              "y": 10,
+              "name": "Inspector Header Text",
+              "fill": "#E9EAEC",
+              "content": "Properties",
+              "fontFamily": "Segoe UI",
+              "fontSize": 12,
+              "fontWeight": "700"
+            },
+            {
+              "type": "frame",
+              "id": "multiInspectorBadge",
+              "x": 270,
+              "y": 8,
+              "name": "Inspector Multi Badge",
+              "width": 48,
+              "height": 18,
+              "fill": "#3A4350",
+              "cornerRadius": 4,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "multiInspectorBadgeText",
+                  "x": 10,
+                  "y": 2,
+                  "name": "Inspector Multi Badge Text",
+                  "fill": "#F2F6FA",
+                  "content": "Multi",
+                  "fontFamily": "Segoe UI",
+                  "fontSize": 10,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "multiInspectorTitle",
+              "x": 12,
+              "y": 52,
+              "name": "Inspector Multi Title",
+              "fill": "#E9EAEC",
+              "content": "3 primitives selected",
+              "fontFamily": "Segoe UI",
+              "fontSize": 12,
+              "fontWeight": "700"
+            },
+            {
+              "type": "frame",
+              "id": "multiInspectorSummary",
+              "x": 6,
+              "y": 92,
+              "name": "Selection Summary Inspector Panel",
+              "width": 320,
+              "height": 200,
+              "fill": "#303236",
+              "cornerRadius": 4,
+              "stroke": {
+                "align": "inside",
+                "thickness": 1,
+                "fill": "#45484F"
+              },
+              "layout": "none",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "multiInspectorSummaryTitle",
+                  "x": 8,
+                  "y": 6,
+                  "name": "Selection Summary Title",
+                  "fill": "#E9EAEC",
+                  "content": "Selection",
+                  "fontFamily": "Segoe UI",
+                  "fontSize": 11,
+                  "fontWeight": "600"
+                },
+                {
+                  "type": "text",
+                  "id": "multiInspectorSummaryRows",
+                  "x": 14,
+                  "y": 42,
+                  "name": "Selection Summary Rows",
+                  "fill": "#C7CCD3",
+                  "content": "Primitives      3\nLayers          1\nVisible         2\nHidden          1\nPoints          1\nPolylines       1\nPolygons        1",
+                  "fontFamily": "Consolas",
+                  "fontSize": 11,
+                  "fontWeight": "normal"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "multiBottomLog",
+          "x": 0,
+          "y": 668,
+          "name": "V2 Bottom Log Area",
+          "width": 1280,
+          "height": 132,
+          "fill": "#303236",
+          "stroke": {
+            "align": "inside",
+            "thickness": {
+              "top": 1
+            },
+            "fill": "#45484F"
+          },
+          "layout": "none",
+          "children": [
+            {
+              "type": "text",
+              "id": "multiStatusText",
+              "x": 12,
+              "y": 104,
+              "name": "Status Text",
+              "fill": "#AEB4BC",
+              "content": "Points: 1  Polylines: 1  Polygons: 1",
               "fontFamily": "Consolas",
               "fontSize": 11,
               "fontWeight": "normal"
@@ -6120,7 +6695,8 @@
                             }
                           ]
                         }
-                      ]
+                      ],
+                      "clip": true
                     }
                   ]
                 }
@@ -10423,7 +10999,7 @@
                           "fill": "#E9EAEC",
                           "textGrowth": "fixed-width",
                           "width": "fill_container",
-                          "content": "Polyline 1",
+                          "content": "Polygon 1",
                           "fontFamily": "Segoe UI",
                           "fontSize": 12,
                           "fontWeight": "600"
@@ -10538,7 +11114,7 @@
                                       "name": "Primitive Type Row Icon",
                                       "width": 15,
                                       "height": 15,
-                                      "iconFontName": "timeline",
+                                      "iconFontName": "pentagon",
                                       "iconFontFamily": "Material Symbols Rounded",
                                       "fill": "#7E858F"
                                     },
@@ -10561,7 +11137,7 @@
                                       "fill": "#E9EAEC",
                                       "textGrowth": "fixed-width",
                                       "width": "fill_container",
-                                      "content": "Polyline",
+                                      "content": "Polygon",
                                       "fontFamily": "Consolas",
                                       "fontSize": 11,
                                       "fontWeight": "normal"
@@ -10910,6 +11486,181 @@
                                 },
                                 {
                                   "type": "frame",
+                                  "id": "v2SearchFill",
+                                  "name": "Fill Controls",
+                                  "width": "fill_container",
+                                  "fill": "#26282E",
+                                  "layout": "vertical",
+                                  "gap": 6,
+                                  "padding": [
+                                    5,
+                                    6,
+                                    6,
+                                    6
+                                  ],
+                                  "children": [
+                                    {
+                                      "type": "frame",
+                                      "id": "v2SearchFillToggle",
+                                      "name": "Enable Fill Row",
+                                      "width": "fill_container",
+                                      "height": 22,
+                                      "fill": "#26282E",
+                                      "gap": 7,
+                                      "alignItems": "center",
+                                      "children": [
+                                        {
+                                          "type": "frame",
+                                          "id": "v2SearchFillCheck",
+                                          "name": "Enable Fill Checkbox",
+                                          "width": 14,
+                                          "height": 14,
+                                          "fill": "#274763",
+                                          "cornerRadius": 4,
+                                          "stroke": {
+                                            "align": "inside",
+                                            "thickness": 1,
+                                            "fill": "#63A7FF"
+                                          },
+                                          "layout": "none",
+                                          "children": [
+                                            {
+                                              "type": "icon_font",
+                                              "id": "v2SearchFillCheckIcon",
+                                              "name": "Enable Fill Check Icon",
+                                              "width": 13,
+                                              "height": 13,
+                                              "iconFontName": "check",
+                                              "iconFontFamily": "Material Symbols Rounded",
+                                              "fill": "#E9EAEC"
+                                            }
+                                          ]
+                                        },
+                                        {
+                                          "type": "text",
+                                          "id": "v2SearchFillCheckText",
+                                          "name": "Enable Fill Text",
+                                          "fill": "#E9EAEC",
+                                          "content": "Enable Fill",
+                                          "fontFamily": "Segoe UI",
+                                          "fontSize": 11,
+                                          "fontWeight": "normal"
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "type": "frame",
+                                      "id": "v2SearchFillColor",
+                                      "name": "Fill Color",
+                                      "width": "fill_container",
+                                      "fill": "#26282E",
+                                      "layout": "vertical",
+                                      "gap": 4,
+                                      "padding": [
+                                        5,
+                                        0,
+                                        0,
+                                        0
+                                      ],
+                                      "children": [
+                                        {
+                                          "type": "text",
+                                          "id": "v2SearchFillColorLabel",
+                                          "name": "Fill Color Label",
+                                          "fill": "#7E858F",
+                                          "content": "Fill Color",
+                                          "fontFamily": "Segoe UI",
+                                          "fontSize": 10,
+                                          "fontWeight": "600"
+                                        },
+                                        {
+                                          "type": "frame",
+                                          "id": "v2SearchFillColorRow",
+                                          "name": "Fill Color Row",
+                                          "width": "fill_container",
+                                          "gap": 8,
+                                          "alignItems": "center",
+                                          "children": [
+                                            {
+                                              "type": "frame",
+                                              "id": "v2SearchFillSwatch",
+                                              "name": "Fill Color Swatch",
+                                              "width": 28,
+                                              "height": 28,
+                                              "fill": "#282A2E",
+                                              "cornerRadius": 5,
+                                              "stroke": {
+                                                "align": "inside",
+                                                "thickness": 1,
+                                                "fill": "#45484F"
+                                              },
+                                              "layout": "none",
+                                              "children": [
+                                                {
+                                                  "type": "rectangle",
+                                                  "id": "v2SearchFillSwatchFill",
+                                                  "x": 5,
+                                                  "y": 5,
+                                                  "name": "Fill Color Swatch Fill",
+                                                  "width": 18,
+                                                  "height": 18,
+                                                  "fill": "#62D18B45",
+                                                  "cornerRadius": 3
+                                                }
+                                              ]
+                                            },
+                                            {
+                                              "type": "frame",
+                                              "id": "v2SearchFillInput",
+                                              "name": "Fill Color Input",
+                                              "width": "fill_container",
+                                              "height": 28,
+                                              "fill": "#282A2E",
+                                              "cornerRadius": 5,
+                                              "stroke": {
+                                                "align": "inside",
+                                                "thickness": 1,
+                                                "fill": "#45484F"
+                                              },
+                                              "gap": 6,
+                                              "padding": [
+                                                0,
+                                                8
+                                              ],
+                                              "alignItems": "center",
+                                              "children": [
+                                                {
+                                                  "type": "icon_font",
+                                                  "id": "v2SearchFillInputIcon",
+                                                  "name": "Fill Color Input Icon",
+                                                  "width": 17,
+                                                  "height": 17,
+                                                  "iconFontName": "palette",
+                                                  "iconFontFamily": "Material Symbols Rounded",
+                                                  "fill": "#7E858F"
+                                                },
+                                                {
+                                                  "type": "text",
+                                                  "id": "v2SearchFillInputText",
+                                                  "name": "Fill Color Input Text",
+                                                  "fill": "#E9EAEC",
+                                                  "content": "#62D18B45",
+                                                  "fontFamily": "Segoe UI",
+                                                  "fontSize": 11,
+                                                  "fontWeight": "normal",
+                                                  "textGrowth": "fixed-width",
+                                                  "width": "fill_container"
+                                                }
+                                              ]
+                                            }
+                                          ]
+                                        }
+                                      ]
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "frame",
                                   "id": "uGECs",
                                   "name": "Line Width",
                                   "width": "fill_container",
@@ -11077,9 +11828,7 @@
                               "fill": "#282A2E",
                               "stroke": {
                                 "align": "inside",
-                                "thickness": {
-                                  "bottom": 1
-                                },
+                                "thickness": 0,
                                 "fill": "#45484F"
                               },
                               "gap": 6,
@@ -11095,7 +11844,7 @@
                                   "name": "Coordinates Section Icon",
                                   "width": 16,
                                   "height": 16,
-                                  "iconFontName": "expand_more",
+                                  "iconFontName": "chevron_right",
                                   "iconFontFamily": "Material Symbols Rounded",
                                   "fill": "#7E858F"
                                 },
@@ -11195,11 +11944,14 @@
                                     }
                                   ]
                                 }
-                              ]
+                              ],
+                              "height": 0,
+                              "clip": true
                             }
                           ]
                         }
-                      ]
+                      ],
+                      "clip": true
                     }
                   ]
                 }

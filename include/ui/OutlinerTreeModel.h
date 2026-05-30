@@ -23,7 +23,8 @@ enum OutlinerItemRole
     OutlinerPrimitiveIndexRole,
     OutlinerIconNameRole,
     OutlinerFilterTextRole,
-    OutlinerHiddenRole
+    OutlinerHiddenRole,
+    OutlinerSelectedRole
 };
 
 /// Tree model backing the left outliner layer/primitive hierarchy.
@@ -56,6 +57,9 @@ public:
 
     /// Replaces or synchronizes the document payload represented by the model.
     void setDocumentData(const DocumentData &documentData, bool rebuildTreeItems);
+
+    /// Replaces the business selection state used by the custom outliner delegate.
+    void setSelectionSet(const SelectionSet &selectionSet);
 
     /// Returns the source-model index for the current application selection.
     [[nodiscard]]
@@ -95,6 +99,11 @@ private:
     [[nodiscard]]
     bool hasSameShape(const DocumentData &documentData) const;
 
+    [[nodiscard]]
+    bool isSelected(const SelectionState &selectionState) const;
+
+    void emitSelectionRowsChanged(const SelectionSet &previousSelectionSet, const SelectionSet &nextSelectionSet);
+
     void rebuildTree();
     void emitAllRowsChanged();
 
@@ -114,6 +123,7 @@ private:
     Qt::CheckState layerCheckState(const LayerData &layer) const;
 
     DocumentData m_document_data;
+    SelectionSet m_selection_set;
     std::unique_ptr<OutlinerNode> m_root_node;
 };
 

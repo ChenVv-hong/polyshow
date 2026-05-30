@@ -61,7 +61,8 @@ void OutlinerItemDelegate::paint(
     painter->setRenderHint(QPainter::TextAntialiasing, true);
 
     const RenderColors &colors = RenderTheme::colors();
-    const bool selected = option.state.testFlag(QStyle::State_Selected);
+    const bool selected = option.state.testFlag(QStyle::State_Selected)
+        || index.data(OutlinerSelectedRole).toBool();
     const bool hovered = option.state.testFlag(QStyle::State_MouseOver);
     const bool hidden = index.data(OutlinerHiddenRole).toBool();
     const Qt::CheckState checkState = static_cast<Qt::CheckState>(index.data(Qt::CheckStateRole).toInt());

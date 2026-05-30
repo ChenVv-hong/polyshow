@@ -30,12 +30,15 @@ public:
     /// Rebuilds the sidebar from the current document.
     void setDocumentData(const DocumentData &documentData, bool rebuildTreeItems = true);
 
+    /// Synchronizes the current selection set.
+    void setSelectionSet(const SelectionSet &selectionSet);
+
     /// Synchronizes the current layer or primitive selection.
     void setSelectionState(const SelectionState &selectionState);
 
 signals:
-    /// Emitted when the selected object changes.
-    void selectionChanged(const SelectionState &selectionState);
+    /// Emitted when the user requests a row selection change.
+    void selectionRequested(const SelectionState &selectionState, bool toggleRequested);
 
     /// Emitted when the user toggles one layer.
     void layerVisibilityChanged(int layerIndex, bool visible);
@@ -51,6 +54,9 @@ signals:
 
 private:
     bool eventFilter(QObject *watched, QEvent *event) override;
+
+    /// Emits one selection request for the clicked tree row.
+    void requestSelectionForIndex(const QModelIndex &proxyIndex, bool toggleRequested);
 
     /// Expands or collapses the search field.
     void setSearchExpanded(bool expanded);
@@ -68,6 +74,7 @@ private:
     void expandVisibleLayers();
 
     DocumentData m_document_data;
+    SelectionSet m_selection_set;
     SelectionState m_selection_state;
     QPushButton *m_new_layer_button {nullptr};
     QPushButton *m_export_layer_button {nullptr};
@@ -82,7 +89,10 @@ private:
     bool m_is_syncing_selection {false};
     bool m_is_applying_filter {false};
     bool m_has_tree_control_press {false};
+    bool m_has_tree_selection_press {false};
+    bool m_tree_selection_toggle_requested {false};
     QPersistentModelIndex m_tree_control_press_index;
+    QPersistentModelIndex m_tree_selection_press_index;
     int m_tree_control_press_target {0};
 };
 

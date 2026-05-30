@@ -96,6 +96,12 @@ QVariant OutlinerTreeModel::data(const QModelIndex &index, int role) const
         return isLayer ? layerIconName(layer) : primitiveIconName(layer, node->primitive_index);
     case OutlinerHiddenRole:
         return isLayer ? layerCheckState(layer) == Qt::Unchecked : !layer.primitives.at(node->primitive_index).visible;
+    case OutlinerSelectedRole:
+        return isSelected(SelectionState {
+            isLayer ? SelectionKind::Layer : SelectionKind::Primitive,
+            node->layer_index,
+            node->primitive_index
+        });
     default:
         return QVariant();
     }
@@ -172,6 +178,18 @@ void OutlinerTreeModel::setDocumentData(const DocumentData &documentData, bool r
 
     m_document_data = documentData;
     emitAllRowsChanged();
+}
+
+void OutlinerTreeModel::setSelectionSet(const SelectionSet &selectionSet)
+{
+    if (selectionSet == m_selection_set)
+    {
+        return;
+    }
+
+    const SelectionSet previousSelectionSet = m_selection_set;
+    m_selection_set = selectionSet;
+    emitSelectionRowsChanged(previousSelectionSet, m_selection_set);
 }
 
 QModelIndex OutlinerTreeModel::indexForSelection(const SelectionState &selectionState) const
@@ -278,6 +296,56 @@ bool OutlinerTreeModel::hasSameShape(const DocumentData &documentData) const
     return true;
 }
 
+bool OutlinerTreeModel::isSelected(const SelectionState &selectionState) const
+{
+    if (selectionState.kind == SelectionKind::None)
+    {
+        return false;
+    }
+
+    if (!m_selection_set.selected_primitives.isEmpty())
+    {
+        if (selectionState.kind != SelectionKind::Primitive)
+        {
+            return false;
+        }
+
+        return std::any_of(
+            m_selection_set.selected_primitives.cbegin(),
+            m_selection_set.selected_primitives.cend(),
+            [&selectionState](const SelectionState &candidate) {
+                return candidate == selectionState;
+            });
+    }
+
+    return selectionState == m_selection_set.primary_selection;
+}
+
+void OutlinerTreeModel::emitSelectionRowsChanged(
+    const SelectionSet &previousSelectionSet,
+    const SelectionSet &nextSelectionSet)
+{
+    const auto emitOne = [this](const SelectionState &selectionState) {
+        const QModelIndex selectionIndex = indexForSelection(selectionState);
+        if (selectionIndex.isValid())
+        {
+            emit dataChanged(selectionIndex, selectionIndex, {OutlinerSelectedRole});
+        }
+    };
+
+    emitOne(previousSelectionSet.primary_selection);
+    for (const SelectionState &selectionState : previousSelectionSet.selected_primitives)
+    {
+        emitOne(selectionState);
+    }
+
+    emitOne(nextSelectionSet.primary_selection);
+    for (const SelectionState &selectionState : nextSelectionSet.selected_primitives)
+    {
+        emitOne(selectionState);
+    }
+}
+
 void OutlinerTreeModel::rebuildTree()
 {
     m_root_node = std::make_unique<OutlinerNode>();
@@ -314,7 +382,14 @@ void OutlinerTreeModel::emitAllRowsChanged()
         emit dataChanged(
             layerIndexModel,
             layerIndexModel,
-            {Qt::DisplayRole, Qt::ToolTipRole, Qt::CheckStateRole, OutlinerIconNameRole, OutlinerHiddenRole});
+            {
+                Qt::DisplayRole,
+                Qt::ToolTipRole,
+                Qt::CheckStateRole,
+                OutlinerIconNameRole,
+                OutlinerHiddenRole,
+                OutlinerSelectedRole
+            });
 
         const OutlinerNode *layerNode = m_root_node->children.at(layerIndex).get();
         for (int primitiveIndex = 0; primitiveIndex < static_cast<int>(layerNode->children.size()); ++primitiveIndex)
@@ -323,7 +398,14 @@ void OutlinerTreeModel::emitAllRowsChanged()
             emit dataChanged(
                 primitiveIndexModel,
                 primitiveIndexModel,
-                {Qt::DisplayRole, Qt::ToolTipRole, Qt::CheckStateRole, OutlinerIconNameRole, OutlinerHiddenRole});
+                {
+                    Qt::DisplayRole,
+                    Qt::ToolTipRole,
+                    Qt::CheckStateRole,
+                    OutlinerIconNameRole,
+                    OutlinerHiddenRole,
+                    OutlinerSelectedRole
+                });
         }
     }
 }

@@ -18,15 +18,15 @@ PillButton::PillButton(const QString &text, QWidget *parent)
     setCursor(Qt::PointingHandCursor);
 
     m_content_layout = new QHBoxLayout(this);
-    m_content_layout->setContentsMargins(9, 0, 9, 0);
-    m_content_layout->setSpacing(5);
+    m_content_layout->setContentsMargins(5, 0, 5, 0);
+    m_content_layout->setSpacing(4);
     m_content_layout->setAlignment(Qt::AlignCenter);
 
     m_icon_label = new MaterialIconLabel(QString(), this);
     m_icon_label->setProperty("role", QStringLiteral("materialIcon"));
     m_icon_label->setProperty("iconRole", QStringLiteral("button"));
     m_icon_label->setAttribute(Qt::WA_TransparentForMouseEvents);
-    m_icon_label->setIconPixelSize(20);
+    m_icon_label->setIconPixelSize(18);
     m_icon_label->setVisible(false);
     m_content_layout->addWidget(m_icon_label, 0, Qt::AlignCenter);
 
@@ -75,10 +75,15 @@ void PillButton::setText(const QString &text)
 
 QSize PillButton::sizeHint() const
 {
-    const int iconWidth = m_icon_label != nullptr && !m_icon_label->text().isEmpty() ? 20 : 0;
-    const int spacing = iconWidth > 0 && !m_display_text.isEmpty() ? 5 : 0;
+    const int iconWidth = m_icon_label != nullptr && !m_icon_label->text().isEmpty() ? 18 : 0;
+    if (iconWidth > 0 && m_display_text.isEmpty())
+    {
+        return QSize(30, 30);
+    }
+
+    const int spacing = iconWidth > 0 && !m_display_text.isEmpty() ? 4 : 0;
     const int textWidth = m_text_label == nullptr ? 0 : m_text_label->sizeHint().width();
-    return QSize(qMax(28, 18 + iconWidth + spacing + textWidth), 28);
+    return QSize(qMax(30, 10 + iconWidth + spacing + textWidth), 30);
 }
 
 QSize PillButton::minimumSizeHint() const
@@ -124,6 +129,16 @@ QString PillButton::variantName(Variant variant)
 
 void PillButton::refreshContentLayout()
 {
+    if (m_content_layout != nullptr)
+    {
+        m_content_layout->setContentsMargins(m_display_text.isEmpty() ? 0 : 5, 0, m_display_text.isEmpty() ? 0 : 5, 0);
+    }
+
+    if (m_icon_label != nullptr)
+    {
+        m_icon_label->setIconPixelSize(18);
+    }
+
     if (m_text_label != nullptr)
     {
         m_text_label->setText(m_display_text);

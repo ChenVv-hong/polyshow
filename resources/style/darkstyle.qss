@@ -152,11 +152,19 @@ QLabel#materialIcon[iconSize="24"] {
     font-size: 24px;
 }
 
+QLabel#materialIcon[iconSize="30"] {
+    font-size: 30px;
+}
+
 QLabel#materialIcon[iconRole="button"] {
     color: #AEB4BC;
 }
 
 QLabel#materialIcon[iconRole="button"][buttonState="active"] {
+    color: #E9EAEC;
+}
+
+QLabel#materialIcon[iconRole="button"][buttonVariant="primary"] {
     color: #E9EAEC;
 }
 
@@ -181,6 +189,10 @@ QLabel#buttonText[buttonState="active"] {
     color: #E9EAEC;
 }
 
+QLabel#buttonText[buttonVariant="primary"] {
+    color: #E9EAEC;
+}
+
 QLabel#buttonText[buttonState="disabled"] {
     color: #7E858F;
 }
@@ -196,24 +208,27 @@ QLabel#buttonText[buttonState="disabled"] {
 QPushButton#iconButton,
 QPushButton#toolButton,
 PillButton#toolButton {
-    min-height: 28px;
-    max-height: 28px;
+    min-height: 30px;
+    max-height: 30px;
     border: 1px solid #393C43;
     border-radius: 5px;
     background-color: #282A2E;
     color: #AEB4BC;
-    padding: 0px 9px;
+    padding: 0px 5px;
 }
 
 QPushButton#iconButton {
-    min-width: 28px;
-    max-width: 28px;
+    min-width: 30px;
+    max-width: 30px;
     padding: 0px;
 }
 
 QPushButton#iconButton:hover,
 QPushButton#toolButton:hover,
 PillButton#toolButton:hover,
+QPushButton#iconButton:checked,
+QPushButton#toolButton:checked,
+PillButton#toolButton:checked,
 PillButton#toolButton[buttonVariant="primary"] {
     background-color: #274763;
     border-color: #63A7FF;
@@ -234,8 +249,8 @@ PillButton#toolButton:disabled {
 
 QComboBox#renderModeCombo {
     min-width: 82px;
-    min-height: 28px;
-    max-height: 28px;
+    min-height: 30px;
+    max-height: 30px;
     padding: 0px 8px;
     border: 1px solid #393C43;
     border-radius: 5px;
@@ -276,55 +291,52 @@ QLineEdit#outlinerSearchInput {
     margin: 8px;
 }
 
-QTreeWidget#outlinerTree {
+QTreeView#outlinerTree {
     background-color: #303236;
     border: 0px;
     outline: 0px;
     padding: 6px 0px;
 }
 
-QTreeWidget#outlinerTree::item {
+QTreeView#outlinerTree::item {
     min-height: 25px;
-    padding: 0px 6px;
+    padding: 0px;
     color: #AEB4BC;
+    background-color: transparent;
+    border: 0px;
 }
 
-QTreeWidget#outlinerTree::item:hover {
-    background-color: #343842;
-}
-
-QTreeWidget#outlinerTree::item:selected {
-    background-color: rgba(99, 167, 255, 38);
-    color: #E9EAEC;
-}
-
-QTreeWidget#outlinerTree::branch:selected {
+QTreeView#outlinerTree::item:hover,
+QTreeView#outlinerTree::item:selected {
     background-color: transparent;
 }
 
-QWidget#outlinerRow {
+QTreeView#outlinerTree::branch {
     background-color: transparent;
 }
 
-QLabel#materialIcon[iconRole="outliner"] {
+QTreeView#outlinerTree::branch:selected {
+    background-color: transparent;
+}
+
+QWidget#outlinerEmpty {
+    background-color: #303236;
     color: #7E858F;
 }
 
-QLabel#materialIcon[iconRole="outliner"][rowState="selected"] {
-    color: #63A7FF;
+QLabel#materialIcon[iconRole="empty"] {
+    color: #7E858F;
 }
 
-QLabel#outlinerRowText {
-    color: #AEB4BC;
+QLabel#outlinerEmptyTitle,
+QLabel#outlinerEmptyBody {
+    color: #7E858F;
     background-color: transparent;
 }
 
-QLabel#outlinerRowText[rowKind="layer"] {
+QLabel#outlinerEmptyTitle {
+    font-size: 12px;
     font-weight: 600;
-}
-
-QLabel#outlinerRowText[rowState="selected"] {
-    color: #E9EAEC;
 }
 
 QTreeView::indicator,
@@ -386,6 +398,10 @@ QLabel#inspectorHint {
     color: #AEB4BC;
 }
 
+QLabel#inspectorHint {
+    padding: 5px 6px 6px 6px;
+}
+
 QFrame#inspectorSection {
     background-color: #26282E;
     border: 1px solid #45484F;
@@ -406,6 +422,21 @@ QLabel#inspectorSectionTitle {
     font-weight: 600;
 }
 
+QWidget#inspectorFieldRow {
+    min-height: 23px;
+    max-height: 23px;
+    background-color: transparent;
+}
+
+QLabel#materialIcon[iconRole="field"] {
+    color: #7E858F;
+}
+
+QLabel#inspectorFieldLabel {
+    color: #7E858F;
+    background-color: transparent;
+}
+
 QLabel#inspectorReadonly {
     color: #E9EAEC;
     font-family: "Consolas";
@@ -419,6 +450,10 @@ QLabel[role="sectionTitle"] {
 }
 
 QWidget#fieldSection {
+    background-color: transparent;
+}
+
+QWidget#inspectorEditor {
     background-color: transparent;
 }
 

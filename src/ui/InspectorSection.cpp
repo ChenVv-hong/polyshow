@@ -42,8 +42,8 @@ InspectorSection::InspectorSection(const QString &title, QWidget *parent)
     content->setObjectName(QStringLiteral("inspectorSectionContent"));
     content->setAttribute(Qt::WA_StyledBackground, true);
     m_content_layout = new QVBoxLayout(content);
-    m_content_layout->setContentsMargins(6, 5, 6, 6);
-    m_content_layout->setSpacing(6);
+    m_content_layout->setContentsMargins(2, 3, 2, 5);
+    m_content_layout->setSpacing(4);
     layout->addWidget(content);
 }
 

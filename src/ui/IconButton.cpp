@@ -66,11 +66,11 @@ QSize IconButton::sizeHint() const
 {
     if (m_display_text.isEmpty())
     {
-        return QSize(28, 28);
+        return QSize(30, 30);
     }
 
     const int textWidth = m_text_label == nullptr ? 0 : m_text_label->sizeHint().width();
-    return QSize(qMax(28, 8 + 20 + 5 + textWidth + 8), 28);
+    return QSize(qMax(30, 8 + 20 + 5 + textWidth + 8), 30);
 }
 
 QSize IconButton::minimumSizeHint() const

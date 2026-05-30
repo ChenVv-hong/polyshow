@@ -26,6 +26,18 @@ struct RenderColors
     QColor log_warning_border;
     QColor log_info_text;
     QColor log_info_border;
+    QColor outliner_row_text;
+    QColor outliner_row_selected_text;
+    QColor outliner_row_hidden_text;
+    QColor outliner_row_hover_background;
+    QColor outliner_row_selected_background;
+    QColor outliner_icon;
+    QColor outliner_icon_selected;
+    QColor outliner_check_border;
+    QColor outliner_check_checked_border;
+    QColor outliner_check_background;
+    QColor outliner_check_checked_background;
+    QColor outliner_check_mark;
 };
 
 /// Centralized runtime drawing theme helpers.

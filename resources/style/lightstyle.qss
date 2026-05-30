@@ -147,11 +147,19 @@ QLabel#materialIcon[iconSize="24"] {
     font-size: 24px;
 }
 
+QLabel#materialIcon[iconSize="30"] {
+    font-size: 30px;
+}
+
 QLabel#materialIcon[iconRole="button"] {
     color: #5E6875;
 }
 
 QLabel#materialIcon[iconRole="button"][buttonState="active"] {
+    color: #15408F;
+}
+
+QLabel#materialIcon[iconRole="button"][buttonVariant="primary"] {
     color: #15408F;
 }
 
@@ -176,6 +184,10 @@ QLabel#buttonText[buttonState="active"] {
     color: #15408F;
 }
 
+QLabel#buttonText[buttonVariant="primary"] {
+    color: #15408F;
+}
+
 QLabel#buttonText[buttonState="disabled"] {
     color: #8B95A1;
 }
@@ -191,24 +203,27 @@ QLabel#buttonText[buttonState="disabled"] {
 QPushButton#iconButton,
 QPushButton#toolButton,
 PillButton#toolButton {
-    min-height: 28px;
-    max-height: 28px;
+    min-height: 30px;
+    max-height: 30px;
     border: 1px solid #D3DAE3;
     border-radius: 5px;
     background-color: #F4F6F9;
     color: #5E6875;
-    padding: 0px 9px;
+    padding: 0px 5px;
 }
 
 QPushButton#iconButton {
-    min-width: 28px;
-    max-width: 28px;
+    min-width: 30px;
+    max-width: 30px;
     padding: 0px;
 }
 
 QPushButton#iconButton:hover,
 QPushButton#toolButton:hover,
 PillButton#toolButton:hover,
+QPushButton#iconButton:checked,
+QPushButton#toolButton:checked,
+PillButton#toolButton:checked,
 PillButton#toolButton[buttonVariant="primary"] {
     background-color: #E3F0FF;
     border-color: #2D74FF;
@@ -229,13 +244,18 @@ PillButton#toolButton:disabled {
 
 QComboBox#renderModeCombo {
     min-width: 82px;
-    min-height: 28px;
-    max-height: 28px;
+    min-height: 30px;
+    max-height: 30px;
     padding: 0px 8px;
     border: 1px solid #D3DAE3;
     border-radius: 5px;
     background-color: #F4F6F9;
     color: #20242A;
+}
+
+QComboBox#renderModeCombo:hover,
+QComboBox#renderModeCombo:focus {
+    border-color: #2D74FF;
 }
 
 QLineEdit,
@@ -266,55 +286,52 @@ QLineEdit#outlinerSearchInput {
     margin: 8px;
 }
 
-QTreeWidget#outlinerTree {
+QTreeView#outlinerTree {
     background-color: #FFFFFF;
     border: 0px;
     outline: 0px;
     padding: 6px 0px;
 }
 
-QTreeWidget#outlinerTree::item {
+QTreeView#outlinerTree::item {
     min-height: 25px;
-    padding: 0px 6px;
-    color: #5E6875;
-}
-
-QTreeWidget#outlinerTree::item:hover {
-    background-color: #F1F5FA;
-}
-
-QTreeWidget#outlinerTree::item:selected {
-    background-color: #E3F0FF;
-    color: #15408F;
-}
-
-QTreeWidget#outlinerTree::branch:selected {
-    background-color: transparent;
-}
-
-QWidget#outlinerRow {
-    background-color: transparent;
-}
-
-QLabel#materialIcon[iconRole="outliner"] {
-    color: #6B7280;
-}
-
-QLabel#materialIcon[iconRole="outliner"][rowState="selected"] {
-    color: #2D74FF;
-}
-
-QLabel#outlinerRowText {
+    padding: 0px;
     color: #5E6875;
     background-color: transparent;
+    border: 0px;
 }
 
-QLabel#outlinerRowText[rowKind="layer"] {
+QTreeView#outlinerTree::item:hover,
+QTreeView#outlinerTree::item:selected {
+    background-color: transparent;
+}
+
+QTreeView#outlinerTree::branch {
+    background-color: transparent;
+}
+
+QTreeView#outlinerTree::branch:selected {
+    background-color: transparent;
+}
+
+QWidget#outlinerEmpty {
+    background-color: #FFFFFF;
+    color: #8B95A1;
+}
+
+QLabel#materialIcon[iconRole="empty"] {
+    color: #8B95A1;
+}
+
+QLabel#outlinerEmptyTitle,
+QLabel#outlinerEmptyBody {
+    color: #8B95A1;
+    background-color: transparent;
+}
+
+QLabel#outlinerEmptyTitle {
+    font-size: 12px;
     font-weight: 600;
-}
-
-QLabel#outlinerRowText[rowState="selected"] {
-    color: #15408F;
 }
 
 QTreeView::indicator,
@@ -376,6 +393,10 @@ QLabel#inspectorHint {
     color: #5E6875;
 }
 
+QLabel#inspectorHint {
+    padding: 5px 6px 6px 6px;
+}
+
 QFrame#inspectorSection {
     background-color: #F8FAFC;
     border: 1px solid #D3DAE3;
@@ -396,6 +417,21 @@ QLabel#inspectorSectionTitle {
     font-weight: 600;
 }
 
+QWidget#inspectorFieldRow {
+    min-height: 23px;
+    max-height: 23px;
+    background-color: transparent;
+}
+
+QLabel#materialIcon[iconRole="field"] {
+    color: #6B7280;
+}
+
+QLabel#inspectorFieldLabel {
+    color: #6B7280;
+    background-color: transparent;
+}
+
 QLabel#inspectorReadonly {
     color: #20242A;
     font-family: "Consolas";
@@ -406,6 +442,12 @@ QLabel[role="sectionTitle"] {
     color: #6B7280;
     font-size: 10px;
     font-weight: 600;
+}
+
+QWidget#fieldSection,
+QWidget#inspectorEditor,
+QWidget#colorField {
+    background-color: transparent;
 }
 
 QPushButton#colorSwatch {

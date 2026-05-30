@@ -10,6 +10,7 @@
 #include <QFont>
 #include <QHBoxLayout>
 #include <QLabel>
+#include <QLayoutItem>
 #include <QLineEdit>
 #include <QPlainTextEdit>
 #include <QRectF>
@@ -78,73 +79,45 @@ QRectF pointsBounds(const QVector<Point2D> &points)
     return QRectF(minX, minY, maxX - minX, maxY - minY);
 }
 
-/// Summarizes one layer for read-only display.
-QString layerSummaryText(const LayerData &layer)
+struct LayerSummary
 {
-    int visibleCount = 0;
-    int polygonCount = 0;
-    int polylineCount = 0;
-    int pointCount = 0;
+    int primitive_count {0};
+    int visible_count {0};
+    int hidden_count {0};
+    int polygon_count {0};
+    int polyline_count {0};
+    int point_count {0};
+};
+
+/// Counts one layer's primitive summary values.
+LayerSummary layerSummary(const LayerData &layer)
+{
+    LayerSummary summary;
+    summary.primitive_count = layer.primitives.size();
 
     for (const LayerPrimitiveData &primitive : layer.primitives)
     {
         if (primitive.visible)
         {
-            ++visibleCount;
+            ++summary.visible_count;
         }
 
         switch (primitive.reference.kind)
         {
         case PrimitiveKind::Point:
-            ++pointCount;
+            ++summary.point_count;
             break;
         case PrimitiveKind::Polyline:
-            ++polylineCount;
+            ++summary.polyline_count;
             break;
         case PrimitiveKind::Polygon:
-            ++polygonCount;
+            ++summary.polygon_count;
             break;
         }
     }
 
-    return QStringLiteral(
-               "Primitives   %1\nVisible      %2\nHidden       %3\nPolygons     %4\nPolylines    %5\nPoints       %6")
-        .arg(layer.primitives.size())
-        .arg(visibleCount)
-        .arg(layer.primitives.size() - visibleCount)
-        .arg(polygonCount)
-        .arg(polylineCount)
-        .arg(pointCount);
-}
-
-/// Summarizes one selected primitive for read-only display.
-QString primitiveGeometryText(const LayerData &layer, int primitiveIndex)
-{
-    const LayerPrimitiveData &primitive = layer.primitives.at(primitiveIndex);
-    const QVector<Point2D> points = primitivePoints(layer, primitiveIndex);
-    const QRectF bounds = pointsBounds(points);
-
-    return QStringLiteral("Type        %1\nVertices    %2\nBounds      %3 x %4\nVisible     %5")
-        .arg(primitiveKindText(primitive.reference.kind, points.size()))
-        .arg(points.size())
-        .arg(bounds.width(), 0, 'f', 2)
-        .arg(bounds.height(), 0, 'f', 2)
-        .arg(primitive.visible ? QStringLiteral("true") : QStringLiteral("false"));
-}
-
-QString layerMetaText(const LayerData &layer)
-{
-    switch (layer.layer_type)
-    {
-    case LayerType::ExternalFileNormal:
-        return QStringLiteral("File layer / opened source");
-    case LayerType::InternalNormal:
-        return QStringLiteral("Internal layer / created in app");
-    case LayerType::InternalIpc:
-        return QStringLiteral("IPC layer / created in app and writable by external IPC");
-    default:
-        return QStringLiteral("Layer");
-    }
+    summary.hidden_count = summary.primitive_count - summary.visible_count;
+    return summary;
 }
 
 QString layerIconName(const LayerData &layer)
@@ -157,6 +130,21 @@ QString layerIconName(const LayerData &layer)
     case LayerType::InternalNormal:
     default:
         return QStringLiteral("folder");
+    }
+}
+
+QString layerTypeText(const LayerData &layer)
+{
+    switch (layer.layer_type)
+    {
+    case LayerType::ExternalFileNormal:
+        return QStringLiteral("File layer");
+    case LayerType::InternalNormal:
+        return QStringLiteral("Internal layer");
+    case LayerType::InternalIpc:
+        return QStringLiteral("IPC layer");
+    default:
+        return QStringLiteral("Layer");
     }
 }
 
@@ -182,6 +170,55 @@ QLabel *createSectionTitle(const QString &text, QWidget *parent)
     label->setProperty("role", QStringLiteral("sectionTitle"));
     label->setObjectName(QStringLiteral("controlLabel"));
     return label;
+}
+
+/// Deletes all child widgets/items from one layout.
+void clearLayout(QLayout *layout)
+{
+    if (layout == nullptr)
+    {
+        return;
+    }
+
+    while (QLayoutItem *item = layout->takeAt(0))
+    {
+        delete item->widget();
+        delete item;
+    }
+}
+
+/// Creates one compact read-only field row matching the web inspector.
+QWidget *createReadonlyFieldRow(
+    QWidget *parent,
+    const QString &iconName,
+    const QString &labelText,
+    const QString &valueText)
+{
+    auto *row = new QWidget(parent);
+    row->setObjectName(QStringLiteral("inspectorFieldRow"));
+    row->setFixedHeight(23);
+
+    auto *layout = new QHBoxLayout(row);
+    layout->setContentsMargins(6, 0, 6, 0);
+    layout->setSpacing(6);
+
+    auto *icon = new MaterialIconLabel(iconName, row);
+    icon->setProperty("iconRole", QStringLiteral("field"));
+    icon->setIconPixelSize(16);
+    layout->addWidget(icon);
+
+    auto *label = new QLabel(labelText, row);
+    label->setObjectName(QStringLiteral("inspectorFieldLabel"));
+    label->setFixedWidth(78);
+    label->setTextFormat(Qt::PlainText);
+    layout->addWidget(label);
+
+    auto *value = new QLabel(valueText, row);
+    value->setObjectName(QStringLiteral("inspectorReadonly"));
+    value->setTextFormat(Qt::PlainText);
+    layout->addWidget(value, 1);
+
+    return row;
 }
 
 /// Creates a compact validation label hidden by default.
@@ -214,7 +251,7 @@ QWidget *createFieldSection(
     auto *section = new QWidget(parent);
     section->setObjectName(QStringLiteral("fieldSection"));
     auto *layout = new QVBoxLayout(section);
-    layout->setContentsMargins(0, 0, 0, 0);
+    layout->setContentsMargins(6, 5, 6, 6);
     layout->setSpacing(4);
 
     layout->addWidget(createSectionTitle(title, section));
@@ -271,20 +308,9 @@ InspectorPanel::InspectorPanel(QWidget *parent)
     bodyLayout->setContentsMargins(6, 6, 6, 6);
     bodyLayout->setSpacing(6);
 
-    m_meta_label = new QLabel(body);
-    m_meta_label->setObjectName(QStringLiteral("inspectorMeta"));
-    m_meta_label->setWordWrap(true);
-    bodyLayout->addWidget(m_meta_label);
-
     m_geometry_section = new InspectorSection(QStringLiteral("Geometry"), body);
     bodyLayout->addWidget(m_geometry_section);
-
-    m_geometry_body_label = new QLabel(m_geometry_section);
-    m_geometry_body_label->setObjectName(QStringLiteral("inspectorReadonly"));
-    m_geometry_body_label->setProperty("role", QStringLiteral("mono"));
-    m_geometry_body_label->setTextFormat(Qt::PlainText);
-    m_geometry_body_label->setWordWrap(true);
-    m_geometry_section->contentLayout()->addWidget(m_geometry_body_label);
+    m_geometry_content_layout = m_geometry_section->contentLayout();
 
     m_style_section = new InspectorSection(QStringLiteral("Style"), body);
     bodyLayout->addWidget(m_style_section);
@@ -293,20 +319,16 @@ InspectorPanel::InspectorPanel(QWidget *parent)
     m_editor_widget->setObjectName(QStringLiteral("inspectorEditor"));
     auto *editorLayout = new QVBoxLayout(m_editor_widget);
     editorLayout->setContentsMargins(0, 0, 0, 0);
-    editorLayout->setSpacing(8);
-
-    m_editor_help_label = new QLabel(m_editor_widget);
-    m_editor_help_label->setObjectName(QStringLiteral("inspectorHint"));
-    m_editor_help_label->setWordWrap(true);
-    editorLayout->addWidget(m_editor_help_label);
+    editorLayout->setSpacing(6);
 
     m_stroke_color_field = new ColorField(m_editor_widget);
     m_stroke_color_field->setPlaceholderText(QStringLiteral("#RRGGBB or #RRGGBBAA"));
     editorLayout->addWidget(createFieldSection(m_editor_widget, QStringLiteral("Stroke Color"), m_stroke_color_field));
 
     auto *fillWrapper = new QWidget(m_editor_widget);
+    fillWrapper->setObjectName(QStringLiteral("fieldSection"));
     auto *fillLayout = new QVBoxLayout(fillWrapper);
-    fillLayout->setContentsMargins(0, 0, 0, 0);
+    fillLayout->setContentsMargins(6, 5, 6, 6);
     fillLayout->setSpacing(6);
 
     m_fill_enabled_check_box = new QCheckBox(QStringLiteral("Enable Fill"), fillWrapper);
@@ -316,7 +338,7 @@ InspectorPanel::InspectorPanel(QWidget *parent)
     m_fill_color_field->setPlaceholderText(QStringLiteral("#RRGGBB or #RRGGBBAA"));
     fillLayout->addWidget(createFieldSection(fillWrapper, QStringLiteral("Fill Color"), m_fill_color_field));
 
-    m_fill_section_widget = createFieldSection(m_editor_widget, QStringLiteral("Fill"), fillWrapper);
+    m_fill_section_widget = fillWrapper;
     editorLayout->addWidget(m_fill_section_widget);
 
     m_width_line_edit = new QLineEdit(m_editor_widget);
@@ -345,10 +367,10 @@ InspectorPanel::InspectorPanel(QWidget *parent)
     m_coordinates_error_label = createErrorLabel(m_coordinates_section);
     m_coordinates_section->contentLayout()->addWidget(m_coordinates_error_label);
 
-    m_hint_label = new QLabel(body);
-    m_hint_label->setObjectName(QStringLiteral("inspectorHint"));
-    m_hint_label->setWordWrap(true);
-    bodyLayout->addWidget(m_hint_label);
+    m_coordinates_hint_label = new QLabel(QStringLiteral("Invalid coordinates hide preview."), m_coordinates_section);
+    m_coordinates_hint_label->setObjectName(QStringLiteral("inspectorHint"));
+    m_coordinates_hint_label->setWordWrap(true);
+    m_coordinates_section->contentLayout()->addWidget(m_coordinates_hint_label);
 
     bodyLayout->addStretch();
     layout->addWidget(body, 1);
@@ -447,18 +469,31 @@ void InspectorPanel::updateContent()
     m_editor_widget->setVisible(false);
     m_style_section->setVisible(false);
     m_coordinates_section->setVisible(false);
+    clearLayout(m_geometry_content_layout);
 
     if (m_selection_state.kind == SelectionKind::Layer
         && m_selection_state.layer_index >= 0
         && m_selection_state.layer_index < m_document_data.layers.size())
     {
         const LayerData &layer = m_document_data.layers.at(m_selection_state.layer_index);
+        const LayerSummary summary = layerSummary(layer);
         m_object_icon_label->setIconName(layerIconName(layer));
         m_title_label->setText(layer.display_name);
-        m_meta_label->setText(layerMetaText(layer));
         m_geometry_section->setTitle(QStringLiteral("Summary"));
-        m_geometry_body_label->setText(layerSummaryText(layer));
-        m_hint_label->setText(QStringLiteral("Select a primitive to edit its in-memory style and coordinates."));
+        m_geometry_content_layout->addWidget(createReadonlyFieldRow(
+            m_geometry_section, QStringLiteral("folder"), QStringLiteral("Type"), layerTypeText(layer)));
+        m_geometry_content_layout->addWidget(createReadonlyFieldRow(
+            m_geometry_section, QStringLiteral("category"), QStringLiteral("Primitives"), QString::number(summary.primitive_count)));
+        m_geometry_content_layout->addWidget(createReadonlyFieldRow(
+            m_geometry_section, QStringLiteral("visibility"), QStringLiteral("Visible"), QString::number(summary.visible_count)));
+        m_geometry_content_layout->addWidget(createReadonlyFieldRow(
+            m_geometry_section, QStringLiteral("visibility_off"), QStringLiteral("Hidden"), QString::number(summary.hidden_count)));
+        m_geometry_content_layout->addWidget(createReadonlyFieldRow(
+            m_geometry_section, QStringLiteral("pentagon"), QStringLiteral("Polygons"), QString::number(summary.polygon_count)));
+        m_geometry_content_layout->addWidget(createReadonlyFieldRow(
+            m_geometry_section, QStringLiteral("timeline"), QStringLiteral("Polylines"), QString::number(summary.polyline_count)));
+        m_geometry_content_layout->addWidget(createReadonlyFieldRow(
+            m_geometry_section, QStringLiteral("radio_button_checked"), QStringLiteral("Points"), QString::number(summary.point_count)));
         updateFieldErrors();
         return;
     }
@@ -468,14 +503,27 @@ void InspectorPanel::updateContent()
         const LayerData &layer = m_document_data.layers.at(m_selection_state.layer_index);
         const LayerPrimitiveData &primitive = layer.primitives.at(m_selection_state.primitive_index);
         const QVector<Point2D> points = primitivePoints(layer, m_selection_state.primitive_index);
+        const QRectF bounds = pointsBounds(points);
         m_object_icon_label->setIconName(primitiveIconName(primitive.reference.kind, points.size()));
         m_title_label->setText(primitive.display_name);
-        m_meta_label->setText(QStringLiteral("Primitive / selected in %1").arg(layer.display_name));
         m_geometry_section->setTitle(QStringLiteral("Geometry"));
-        m_geometry_body_label->setText(primitiveGeometryText(layer, m_selection_state.primitive_index));
-        m_editor_help_label->setText(
-            QStringLiteral("Style fields submit on Enter or when focus leaves. Coordinates update in real time."));
-        m_hint_label->setText(QStringLiteral("Invalid coordinates keep the text, turn the border red, and hide the preview."));
+        m_geometry_content_layout->addWidget(createReadonlyFieldRow(
+            m_geometry_section,
+            primitiveIconName(primitive.reference.kind, points.size()),
+            QStringLiteral("Type"),
+            primitiveKindText(primitive.reference.kind, points.size())));
+        m_geometry_content_layout->addWidget(createReadonlyFieldRow(
+            m_geometry_section, QStringLiteral("hub"), QStringLiteral("Vertices"), QString::number(points.size())));
+        m_geometry_content_layout->addWidget(createReadonlyFieldRow(
+            m_geometry_section,
+            QStringLiteral("select_all"),
+            QStringLiteral("Bounds"),
+            QStringLiteral("%1 x %2").arg(bounds.width(), 0, 'f', 2).arg(bounds.height(), 0, 'f', 2)));
+        m_geometry_content_layout->addWidget(createReadonlyFieldRow(
+            m_geometry_section,
+            QStringLiteral("visibility"),
+            QStringLiteral("Visible"),
+            primitive.visible ? QStringLiteral("true") : QStringLiteral("false")));
         m_editor_widget->setVisible(true);
         m_style_section->setVisible(true);
         m_coordinates_section->setVisible(true);
@@ -487,10 +535,9 @@ void InspectorPanel::updateContent()
 
     m_object_icon_label->setIconName(QStringLiteral("info"));
     m_title_label->setText(QStringLiteral("No selection"));
-    m_meta_label->setText(QStringLiteral("Select a layer or primitive to inspect its details."));
     m_geometry_section->setTitle(QStringLiteral("Geometry"));
-    m_geometry_body_label->setText(QStringLiteral("Nothing selected."));
-    m_hint_label->setText(QStringLiteral("Primitive editing becomes available after you select one shape."));
+    m_geometry_content_layout->addWidget(createReadonlyFieldRow(
+        m_geometry_section, QStringLiteral("info"), QStringLiteral("State"), QStringLiteral("Nothing selected")));
     updateFieldErrors();
 }
 

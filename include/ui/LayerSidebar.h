@@ -7,11 +7,15 @@
 class QLabel;
 class QLineEdit;
 class QPushButton;
-class QTreeWidget;
-class QTreeWidgetItem;
+class QTreeView;
+class QWidget;
 
 namespace PolyShow
 {
+
+class OutlinerFilterProxyModel;
+class OutlinerTreeModel;
+
 
 /// Displays the imported file tree, visibility controls, and search field.
 class LayerSidebar final : public QWidget
@@ -51,21 +55,14 @@ private:
     /// Updates the sidebar footer summary.
     void updateFooter();
 
-    /// Rebuilds the tree widget content.
-    void rebuildTree();
-
-    /// Synchronizes checkbox states from the stored document without rebuilding items.
-    void syncTreeCheckStates();
-
     /// Applies the current filter text to the tree.
     void applyFilter();
 
-    /// Synchronizes custom tree row widgets with the current selection state.
-    void refreshTreeRowStyles();
+    /// Keeps the tree/empty surfaces aligned with the current document state.
+    void updateContentSurface();
 
-    /// Returns the item representing the given selection state, if any.
-    [[nodiscard]]
-    QTreeWidgetItem *findItem(const SelectionState &selectionState) const;
+    /// Expands all visible layer rows after model or filter changes.
+    void expandVisibleLayers();
 
     DocumentData m_document_data;
     SelectionState m_selection_state;
@@ -73,13 +70,14 @@ private:
     QPushButton *m_export_layer_button {nullptr};
     QPushButton *m_search_button {nullptr};
     QLineEdit *m_search_line_edit {nullptr};
-    QLabel *m_section_label {nullptr};
+    QWidget *m_empty_widget {nullptr};
     QLabel *m_footer_label {nullptr};
-    QTreeWidget *m_tree_widget {nullptr};
+    QTreeView *m_tree_view {nullptr};
+    OutlinerTreeModel *m_tree_model {nullptr};
+    OutlinerFilterProxyModel *m_filter_model {nullptr};
     bool m_is_search_expanded {false};
-    bool m_is_rebuilding_tree {false};
-    bool m_is_syncing_visibility {false};
     bool m_is_syncing_selection {false};
+    bool m_is_applying_filter {false};
 };
 
 } // namespace PolyShow

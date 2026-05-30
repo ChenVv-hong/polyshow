@@ -1597,36 +1597,42 @@ void MainWindow::setupViewportControls()
     layout->addWidget(m_finish_drawing_button);
     connect(m_finish_drawing_button, &QPushButton::clicked, this, &MainWindow::finishDrawing);
 
-    m_cancel_drawing_button = new PillButton(QStringLiteral("Cancel"), m_viewport_controls_widget);
+    m_cancel_drawing_button = new PillButton(QString(), m_viewport_controls_widget);
     m_cancel_drawing_button->setIconName(QStringLiteral("close"));
+    m_cancel_drawing_button->setToolTip(QStringLiteral("Cancel Drawing"));
     layout->addWidget(m_cancel_drawing_button);
     connect(m_cancel_drawing_button, &QPushButton::clicked, this, &MainWindow::cancelDrawing);
 
-    auto *fitButton = new PillButton(QStringLiteral("Fit View"), m_viewport_controls_widget);
+    layout->addStretch();
+
+    auto *fitButton = new PillButton(QString(), m_viewport_controls_widget);
     fitButton->setIconName(QStringLiteral("fit_screen"));
+    fitButton->setToolTip(QStringLiteral("Fit View"));
     layout->addWidget(fitButton);
     connect(fitButton, &QPushButton::clicked, m_fit_action, &QAction::trigger);
 
-    auto *zoomOutButton = new PillButton(QStringLiteral("Zoom -"), m_viewport_controls_widget);
+    auto *zoomOutButton = new PillButton(QString(), m_viewport_controls_widget);
     zoomOutButton->setIconName(QStringLiteral("zoom_out"));
+    zoomOutButton->setToolTip(QStringLiteral("Zoom Out"));
     layout->addWidget(zoomOutButton);
     connect(zoomOutButton, &QPushButton::clicked, m_zoom_out_action, &QAction::trigger);
 
-    auto *zoomInButton = new PillButton(QStringLiteral("Zoom +"), m_viewport_controls_widget);
+    auto *zoomInButton = new PillButton(QString(), m_viewport_controls_widget);
     zoomInButton->setIconName(QStringLiteral("zoom_in"));
+    zoomInButton->setToolTip(QStringLiteral("Zoom In"));
     layout->addWidget(zoomInButton);
     connect(zoomInButton, &QPushButton::clicked, m_zoom_in_action, &QAction::trigger);
 
-    auto *resetButton = new PillButton(QStringLiteral("Reset"), m_viewport_controls_widget);
+    auto *resetButton = new PillButton(QString(), m_viewport_controls_widget);
     resetButton->setIconName(QStringLiteral("center_focus_strong"));
+    resetButton->setToolTip(QStringLiteral("Reset View"));
     layout->addWidget(resetButton);
     connect(resetButton, &QPushButton::clicked, m_reset_view_action, &QAction::trigger);
 
-    layout->addStretch();
-
-    m_grid_toggle_button = new PillButton(QStringLiteral("Grid On"), m_viewport_controls_widget);
+    m_grid_toggle_button = new PillButton(QString(), m_viewport_controls_widget);
     m_grid_toggle_button->setIconName(QStringLiteral("grid_on"));
     m_grid_toggle_button->setCheckable(true);
+    m_grid_toggle_button->setToolTip(QStringLiteral("Toggle Grid"));
     layout->addWidget(m_grid_toggle_button);
     connect(m_grid_toggle_button, &QPushButton::clicked, this, [this](bool checked) {
         m_scene->setGridVisible(checked);
@@ -1655,9 +1661,11 @@ void MainWindow::updateViewportControlState()
     {
         const QSignalBlocker blocker(m_grid_toggle_button);
         m_grid_toggle_button->setChecked(m_scene->isGridVisible());
-        m_grid_toggle_button->setText(m_scene->isGridVisible() ? QStringLiteral("Grid On") : QStringLiteral("Grid Off"));
+        m_grid_toggle_button->setText(QString());
         m_grid_toggle_button->setVariant(
-            m_scene->isGridVisible() ? PillButton::Variant::Success : PillButton::Variant::Neutral);
+            m_scene->isGridVisible() ? PillButton::Variant::Primary : PillButton::Variant::Neutral);
+        m_grid_toggle_button->setToolTip(
+            m_scene->isGridVisible() ? QStringLiteral("Hide Grid") : QStringLiteral("Show Grid"));
     }
 
     if (m_render_mode_combo_box != nullptr)
@@ -1707,7 +1715,7 @@ void MainWindow::updateDrawingToolState()
     if (m_finish_drawing_button != nullptr)
     {
         m_finish_drawing_button->setEnabled(canFinish && hasDraft);
-        m_finish_drawing_button->setVariant(canFinish && hasDraft ? PillButton::Variant::Success : PillButton::Variant::Neutral);
+        m_finish_drawing_button->setVariant(PillButton::Variant::Neutral);
     }
 
     if (m_cancel_drawing_button != nullptr)
@@ -1873,8 +1881,8 @@ SelectionState MainWindow::normalizedSelectionState(const SelectionState &select
 
 void MainWindow::refreshViewsForVisibilityChange()
 {
-    // Never rebuild the sidebar tree from a checkbox signal stack, otherwise the
-    // currently-emitting QTreeWidgetItem can be destroyed mid-signal.
+    // Keep checkbox-triggered updates on the existing outliner model shape; the
+    // source document remains the single owner of final visibility state.
     clearCoordinatePreviewState();
     const SelectionState nextSelection = normalizedSelectionState(m_selection_state);
     m_layer_sidebar->setDocumentData(m_document_data, false);

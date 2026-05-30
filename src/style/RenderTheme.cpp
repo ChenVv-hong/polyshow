@@ -26,7 +26,19 @@ RenderColors makeLightColors()
         QColor(QStringLiteral("#8A5A14")),
         QColor(QStringLiteral("#FFF4D8")),
         QColor(QStringLiteral("#15408F")),
-        QColor(QStringLiteral("#E3F0FF"))
+        QColor(QStringLiteral("#E3F0FF")),
+        QColor(QStringLiteral("#5E6875")),
+        QColor(QStringLiteral("#15408F")),
+        QColor(QStringLiteral("#8B95A1")),
+        QColor(QStringLiteral("#F1F5FA")),
+        QColor(QStringLiteral("#E3F0FF")),
+        QColor(QStringLiteral("#6B7280")),
+        QColor(QStringLiteral("#2D74FF")),
+        QColor(QStringLiteral("#B8C2CE")),
+        QColor(QStringLiteral("#2D74FF")),
+        QColor(QStringLiteral("#FFFFFF")),
+        QColor(QStringLiteral("#E3F0FF")),
+        QColor(QStringLiteral("#15408F"))
     };
 }
 
@@ -48,7 +60,19 @@ RenderColors makeDarkColors()
         QColor(QStringLiteral("#E7BF67")),
         QColor(QStringLiteral("#4A3C22")),
         QColor(QStringLiteral("#63A7FF")),
-        QColor(QStringLiteral("#25384E"))
+        QColor(QStringLiteral("#25384E")),
+        QColor(QStringLiteral("#AEB4BC")),
+        QColor(QStringLiteral("#E9EAEC")),
+        QColor(QStringLiteral("#7E858F")),
+        QColor(QStringLiteral("#343842")),
+        QColor(QStringLiteral("#63A7FF28")),
+        QColor(QStringLiteral("#7E858F")),
+        QColor(QStringLiteral("#63A7FF")),
+        QColor(QStringLiteral("#45484F")),
+        QColor(QStringLiteral("#63A7FF")),
+        QColor(QStringLiteral("#25272C")),
+        QColor(QStringLiteral("#274763")),
+        QColor(QStringLiteral("#E9EAEC"))
     };
 }
 

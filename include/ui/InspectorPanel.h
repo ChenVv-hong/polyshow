@@ -9,6 +9,7 @@ class QCheckBox;
 class QLabel;
 class QLineEdit;
 class QPlainTextEdit;
+class QVBoxLayout;
 class QWidget;
 
 namespace PolyShow
@@ -88,13 +89,11 @@ private:
     QLabel *m_badge_label {nullptr};
     MaterialIconLabel *m_object_icon_label {nullptr};
     QLabel *m_title_label {nullptr};
-    QLabel *m_meta_label {nullptr};
     InspectorSection *m_geometry_section {nullptr};
     InspectorSection *m_style_section {nullptr};
     InspectorSection *m_coordinates_section {nullptr};
-    QLabel *m_geometry_body_label {nullptr};
-    QLabel *m_hint_label {nullptr};
-    QLabel *m_editor_help_label {nullptr};
+    QVBoxLayout *m_geometry_content_layout {nullptr};
+    QLabel *m_coordinates_hint_label {nullptr};
     QWidget *m_editor_widget {nullptr};
     QWidget *m_fill_section_widget {nullptr};
     QWidget *m_width_section_widget {nullptr};

@@ -36,6 +36,9 @@ set(POLYSHOW_HEADERS
     include/ui/LogPanel.h
     include/ui/MaterialIcon.h
     include/ui/MaterialIconLabel.h
+    include/ui/OutlinerFilterProxyModel.h
+    include/ui/OutlinerItemDelegate.h
+    include/ui/OutlinerTreeModel.h
     include/ui/PropertyPanel.h
     include/ui/MainWindow.h
     include/ui/PanelFrame.h
@@ -68,6 +71,9 @@ set(POLYSHOW_SOURCES
     src/ui/LogPanel.cpp
     src/ui/MaterialIcon.cpp
     src/ui/MaterialIconLabel.cpp
+    src/ui/OutlinerFilterProxyModel.cpp
+    src/ui/OutlinerItemDelegate.cpp
+    src/ui/OutlinerTreeModel.cpp
     src/ui/PropertyPanel.cpp
     src/ui/MainWindow.cpp
     src/ui/PanelFrame.cpp

@@ -13842,12 +13842,12 @@
                   "id": "AAkbb",
                   "name": "Finish Button",
                   "height": 30,
-                  "fill": "#284B38",
+                  "fill": "#282A2E",
                   "cornerRadius": 5,
                   "stroke": {
                     "align": "inside",
                     "thickness": 1,
-                    "fill": "#6EC987"
+                    "fill": "#45484F"
                   },
                   "gap": 4,
                   "padding": [
@@ -13865,13 +13865,13 @@
                       "height": 17,
                       "iconFontName": "done",
                       "iconFontFamily": "Material Symbols Rounded",
-                      "fill": "#6EC987"
+                      "fill": "#AEB4BC"
                     },
                     {
                       "type": "text",
                       "id": "n12za",
                       "name": "Finish Label",
-                      "fill": "#6EC987",
+                      "fill": "#AEB4BC",
                       "content": "Done",
                       "fontFamily": "Segoe UI",
                       "fontSize": 11,
@@ -13908,16 +13908,6 @@
                       "iconFontName": "close",
                       "iconFontFamily": "Material Symbols Rounded",
                       "fill": "#AEB4BC"
-                    },
-                    {
-                      "type": "text",
-                      "id": "s0MRO",
-                      "name": "Cancel Label",
-                      "fill": "#AEB4BC",
-                      "content": "Cancel",
-                      "fontFamily": "Segoe UI",
-                      "fontSize": 11,
-                      "fontWeight": "600"
                     }
                   ]
                 },
@@ -13950,16 +13940,6 @@
                       "iconFontName": "fit_screen",
                       "iconFontFamily": "Material Symbols Rounded",
                       "fill": "#AEB4BC"
-                    },
-                    {
-                      "type": "text",
-                      "id": "zWTXk",
-                      "name": "Fit View Label",
-                      "fill": "#AEB4BC",
-                      "content": "Fit",
-                      "fontFamily": "Segoe UI",
-                      "fontSize": 11,
-                      "fontWeight": "600"
                     }
                   ]
                 },
@@ -13992,16 +13972,6 @@
                       "iconFontName": "zoom_out",
                       "iconFontFamily": "Material Symbols Rounded",
                       "fill": "#AEB4BC"
-                    },
-                    {
-                      "type": "text",
-                      "id": "Cg7qV",
-                      "name": "Zoom Out Label",
-                      "fill": "#AEB4BC",
-                      "content": "Zoom -",
-                      "fontFamily": "Segoe UI",
-                      "fontSize": 11,
-                      "fontWeight": "600"
                     }
                   ]
                 },
@@ -14034,16 +14004,6 @@
                       "iconFontName": "zoom_in",
                       "iconFontFamily": "Material Symbols Rounded",
                       "fill": "#AEB4BC"
-                    },
-                    {
-                      "type": "text",
-                      "id": "LLfxc",
-                      "name": "Zoom In Label",
-                      "fill": "#AEB4BC",
-                      "content": "Zoom +",
-                      "fontFamily": "Segoe UI",
-                      "fontSize": 11,
-                      "fontWeight": "600"
                     }
                   ]
                 }
@@ -14117,7 +14077,7 @@
               "fill": "#AEB4BC",
               "textGrowth": "fixed-width",
               "width": "fill_container",
-              "content": "Invalid coordinates keep the text, turn the border red, and hide the preview.",
+              "content": "Invalid coordinates hide preview.",
               "fontFamily": "Segoe UI",
               "fontSize": 11,
               "fontWeight": "normal"

@@ -24,6 +24,8 @@ Guidance for coding agents working in the PolyShow repository.
 
 ### Windows
 
+#### Visual Studio 2022 (default)
+
 ```bash
 cmake -G "Visual Studio 17 2022" -B build -DCMAKE_PREFIX_PATH="D:/Qt/6.9.1/msvc2022_64"
 cmake --build build --config Release
@@ -34,6 +36,25 @@ Typical binaries:
 
 - `build/Release/polyshow.exe`
 - `build/Debug/polyshow.exe`
+
+#### CLion bundled toolchain (Ninja)
+
+Debug:
+
+```bash
+C:\Users\15195\AppData\Local\Programs\CLion\bin\cmake\win\x64\bin\cmake.exe -DCMAKE_BUILD_TYPE=Debug -DCMAKE_MAKE_PROGRAM=C:/Users/15195/AppData/Local/Programs/CLion/bin/ninja/win/x64/ninja.exe -G Ninja -S D:\coding\ClionProjects\polyshow -B D:\coding\ClionProjects\polyshow\cmake-build-debug
+```
+
+Release:
+
+```bash
+C:\Users\15195\AppData\Local\Programs\CLion\bin\cmake\win\x64\bin\cmake.exe -DCMAKE_BUILD_TYPE=Release -DCMAKE_MAKE_PROGRAM=C:/Users/15195/AppData/Local/Programs/CLion/bin/ninja/win/x64/ninja.exe -G Ninja -S D:\coding\ClionProjects\polyshow -B D:\coding\ClionProjects\polyshow\cmake-build-release
+```
+
+Typical binaries:
+
+- `cmake-build-debug/polyshow.exe`
+- `cmake-build-release/polyshow.exe`
 
 ### Linux
 

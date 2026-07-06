@@ -1,6 +1,7 @@
 #include "ui/MainWindow.h"
 
 #include "core/LayerEditing.h"
+#include "core/Version.h"
 #include "parsers/PlyParser.h"
 #include "parsers/PlySerializer.h"
 #include "ui/IconButton.h"
@@ -1235,10 +1236,12 @@ void MainWindow::cancelDrawing()
 
 void MainWindow::showAboutDialog()
 {
+    const QString versionText = QStringLiteral("Version %1 (%2)")
+                                    .arg(QStringLiteral(POLYSHOW_VERSION_STRING), QStringLiteral(POLYSHOW_GIT_COMMIT_HASH));
     QMessageBox::about(
         this,
         QStringLiteral("About PolyShow"),
-        QStringLiteral("PolyShow MVP\n\n") + QStringLiteral("Features:\n")
+        QStringLiteral("PolyShow MVP\n\n") + versionText + QStringLiteral("\n\nFeatures:\n")
             + QStringLiteral("1. Create, open, and export layers\n")
             + QStringLiteral("2. Display points, polylines, and polygons\n")
             + QStringLiteral("3. Draw primitives directly in the workspace\n")
@@ -1368,7 +1371,8 @@ void MainWindow::onIpcProtocolErrorLogged(const QString &message)
 
 void MainWindow::setupUi()
 {
-    setWindowTitle(QStringLiteral("PolyShow"));
+    setWindowTitle(
+        QStringLiteral("PolyShow %1").arg(QStringLiteral(POLYSHOW_VERSION_STRING)));
     resize(1280, 800);
     setObjectName(QStringLiteral("mainWindow"));
 

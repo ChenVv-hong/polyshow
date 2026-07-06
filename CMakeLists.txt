@@ -1,6 +1,15 @@
 cmake_minimum_required(VERSION 3.31)
 project(polyshow LANGUAGES CXX)
 
+if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT
+    OR CMAKE_INSTALL_PREFIX STREQUAL "C:/Program Files/${PROJECT_NAME}"
+    OR CMAKE_INSTALL_PREFIX STREQUAL "C:/Program Files (x86)/${PROJECT_NAME}")
+    set(CMAKE_INSTALL_PREFIX "${CMAKE_BINARY_DIR}/install" CACHE PATH "Default install path" FORCE)
+endif()
+
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+include(Version)
+
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
@@ -8,10 +17,11 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
-set(CMAKE_PREFIX_PATH "D:/Qt/6.9.1/msvc2022_64")
+set(CMAKE_PREFIX_PATH "D:/Qt/6.8.3/msvc2022_64")
 set(POLYSHOW_TARGET_NAME polyshow)
 
 find_package(Qt6 REQUIRED COMPONENTS Core Gui Network Svg Widgets)
+include(DeployRuntime)
 
 set(POLYSHOW_HEADERS
     include/core/GeometryTypes.h
@@ -44,6 +54,7 @@ set(POLYSHOW_HEADERS
     include/ui/MainWindow.h
     include/ui/PanelFrame.h
     include/ui/PillButton.h
+    "${CMAKE_CURRENT_BINARY_DIR}/include/core/Version.h"
 )
 
 set(POLYSHOW_SOURCES
@@ -93,13 +104,19 @@ add_executable(
     ${POLYSHOW_SOURCES}
 )
 
+configure_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/core/Version.h.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/include/core/Version.h"
+    @ONLY
+)
+
 add_executable(
     ${POLYSHOW_IPC_SENDER_TARGET}
     ${POLYSHOW_IPC_SENDER_SOURCES}
     PolyShowIpcClient.h
 )
 
-target_include_directories(${POLYSHOW_TARGET_NAME} PRIVATE include)
+target_include_directories(${POLYSHOW_TARGET_NAME} PRIVATE include "${CMAKE_CURRENT_BINARY_DIR}/include")
 target_include_directories(${POLYSHOW_IPC_SENDER_TARGET} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
 target_link_libraries(
@@ -112,39 +129,10 @@ target_link_libraries(
         Qt::Widgets
 )
 
-if(WIN32 AND NOT DEFINED CMAKE_TOOLCHAIN_FILE)
-    set(QT_INSTALL_PATH "${CMAKE_PREFIX_PATH}")
-    if(NOT EXISTS "${QT_INSTALL_PATH}/bin")
-        set(QT_INSTALL_PATH "${QT_INSTALL_PATH}/..")
-        if(NOT EXISTS "${QT_INSTALL_PATH}/bin")
-            set(QT_INSTALL_PATH "${QT_INSTALL_PATH}/..")
-        endif()
-    endif()
-
-    if(EXISTS "${QT_INSTALL_PATH}/plugins/platforms/qwindows.dll"
-        OR EXISTS "${QT_INSTALL_PATH}/plugins/platforms/qwindowsd.dll")
-        add_custom_command(
-            TARGET ${POLYSHOW_TARGET_NAME}
-            POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E make_directory
-                    "$<TARGET_FILE_DIR:${POLYSHOW_TARGET_NAME}>/plugins/platforms/"
-        )
-        add_custom_command(
-            TARGET ${POLYSHOW_TARGET_NAME}
-            POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E copy
-                    "${QT_INSTALL_PATH}/plugins/platforms/qwindows$<$<CONFIG:Debug>:d>.dll"
-                    "$<TARGET_FILE_DIR:${POLYSHOW_TARGET_NAME}>/plugins/platforms/"
-        )
-    endif()
-
-    foreach(QT_LIB Core Gui Network Svg Widgets)
-        add_custom_command(
-            TARGET ${POLYSHOW_TARGET_NAME}
-            POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E copy
-                    "${QT_INSTALL_PATH}/bin/Qt6${QT_LIB}$<$<CONFIG:Debug>:d>.dll"
-                    "$<TARGET_FILE_DIR:${POLYSHOW_TARGET_NAME}>"
-        )
-    endforeach()
-endif()
+deploy_runtime_targets(
+    TARGETS
+        ${POLYSHOW_TARGET_NAME}
+        ${POLYSHOW_IPC_SENDER_TARGET}
+    QT_TARGETS
+        ${POLYSHOW_TARGET_NAME}
+)
